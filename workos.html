@@ -4623,7 +4623,6 @@ function renderSettings() {
 function settingsProfileHtml() {
   return `
     <div class="settings-section">
-      <div class="settings-section-title">Profile</div>
       <div class="form-group">
         <label class="form-label">Name</label>
         <input class="form-input" id="settingName" value="${escapeHtml(state.settings.name)}" placeholder="Your name">
@@ -4647,7 +4646,6 @@ function settingsFeaturesHtml() {
   const f = state.settings.features;
   return `
     <div class="settings-section">
-      <div class="settings-section-title">Feature Toggles</div>
       <div class="form-hint" style="margin-bottom:var(--space-md)">Enable or disable optional tabs. Disabled tabs are hidden from the main navigation.</div>
       <div class="feature-toggle-row">
         <div class="feature-toggle-info">
@@ -4740,7 +4738,6 @@ function settingsIntegrationsHtml() {
 function settingsDataHtml() {
   return `
     <div class="settings-section">
-      <div class="settings-section-title">Data</div>
       <button class="btn-secondary" onclick="exportData()">Export all data as JSON</button>
       <div class="form-hint" style="margin-top:var(--space-sm)">${state.entries.length} entries, ${getConfirmedWins().length} wins, ${state.weeklyBriefs.length} briefs</div>
     </div>`;
