@@ -2032,10 +2032,16 @@ async function syncPush() {
   try {
     // Exclude sensitive fields from sync payload
     const syncState = JSON.parse(JSON.stringify(state));
-    delete syncState.settings.ghToken;
-    delete syncState.settings.ghGistId;
-    delete syncState.settings.apiKey;
+    syncState.settings.ghToken = '';
+    syncState.settings.ghGistId = '';
+    syncState.settings.apiKey = '';
     const content = JSON.stringify(syncState, null, 2);
+    // Safety check: abort if token leaked into payload
+    if (content.includes(state.settings.ghToken) && state.settings.ghToken.length > 10) {
+      console.error('ABORT: token found in sync payload');
+      syncInFlight = false;
+      return;
+    }
     const headers = {
       'Authorization': 'token ' + state.settings.ghToken,
       'Content-Type': 'application/json'
@@ -2061,7 +2067,7 @@ async function syncPush() {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          description: 'WorkOS data sync',
+          description: 'app-sync-data',
           public: false,
           files: { 'workos-state.json': { content } }
         })
