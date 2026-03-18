@@ -2078,15 +2078,17 @@ async function syncPush() {
 }
 
 async function syncPull() {
-  if (!state.settings.ghToken || !state.settings.ghGistId) return false;
+  if (!state.settings.ghToken || !state.settings.ghGistId) return 'no_config';
   try {
     const res = await fetch('https://api.github.com/gists/' + state.settings.ghGistId, {
       headers: { 'Authorization': 'token ' + state.settings.ghToken }
     });
-    if (!res.ok) return false;
+    if (res.status === 401 || res.status === 403) return 'auth_error';
+    if (res.status === 404) return 'not_found';
+    if (!res.ok) return 'error';
     const data = await res.json();
     const file = data.files['workos-state.json'];
-    if (!file) return false;
+    if (!file) return 'empty';
     const remote = JSON.parse(file.content);
     // Merge: use remote data but keep local sync settings
     const localToken = state.settings.ghToken;
@@ -2102,12 +2104,10 @@ async function syncPull() {
     state.dayPlanChecked = remote.dayPlanChecked || {};
     state.contributions = remote.contributions || [];
     localStorage.setItem('workos_state', JSON.stringify(state));
-    updateSyncStatus('synced');
-    return true;
+    return 'ok';
   } catch (e) {
     console.error('Sync pull failed:', e);
-    updateSyncStatus('error');
-    return false;
+    return 'error';
   }
 }
 
@@ -2128,12 +2128,21 @@ function updateSyncStatus(status) {
 
 async function manualSync() {
   updateSyncStatus('syncing');
-  const pulled = await syncPull();
-  if (pulled) {
+  const result = await syncPull();
+  if (result === 'ok') {
+    updateSyncStatus('synced');
     renderLogTab();
     renderSettings();
     showToast('Data synced from cloud');
+  } else if (result === 'auth_error') {
+    updateSyncStatus('error');
+    showToast('Auth failed — check your GitHub token');
+  } else if (result === 'not_found') {
+    // Gist doesn't exist yet, push to create
+    await syncPush();
+    showToast('Data pushed to cloud');
   } else if (state.settings.ghToken) {
+    // no_config, empty, or other — try pushing
     await syncPush();
     showToast('Data pushed to cloud');
   }
@@ -5059,7 +5068,8 @@ async function init() {
 
   // Pull latest from cloud if sync is configured
   if (state.settings.ghToken && state.settings.ghGistId) {
-    await syncPull();
+    const result = await syncPull();
+    if (result === 'ok') updateSyncStatus('synced');
   }
 
   const today = todayStr();
