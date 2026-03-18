@@ -59,7 +59,7 @@
    Reset & Base
    ======================================== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+html { font-size: 16px; -webkit-font-smoothing: antialiased; overflow-y: scroll; }
 body {
   font-family: var(--font-family);
   background: var(--surface-page);
@@ -118,7 +118,7 @@ body {
 .tab-nav {
   display: flex;
   gap: var(--space-xs);
-  align-items: baseline;
+  align-items: center;
 }
 .tab-btn {
   background: none;
@@ -156,7 +156,7 @@ body {
 }
 .form-textarea, .form-input {
   width: 100%;
-  padding: var(--space-md);
+  padding: 4px var(--space-sm);
   border: none;
   border-bottom: 1px solid var(--border-default);
   border-radius: 0;
@@ -180,7 +180,7 @@ body {
 }
 .form-error.show { display: block; }
 .form-hint {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-muted);
   margin-top: var(--space-xs);
 }
@@ -339,7 +339,16 @@ body {
   transition: background var(--duration-fast), color var(--duration-fast);
 }
 .btn-secondary:hover {
-  background: var(--accent-interactive);
+  background: var(--accent-200);
+  color: var(--accent-interactive);
+}
+.btn-accent {
+  background: var(--accent-300);
+  color: var(--text-primary);
+}
+.btn-accent:hover {
+  opacity: 0.9;
+  background: var(--accent-300);
   color: var(--text-primary);
 }
 .btn-ghost {
@@ -429,7 +438,7 @@ body {
 }
 .entry-card-header {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   margin-bottom: var(--space-md);
 }
@@ -613,7 +622,7 @@ body {
 }
 .history-entry-header {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 32px;
 }
 .history-entry-date {
@@ -621,20 +630,25 @@ body {
   font-weight: 500;
   color: var(--text-secondary);
 }
+.history-entry-mood-emoji {
+  font-size: 18px;
+  margin-left: var(--space-sm);
+  vertical-align: middle;
+}
 .history-entry-mood {
   font-size: 13px;
   color: var(--text-secondary);
-  margin-left: var(--space-md);
+  margin-left: var(--space-sm);
 }
 .history-entry-edit {
   font-family: monospace;
   font-size: 12px;
   font-weight: 400;
-  color: var(--text-muted);
+  color: var(--accent-interactive);
   cursor: pointer;
 }
 .history-entry-edit:hover {
-  color: var(--text-secondary);
+  color: var(--accent-interactive-hover);
 }
 .history-section-label {
   display: flex;
@@ -693,7 +707,7 @@ body {
   display: block;
 }
 .history-reflection .ai-text {
-  font-size: 15px;
+  font-size: 13px;
   line-height: 1.6;
   color: var(--text-ai);
 }
@@ -865,6 +879,25 @@ body {
   color: var(--text-secondary);
 }
 .model-option input { accent-color: var(--accent-coaching); }
+
+/* Settings Sub-tabs */
+.settings-tab-nav { display: flex; gap: var(--space-xs); margin-bottom: var(--space-2xl); border-bottom: 1px solid var(--border-default); }
+.settings-tab-btn { background: none; border: none; padding: var(--space-sm) var(--space-md); font: 13px var(--font-family); color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.settings-tab-btn:hover { color: var(--text-primary); }
+.settings-tab-btn.active { color: var(--text-primary); font-weight: 600; border-bottom-color: var(--accent-interactive); }
+
+/* Feature Toggles */
+.feature-toggle-row { display: flex; align-items: center; justify-content: space-between; padding: var(--space-md) 0; border-bottom: 1px solid var(--border-default); }
+.feature-toggle-row:last-child { border-bottom: none; }
+.feature-toggle-info { display: flex; flex-direction: column; gap: 2px; }
+.feature-toggle-label { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+.feature-toggle-desc { font-size: 12px; color: var(--text-muted); }
+.toggle-switch { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-switch .slider { position: absolute; inset: 0; background: var(--border-default); border-radius: 11px; cursor: pointer; transition: background 0.2s; }
+.toggle-switch .slider::before { content: ''; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; background: white; border-radius: 50%; transition: transform 0.2s; }
+.toggle-switch input:checked + .slider { background: var(--accent-interactive); }
+.toggle-switch input:checked + .slider::before { transform: translateX(18px); }
 
 /* ========================================
    Empty States
@@ -1178,15 +1211,17 @@ body {
   color: var(--text-secondary);
 }
 .plan-add-row {
-  font-size: 13px;
-  color: var(--text-muted);
+  font-size: 12px;
+  font-family: monospace;
+  color: var(--accent-interactive);
   cursor: pointer;
   margin-top: var(--space-xs);
 }
 .plan-add-row:hover {
-  color: var(--text-secondary);
+  color: var(--accent-interactive-hover);
 }
-#panel-log .btn-primary {
+#panel-log .btn-primary,
+#panel-visibility .btn-primary {
   background: var(--accent-300);
   color: var(--text-primary);
   padding: var(--space-lg) var(--space-xl);
@@ -1289,6 +1324,7 @@ body {
   line-height: 1.5;
   color: var(--text-secondary);
   display: flex;
+  align-items: baseline;
   gap: var(--space-sm);
 }
 .coaching-recap li::before {
@@ -1298,13 +1334,15 @@ body {
 }
 .coaching-recap .coaching-recap-link {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--accent-interactive);
   font-family: monospace;
-  margin-left: var(--space-xs);
+  margin-left: auto;
+  flex-shrink: 0;
   text-decoration: none;
+  white-space: nowrap;
 }
 .coaching-recap .coaching-recap-link:hover {
-  color: var(--text-secondary);
+  color: var(--accent-interactive-hover);
 }
 .reminders-row {
   display: grid;
@@ -1332,16 +1370,16 @@ body {
   font-weight: 400;
   font-style: normal;
   text-transform: none;
-  color: var(--text-muted);
+  color: var(--accent-interactive);
   cursor: pointer;
 }
 .cta-icon {
-  font-size: 18px;
-  vertical-align: -2px;
+  font-size: 12px;
+  vertical-align: 0;
   line-height: 1;
 }
 .reminder-cta:hover {
-  color: var(--text-secondary);
+  color: var(--accent-interactive-hover);
 }
 .intention-reminder {
   font-style: normal;
@@ -1532,7 +1570,7 @@ body {
 }
 .contrib-cat-card {
   border-radius: var(--radius-md);
-  padding: var(--space-lg);
+  padding: var(--space-2xl) var(--space-lg);
   cursor: pointer;
   transition: box-shadow var(--duration-fast), transform var(--duration-fast);
   background: var(--surface-ai);
@@ -1845,6 +1883,306 @@ body {
 }
 
 /* ========================================
+   Visibility Tab
+   ======================================== */
+.visib-rhythm-strip {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xl);
+}
+.visib-rhythm-card {
+  border-radius: var(--radius-md);
+  padding: var(--space-lg) var(--space-sm);
+  background: var(--surface-ai);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  text-align: center;
+  aspect-ratio: 1 / 1;
+  transition: background var(--duration-fast), opacity var(--duration-fast);
+  cursor: pointer;
+}
+.visib-rhythm-card:hover { background: var(--accent-100); }
+.visib-rhythm-card.today { background: var(--accent-200); }
+.visib-rhythm-card.today:hover { background: var(--accent-300); }
+.visib-rhythm-card.today .visib-rhythm-day-label { color: var(--text-primary); }
+.visib-rhythm-card.today .visib-rhythm-sublabel { color: var(--text-primary); }
+.visib-rhythm-card.today .visib-rhythm-icon { opacity: 0.5; }
+.visib-rhythm-card.filled { background: var(--accent-positive); }
+.visib-rhythm-card.filled .visib-rhythm-day-label { color: #fff; }
+.visib-rhythm-card.filled .visib-rhythm-sublabel { color: #fff; }
+.visib-rhythm-card.filled .visib-rhythm-icon { opacity: 0.9; filter: brightness(0) invert(1); }
+.visib-rhythm-card.filled:hover { opacity: 0.9; }
+.visib-rhythm-day-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.visib-rhythm-icon {
+  width: 60px;
+  height: 60px;
+  margin: auto 0;
+  opacity: 0.2;
+}
+.visib-rhythm-sublabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+.visib-draft-display {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+.visib-draft-display h2, .visib-draft-display h3, .visib-draft-display h4 {
+  margin: var(--space-md) 0 var(--space-xs);
+  font-weight: 600;
+}
+.visib-draft-display p { margin: 0 0 var(--space-sm); }
+.visib-draft-display ul { margin: 0 0 var(--space-sm); padding-left: var(--space-xl); }
+.visib-draft-display li { margin-bottom: var(--space-xs); }
+.visib-draft-edit {
+  min-height: 200px;
+  font-size: 14px;
+  line-height: 1.6;
+  resize: vertical;
+}
+.visib-type-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+  margin-bottom: var(--space-xl);
+}
+.visib-type-btn {
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font: 13px var(--font-family);
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-align: center;
+  transition: background var(--duration-fast), border-color var(--duration-fast), color var(--duration-fast);
+}
+.visib-type-btn:hover { border-color: var(--accent-interactive); color: var(--text-primary); }
+.visib-type-btn.selected {
+  background: var(--accent-100);
+  border-color: var(--accent-coaching);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.visib-suggestion-card {
+  background: var(--surface-ai);
+  border-left: 3px solid var(--accent-coaching);
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  padding: var(--space-lg);
+  margin-bottom: var(--space-sm);
+}
+.visib-suggestion-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+.visib-suggestion-text {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+.visib-suggestion-dismiss {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+  line-height: 1;
+}
+.visib-suggestion-dismiss:hover { color: var(--accent-negative); }
+.visib-nudge {
+  font-size: 13px;
+  color: var(--accent-negative);
+  padding: var(--space-xs) 0;
+}
+.visib-nudges {
+  margin-bottom: var(--space-xl);
+}
+.visib-vector-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-sm);
+}
+.visib-vector-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  width: 140px;
+  flex-shrink: 0;
+}
+.visib-vector-track {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border-default);
+  overflow: hidden;
+}
+.visib-vector-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent-coaching);
+  transition: width var(--duration-normal);
+}
+.visib-vector-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  width: 24px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.visib-vector-row.zero .visib-vector-label { color: var(--accent-negative); }
+.visib-vector-row.zero .visib-vector-count { color: var(--accent-negative); }
+.visib-reach-bar {
+  display: flex;
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: var(--space-sm);
+}
+.visib-reach-segment {
+  height: 100%;
+  transition: width var(--duration-normal);
+}
+.visib-reach-segment.pod { background: var(--accent-300); }
+.visib-reach-segment.cbp { background: var(--accent-500); }
+.visib-reach-segment.org { background: var(--accent-700); }
+.visib-reach-legend {
+  display: flex;
+  gap: var(--space-xl);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.visib-reach-legend-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: var(--space-xs);
+}
+.visib-reach-legend-dot.pod { background: var(--accent-300); }
+.visib-reach-legend-dot.cbp { background: var(--accent-500); }
+.visib-reach-legend-dot.org { background: var(--accent-700); }
+.visib-activity-card {
+  background: var(--surface-card);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-sm);
+  cursor: pointer;
+  transition: box-shadow var(--duration-fast);
+}
+.visib-activity-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+.visib-activity-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xs);
+}
+.visib-activity-card-date {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.visib-type-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-coaching);
+  background: var(--accent-100);
+  padding: 1px 8px;
+  border-radius: 8px;
+}
+.visib-audience-tag {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 1px 8px;
+  border-radius: 8px;
+}
+.visib-audience-tag.pod { background: #e8fdf0; color: #3aa85c; }
+.visib-audience-tag.cbp { background: #e8f0fe; color: #3a6ea8; }
+.visib-audience-tag.org { background: #f3e8fd; color: #7a3aa8; }
+.visib-activity-card-note {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+.visib-activity-card-vectors {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: var(--space-xs);
+}
+.visib-log-form {
+  background: var(--surface-ai);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  margin-bottom: var(--space-xl);
+}
+.visib-audience-picker {
+  display: flex;
+  gap: var(--space-lg);
+  margin: var(--space-md) 0;
+}
+.visib-audience-picker label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  cursor: pointer;
+}
+.visib-audience-picker input { accent-color: var(--accent-coaching); }
+.visib-vectors-display {
+  display: flex;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+  margin: var(--space-sm) 0;
+}
+.visib-vector-tag {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--accent-coaching);
+  background: var(--accent-100);
+  padding: 2px 8px;
+  border-radius: 8px;
+}
+.visib-section {
+  margin-bottom: var(--space-3xl);
+}
+.visib-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  margin-bottom: var(--space-lg);
+}
+.visib-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  color: var(--text-muted);
+}
+.visib-section-toggle {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ========================================
    Responsive — Mobile
    ======================================== */
 @media (max-width: 600px) {
@@ -1926,6 +2264,23 @@ body {
   .wins-toolbar { flex-direction: column; }
   .wins-actions-bar { margin-left: 0; }
 
+  /* Visibility tab */
+  .visib-rhythm-strip {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    grid-template-columns: repeat(5, minmax(64px, 1fr));
+  }
+  .visib-rhythm-strip::-webkit-scrollbar { display: none; }
+  .visib-rhythm-card { padding: var(--space-sm) var(--space-xs); }
+  .visib-rhythm-icon { width: 40px; height: 40px; }
+  .visib-rhythm-sublabel { font-size: 10px; }
+  .visib-type-grid {
+    grid-template-columns: 1fr;
+  }
+  .visib-vector-label { width: 100px; }
+  .visib-reach-legend { flex-wrap: wrap; gap: var(--space-md); }
+
   /* General */
   .hide-mobile { display: none; }
   .show-mobile { display: inline; }
@@ -1939,19 +2294,14 @@ body {
 <div id="app">
   <header class="app-header">
     <span class="app-name"><span class="app-logo-wrap"><object class="app-logo" data="logo.svg" type="image/svg+xml" width="27" height="21"></object></span>WorkOS</span>
-    <nav class="tab-nav" id="tabNav">
-      <button class="tab-btn active" data-tab="log">Log</button>
-      <button class="tab-btn" data-tab="history">History</button>
-      <button class="tab-btn" data-tab="briefs">Briefs</button>
-      <button class="tab-btn" data-tab="contributions">Contributions</button>
-      <button class="tab-btn" data-tab="settings">Settings</button>
-    </nav>
+    <nav class="tab-nav" id="tabNav"></nav>
   </header>
 
   <div id="panel-log" class="panel active"></div>
   <div id="panel-history" class="panel"></div>
   <div id="panel-briefs" class="panel"></div>
   <div id="panel-contributions" class="panel"></div>
+  <div id="panel-visibility" class="panel"></div>
   <div id="panel-settings" class="panel"></div>
 </div>
 
@@ -1962,14 +2312,15 @@ body {
    State
    ======================================== */
 let state = {
-  settings: { name: '', role: '', baseUrl: '', projectId: '', apiKey: '', model: 'sonnet', slackWebhook: '', promotionNotes: '', ghToken: '', ghGistId: '' },
+  settings: { name: '', role: '', baseUrl: '', projectId: '', apiKey: '', model: 'sonnet', slackWebhook: '', promotionNotes: '', ghToken: '', ghGistId: '', features: { contributions: true, visibility: true } },
   entries: [],
   wins: [],
   weeklyBriefs: [],
   intentions: {},
   dayPriorities: {},
   dayPlanChecked: {},
-  contributions: []
+  contributions: [],
+  visibilityActivities: []
 };
 
 let logMode = 'form'; // 'form' | 'submitted' | 'intention' | 'editing'
@@ -1978,6 +2329,7 @@ let briefsView = 'list'; // 'list' | 'loading' | 'detail'
 let briefsSubView = 'this-week'; // 'this-week' | 'past-briefs' | 'wins'
 let currentBriefId = null;
 let pendingFormData = null;
+let settingsSubTab = 'profile';
 
 function loadState() {
   try {
@@ -1985,6 +2337,7 @@ function loadState() {
     if (raw) {
       const saved = JSON.parse(raw);
       state.settings = { ...state.settings, ...saved.settings };
+      state.settings.features = { contributions: true, visibility: true, ...saved.settings?.features };
       state.entries = saved.entries || [];
       state.wins = saved.wins || [];
       state.weeklyBriefs = saved.weeklyBriefs || [];
@@ -1992,6 +2345,7 @@ function loadState() {
       state.dayPriorities = saved.dayPriorities || {};
       state.dayPlanChecked = saved.dayPlanChecked || {};
       state.contributions = saved.contributions || [];
+      state.visibilityActivities = saved.visibilityActivities || [];
 
       // Migrate old weeklyIntention values from entries
       for (const entry of state.entries) {
@@ -2049,7 +2403,8 @@ async function syncPush() {
       intentions: state.intentions,
       dayPriorities: state.dayPriorities,
       dayPlanChecked: state.dayPlanChecked,
-      contributions: state.contributions
+      contributions: state.contributions,
+      visibilityActivities: state.visibilityActivities
     };
     const content = JSON.stringify(syncState, null, 2);
     const headers = {
@@ -2124,6 +2479,7 @@ async function syncPull() {
     state.dayPriorities = remote.dayPriorities || {};
     state.dayPlanChecked = remote.dayPlanChecked || {};
     state.contributions = remote.contributions || [];
+    state.visibilityActivities = remote.visibilityActivities || [];
     localStorage.setItem('workos_state', JSON.stringify(state));
     return 'ok';
   } catch (e) {
@@ -2331,6 +2687,34 @@ function showToast(message, duration = 3000, undoCallback = null) {
 }
 
 /* ========================================
+   Tab Nav (dynamic)
+   ======================================== */
+function renderTabNav() {
+  const f = state.settings.features || {};
+  const tabs = [
+    { id: 'log', label: 'Log' },
+    { id: 'history', label: 'History' },
+    { id: 'briefs', label: 'Briefs' },
+    f.contributions !== false ? { id: 'contributions', label: 'Contributions' } : null,
+    f.visibility !== false ? { id: 'visibility', label: 'Visibility' } : null,
+    { id: 'settings', label: '⚙', style: 'font-size:24px;line-height:1', title: 'Settings' }
+  ].filter(Boolean);
+
+  const active = document.querySelector('.tab-btn.active')?.dataset.tab || 'log';
+  document.getElementById('tabNav').innerHTML = tabs.map(t =>
+    `<button class="tab-btn${t.id === active ? ' active' : ''}" data-tab="${t.id}"${t.title ? ` title="${t.title}"` : ''}${t.style ? ` style="${t.style}"` : ''}>${t.label}</button>`
+  ).join('');
+}
+
+function toggleFeature(feature) {
+  state.settings.features[feature] = !state.settings.features[feature];
+  saveState();
+  renderTabNav();
+  const activeTab = document.querySelector('.tab-btn.active')?.dataset.tab;
+  if (activeTab === feature && !state.settings.features[feature]) switchTab('log');
+}
+
+/* ========================================
    Tab Switching
    ======================================== */
 function switchTab(tabName) {
@@ -2343,7 +2727,9 @@ function switchTab(tabName) {
   if (tabName === 'history') renderHistory();
   if (tabName === 'briefs') renderBriefs();
   if (tabName === 'contributions') renderContributions();
+  if (tabName === 'visibility') renderVisibility();
   if (tabName === 'log') renderLogTab();
+  if (tabName === 'settings') renderSettings();
 }
 
 document.getElementById('tabNav').addEventListener('click', (e) => {
@@ -2871,24 +3257,40 @@ function initPlanDragDrop() {
   });
 }
 
-function renderPlanReminderInner(items) {
+function renderPlanReminderInner(items, includeVisibTask = false) {
+  const vTask = includeVisibTask ? getTodayVisibilityTask() : null;
+  const vHtml = vTask ? `<div class="plan-check-item${vTask.done ? ' done' : ''}">
+    <span class="drag-handle">⠿</span>
+    <input type="checkbox" ${vTask.done ? 'checked' : ''} onchange="this.checked=${vTask.done};visibView='log';visibLogType='';visibLogSubtype='';switchTab('visibility')">
+    <span><a href="#" onclick="event.preventDefault();visibView='log';visibLogType='';visibLogSubtype='';switchTab('visibility')" style="color:var(--accent-coaching);text-decoration:none;font-weight:500">${escapeHtml(vTask.label)}</a></span>
+  </div>` : '';
   return `<div class="plan-checklist">
-    ${renderPlanChecklistInner(items)}
+    ${renderPlanChecklistInner(items)}${vHtml}
   </div>`;
 }
 
 function getPlanLabelCta(items) {
   const order = getDayOrder(items.length);
   return order
-    ? '<span class="reminder-cta" onclick="resetDayOrder()"><span class="cta-icon">✕</span> Reset order</span>'
+    ? '<span class="reminder-cta" onclick="resetDayOrder()">Reset order</span>'
     : '';
 }
 
-function renderPlanReminder(planText) {
+function getTodayVisibilityTask() {
+  const dow = new Date(todayStr() + 'T12:00:00').getDay(); // 0=Sun..6=Sat
+  if (dow < 1 || dow > 5) return null;
+  const rhythm = WEEKLY_RHYTHM[dow - 1];
+  if (!rhythm) return null;
+  // Check if already logged today
+  const alreadyDone = state.visibilityActivities.some(a => a.date === todayStr());
+  return { label: rhythm.label, done: alreadyDone };
+}
+
+function renderPlanReminder(planText, includeVisibTask = false) {
   const items = getPlanItems(planText);
   if (!items.length) return '';
   return `<div id="planReminderWrapper" data-items='${JSON.stringify(items).replace(/'/g, "&#39;")}'>
-    ${renderPlanReminderInner(items)}
+    ${renderPlanReminderInner(items, includeVisibTask)}
   </div>`;
 }
 
@@ -2905,7 +3307,8 @@ function renderCoachingRecap() {
       ? actionLines[0].replace(/^\s*[-•]\s*/, '').trim()
       : lines[0]?.substring(0, 120).trim() || '';
     if (!summary) return '';
-    const dateLabel = formatDateDisplay(entry.date);
+    const d = new Date(entry.date + 'T12:00:00');
+    const dateLabel = d.toLocaleDateString('en-US', { weekday: 'short' }) + ' ' + (d.getMonth() + 1) + '/' + d.getDate();
     return `<li><span>${escapeHtml(summary)}</span><a class="coaching-recap-link" href="#" onclick="event.preventDefault();editEntryById(${entry.id});setTimeout(()=>{const r=document.querySelector('.history-reflection');if(r)r.scrollIntoView({behavior:'smooth'})},100)">${dateLabel}</a></li>`;
   }).filter(Boolean);
 
@@ -2941,10 +3344,10 @@ function renderReminders(weekIntention, previousPlan) {
     return `<div class="reminders-row">
         <div>
           <div class="reminder-col-label">Yesterday's plan ${getPlanLabelCta(planItems)}</div>
-          ${renderPlanReminder(previousPlan)}
+          ${renderPlanReminder(previousPlan, true)}
         </div>
         <div>
-          <div class="reminder-col-label">Weekly intention <span class="reminder-cta" onclick="openIntentionEdit()"><span class="cta-icon">✎</span> Edit</span></div>
+          <div class="reminder-col-label">Weekly intention <span class="reminder-cta" onclick="openIntentionEdit()">Edit</span></div>
           ${intentionDisplay}
         </div>
       </div>
@@ -2961,7 +3364,7 @@ function renderReminders(weekIntention, previousPlan) {
   if (hasPlan) {
     return `<div class="intention-reminder">
         <div class="reminder-col-label">Yesterday's plan ${getPlanLabelCta(planItems)}</div>
-        ${renderPlanReminder(previousPlan)}
+        ${renderPlanReminder(previousPlan, true)}
       </div>
       ${coachingRecap}
       <div style="margin-bottom:var(--space-xl)"><button class="btn-ghost" onclick="logMode='intention';renderLogTab()">+ Set weekly intention</button></div>`;
@@ -2976,7 +3379,7 @@ function renderIntentionReminder(intention) {
     ? `<div class="intention-checklist">${formatIntentionChecklist(intention, false)}</div>`
     : `<div onclick="openIntentionEdit()" style="cursor:pointer">${escapeHtml(intention)}</div>`;
   return `<div class="intention-reminder">
-      <div class="reminder-col-label">Weekly intention <span class="reminder-cta" onclick="openIntentionEdit()"><span class="cta-icon">✎</span> Edit</span></div>
+      <div class="reminder-col-label">Weekly intention <span class="reminder-cta" onclick="openIntentionEdit()">Edit</span></div>
       ${display}
     </div>
     <div class="intention-edit" id="intentionEditBlock" style="display:none">
@@ -3142,7 +3545,7 @@ function renderLogTab() {
     <div class="nudge-card${fri ? ' solid' : ''}" id="nudgeCard">
       <div class="nudge-title">Weekly Brief available</div>
       <div class="nudge-subtitle">You have ${weekEntryCount} entries this week.</div>
-      <button class="btn-secondary" onclick="startGenerateBrief()">Generate Brief</button>
+      <button class="btn-secondary btn-accent" onclick="startGenerateBrief()">Generate Brief</button>
     </div>` : ''}
   `;
 
@@ -3330,7 +3733,7 @@ function renderPostSubmit(panel, entry) {
     <div class="card card-bordered entry-card fade-in">
       <div class="entry-card-header">
         <span class="entry-card-date">${getDayName(entry.date)}</span>
-        <span class="history-entry-edit" onclick="editEntry()"><span class="cta-icon">✎</span> Edit Entry</span>
+        <span class="history-entry-edit" onclick="editEntry()">Edit Entry</span>
       </div>
       <div class="entry-card-body">${escapeHtml(entry.workDone)}</div>
       ${entry.reflection ? `<div class="entry-reflection">${escapeHtml(entry.reflection)}</div>` : ''}
@@ -3363,7 +3766,7 @@ function renderPostSubmit(panel, entry) {
     <div class="nudge-card${isFriday(todayStr()) ? ' solid' : ''}">
       <div class="nudge-title">Weekly Brief available</div>
       <div class="nudge-subtitle">You have ${weekEntryCount} entries this week.</div>
-      <button class="btn-secondary" onclick="startGenerateBrief()">Generate Brief</button>
+      <button class="btn-secondary btn-accent" onclick="startGenerateBrief()">Generate Brief</button>
     </div>` : ''}
   `;
 
@@ -3388,7 +3791,7 @@ function renderEditForm(panel, entry) {
 
   panel.innerHTML = `
     <div class="log-header-row">
-      <span class="date-today"><span class="cta-icon">✎</span> Edit Entry</span>
+      <span class="date-today">Edit Entry</span>
       <button class="btn-ghost" onclick="cancelEdit()">Cancel</button>
     </div>
 
@@ -3632,8 +4035,8 @@ function renderHistory() {
   panel.innerHTML = entries.map((entry, i) => `
     <div class="history-entry">
       <div class="history-entry-header">
-        <span><span class="history-entry-date">${formatDateDisplay(entry.date)}</span> <span class="history-entry-mood">${entry.mood || ''} ${entry.energy}/10</span></span>
-        <span class="history-entry-edit" onclick="editEntryById(${entry.id})"><span class="cta-icon">✎</span> Edit Entry</span>
+        <span><span class="history-entry-date">${formatDateDisplay(entry.date)}</span>${entry.mood ? ` <span class="history-entry-mood-emoji">${entry.mood}</span>` : ''} <span class="history-entry-mood">${entry.energy}/10</span></span>
+        <span class="history-entry-edit" onclick="editEntryById(${entry.id})">Edit Entry</span>
       </div>
       <div class="history-section-label"><span class="section-emoji">✅</span> Work done</div>
       <div class="history-section-body">${formatBulletList(entry.tldr?.workDone || entry.workDone)}</div>
@@ -3727,7 +4130,7 @@ function renderThisWeek(container) {
         <button class="btn-secondary" onclick="confirmRegenerate()">Regenerate Brief</button>
       ` : `
         ${weekEntries.length < 3 ? `<div class="form-hint" style="margin-bottom:var(--space-lg)">Briefs work best with 3+ entries. You have ${weekEntries.length} so far.</div>` : ''}
-        <button class="btn-secondary" onclick="startGenerateBrief()">Generate Brief</button>
+        <button class="btn-secondary btn-accent" onclick="startGenerateBrief()">Generate Brief</button>
       `}
     </div>
   `;
@@ -4202,7 +4605,28 @@ function copyPrep() {
    ======================================== */
 function renderSettings() {
   const panel = document.getElementById('panel-settings');
-  panel.innerHTML = `
+  const tabs = [
+    { id: 'profile', label: 'Profile' },
+    { id: 'features', label: 'Features' },
+    { id: 'integrations', label: 'Integrations' },
+    { id: 'data', label: 'Data' }
+  ];
+  const tabNav = tabs.map(t =>
+    `<button class="settings-tab-btn${settingsSubTab === t.id ? ' active' : ''}" onclick="settingsSubTab='${t.id}';renderSettings()">${t.label}</button>`
+  ).join('');
+
+  let content = '';
+  if (settingsSubTab === 'profile') content = settingsProfileHtml();
+  else if (settingsSubTab === 'features') content = settingsFeaturesHtml();
+  else if (settingsSubTab === 'integrations') content = settingsIntegrationsHtml();
+  else if (settingsSubTab === 'data') content = settingsDataHtml();
+
+  panel.innerHTML = `<div class="settings-tab-nav">${tabNav}</div>${content}`;
+  attachSettingsListeners();
+}
+
+function settingsProfileHtml() {
+  return `
     <div class="settings-section">
       <div class="settings-section-title">Profile</div>
       <div class="form-group">
@@ -4214,7 +4638,6 @@ function renderSettings() {
         <input class="form-input" id="settingRole" value="${escapeHtml(state.settings.role)}" placeholder="e.g., Senior Product Designer">
       </div>
     </div>
-
     <div class="settings-section">
       <div class="settings-section-title">Promotion Notes</div>
       <div class="form-group">
@@ -4222,8 +4645,40 @@ function renderSettings() {
         <textarea class="form-textarea lg" id="settingPromotion" placeholder="Paste your rough notes from your manager conversation here...">${escapeHtml(state.settings.promotionNotes)}</textarea>
         <div class="form-hint">The AI uses these to connect your daily work to your promotion goals.</div>
       </div>
-    </div>
+    </div>`;
+}
 
+function settingsFeaturesHtml() {
+  const f = state.settings.features;
+  return `
+    <div class="settings-section">
+      <div class="settings-section-title">Feature Toggles</div>
+      <div class="form-hint" style="margin-bottom:var(--space-md)">Enable or disable optional tabs. Disabled tabs are hidden from the main navigation.</div>
+      <div class="feature-toggle-row">
+        <div class="feature-toggle-info">
+          <div class="feature-toggle-label">Contributions</div>
+          <div class="feature-toggle-desc">Track design system and cross-team contributions</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" ${f.contributions ? 'checked' : ''} onchange="toggleFeature('contributions')">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="feature-toggle-row">
+        <div class="feature-toggle-info">
+          <div class="feature-toggle-label">Visibility</div>
+          <div class="feature-toggle-desc">Track where your work is visible and to whom</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" ${f.visibility ? 'checked' : ''} onchange="toggleFeature('visibility')">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>`;
+}
+
+function settingsIntegrationsHtml() {
+  return `
     <div class="settings-section">
       <div class="settings-section-title">AI Coaching</div>
       <div class="form-group">
@@ -4259,7 +4714,6 @@ function renderSettings() {
         </div>
       </div>
     </div>
-
     <div class="settings-section">
       <div class="settings-section-title">Slack</div>
       <div class="form-group">
@@ -4268,7 +4722,6 @@ function renderSettings() {
         <div class="form-hint">Used for posting weekly plans and reports (coming in a future update).</div>
       </div>
     </div>
-
     <div class="settings-section">
       <div class="settings-section-title">Cloud Sync</div>
       <div class="form-hint" style="margin-bottom:var(--space-lg)">Sync data across devices via a private GitHub Gist. Your data stays in your GitHub account.</div>
@@ -4286,49 +4739,47 @@ function renderSettings() {
         <button class="btn-secondary" onclick="manualSync()">Sync Now</button>
         <div class="api-status" id="syncStatus">${state.settings.ghToken && state.settings.ghGistId ? '' : ''}</div>
       </div>
-    </div>
+    </div>`;
+}
 
+function settingsDataHtml() {
+  return `
     <div class="settings-section">
       <div class="settings-section-title">Data</div>
       <button class="btn-secondary" onclick="exportData()">Export all data as JSON</button>
       <div class="form-hint" style="margin-top:var(--space-sm)">${state.entries.length} entries, ${getConfirmedWins().length} wins, ${state.weeklyBriefs.length} briefs</div>
-    </div>
-  `;
+    </div>`;
+}
 
-  // Attach listeners
+function attachSettingsListeners() {
   const saveField = (id, key) => {
-    document.getElementById(id).addEventListener('blur', (e) => {
-      state.settings[key] = e.target.value.trim();
-      saveState();
-    });
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('blur', (e) => { state.settings[key] = e.target.value.trim(); saveState(); });
   };
-  saveField('settingName', 'name');
-  saveField('settingRole', 'role');
-  saveField('settingPromotion', 'promotionNotes');
-  saveField('settingSlack', 'slackWebhook');
-  saveField('settingBaseUrl', 'baseUrl');
-  saveField('settingProjectId', 'projectId');
 
-  document.getElementById('settingApiKey').addEventListener('blur', (e) => {
-    state.settings.apiKey = e.target.value.trim();
-    saveState();
-  });
+  if (settingsSubTab === 'profile') {
+    saveField('settingName', 'name');
+    saveField('settingRole', 'role');
+    saveField('settingPromotion', 'promotionNotes');
+  }
 
-  document.querySelectorAll('input[name="model"]').forEach(radio => {
-    radio.addEventListener('change', (e) => {
-      state.settings.model = e.target.value;
-      saveState();
+  if (settingsSubTab === 'integrations') {
+    saveField('settingBaseUrl', 'baseUrl');
+    saveField('settingProjectId', 'projectId');
+    saveField('settingSlack', 'slackWebhook');
+
+    const apiKeyEl = document.getElementById('settingApiKey');
+    if (apiKeyEl) apiKeyEl.addEventListener('blur', (e) => { state.settings.apiKey = e.target.value.trim(); saveState(); });
+
+    document.querySelectorAll('input[name="model"]').forEach(radio => {
+      radio.addEventListener('change', (e) => { state.settings.model = e.target.value; saveState(); });
     });
-  });
 
-  document.getElementById('settingGhToken').addEventListener('blur', (e) => {
-    state.settings.ghToken = e.target.value.trim();
-    saveState();
-  });
-  document.getElementById('settingGistId').addEventListener('blur', (e) => {
-    state.settings.ghGistId = e.target.value.trim();
-    saveState();
-  });
+    const ghTokenEl = document.getElementById('settingGhToken');
+    if (ghTokenEl) ghTokenEl.addEventListener('blur', (e) => { state.settings.ghToken = e.target.value.trim(); saveState(); });
+    const gistIdEl = document.getElementById('settingGistId');
+    if (gistIdEl) gistIdEl.addEventListener('blur', (e) => { state.settings.ghGistId = e.target.value.trim(); saveState(); });
+  }
 }
 
 function exportData() {
@@ -4633,7 +5084,7 @@ function renderContribDashboard(panel) {
         No contributions tracked yet.
         <div class="empty-state-secondary">Import your Slack messages from Hawkins design system channels to track your contributions.</div>
         <div style="margin-top:var(--space-xl)">
-          <button class="btn-secondary" onclick="openContribImport()">Import from Slack</button>
+          <button class="btn-secondary btn-accent" onclick="openContribImport()">Import from Slack</button>
         </div>
       </div>`;
     return;
@@ -4688,15 +5139,15 @@ function renderContribDashboard(panel) {
   const hasDateFilter = contribDateFrom || contribDateTo;
 
   panel.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-xl)">
-      <div style="display:flex;align-items:center;gap:var(--space-md)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-xl);gap:var(--space-md)">
+      <div style="display:flex;align-items:center;gap:var(--space-md);min-width:0">
         <span class="contrib-total-badge">${contribs.length}</span>
         <div>
           <div style="font-size:15px;font-weight:500">Contributions for Hawkins Design System</div>
           ${hasDateFilter ? '<div style="font-size:11px;color:var(--text-muted)">filtered</div>' : ''}
         </div>
       </div>
-      <button class="btn-secondary" onclick="openContribImport()"><span class="hide-mobile">Import from Slack</span><span class="show-mobile">Import</span></button>
+      <button class="btn-secondary btn-accent" onclick="openContribImport()"><span class="hide-mobile">Import from Slack</span><span class="show-mobile">Import</span></button>
     </div>
 
     <div class="contrib-stats">
@@ -5072,6 +5523,863 @@ function deleteContrib() {
 }
 
 /* ========================================
+   Visibility Tab
+   ======================================== */
+const VISIBILITY_TYPES = [
+  { id: 'waywo', label: 'WAYWO Post', vectors: ['Communication', 'Craft'] },
+  { id: 'draftboard', label: 'Draftboard', vectors: ['Craft', 'Collaboration'], subtypes: ['WIP post', 'Feedback given'] },
+  { id: 'crit', label: 'Design Crit', vectors: ['Craft', 'Collaboration'] },
+  { id: 'rationale', label: 'Rationale Doc', vectors: ['Strategy', 'Communication'] },
+  { id: 'hawkins', label: 'Hawkins', vectors: ['Technical Depth', 'Cross-team Influence'] }
+];
+
+const ALL_VECTORS = ['Communication', 'Craft', 'Technical Depth', 'Cross-team Influence', 'Strategy', 'Leadership', 'Collaboration'];
+
+const WEEKLY_RHYTHM = [
+  { day: 'Mon', label: 'Weekly Top 3', type: 'waywo' },
+  { day: 'Tue', label: 'Draftboard Post', type: 'draftboard' },
+  { day: 'Wed', label: 'WAYWO Post', type: 'waywo' },
+  { day: 'Thu', label: 'Hawkins', type: 'hawkins' },
+  { day: 'Fri', label: 'Draftboard WIP', type: 'waywo', icon: 'draftboard' }
+];
+
+const STALENESS_THRESHOLDS = { waywo: 14, draftboard: 14, crit: 28, rationale: 28, hawkins: 28 };
+
+const DRAFT_TYPE_CONFIG = {
+  top3:          { label: 'Weekly Top 3',    visibType: 'waywo',      audience: 'pod',  maxTokens: 400 },
+  draftboard:    { label: 'Draftboard Post', visibType: 'draftboard', audience: 'cbp',  maxTokens: 500 },
+  waywo:         { label: 'WAYWO Post',      visibType: 'waywo',      audience: 'pod',  maxTokens: 500 },
+  hawkins:       { label: 'Hawkins',         visibType: 'hawkins',    audience: 'org',  maxTokens: 500 },
+  draftboardWip: { label: 'Draftboard WIP',  visibType: 'draftboard', subtype: 'WIP post', audience: 'cbp', maxTokens: 500 }
+};
+const RHYTHM_DRAFT_TYPES = ['top3', 'draftboard', 'waywo', 'hawkins', 'draftboardWip'];
+
+function formatEntriesForPrompt(entries) {
+  if (!entries.length) return '(no entries)';
+  return entries.map(e => {
+    const parts = [`Date: ${e.date}`];
+    if (e.intention) parts.push(`Intention: ${e.intention}`);
+    if (e.workDone) parts.push(`Work done:\n${e.workDone}`);
+    if (e.reflection) parts.push(`Reflection: ${e.reflection}`);
+    return parts.join('\n');
+  }).join('\n---\n');
+}
+
+const DRAFT_SYSTEM_PROMPT = `You are a concise writing assistant for a product designer at Netflix. Every draft you write MUST follow this structure:
+
+**Problem** — What user or business problem needed solving (1-2 sentences)
+**Context** — Brief relevant background so anyone can understand (1-2 sentences)
+**Design Solution** — What you designed and key decisions (2-3 sentences)
+**Impact** — Outcome, what changed, or expected result (1-2 sentences)
+
+Rules:
+- 250 words max. Be brief and high-level.
+- Remove unnecessary detail — someone with zero context should quickly understand how the design solves the problem.
+- Professional but casual tone. No preamble, no sign-off.
+- Use markdown bold for the section labels.`;
+
+function buildTop3Prompt() {
+  const entries = getCurrentWeekEntries();
+  const recent = getRecentEntries(5);
+  const all = [...entries, ...recent.filter(r => !entries.find(e => e.date === r.date))];
+  return {
+    systemPrompt: DRAFT_SYSTEM_PROMPT,
+    userPrompt: `Write a "Weekly Top 3" Slack post — 3 items, each following the Problem → Context → Design Solution → Impact structure. Keep each item compact (a few sentences total).\n\nJournal entries:\n${formatEntriesForPrompt(all)}`
+  };
+}
+
+function buildDraftboardPrompt() {
+  const entries = getCurrentWeekEntries();
+  const recent = getRecentEntries(5);
+  const all = [...entries, ...recent.filter(r => !entries.find(e => e.date === r.date))];
+  return {
+    systemPrompt: DRAFT_SYSTEM_PROMPT,
+    userPrompt: `Write a Draftboard post sharing current design work. Follow the Problem → Context → Design Solution → Impact format. End with a specific feedback ask.\n\nJournal entries:\n${formatEntriesForPrompt(all)}`
+  };
+}
+
+function buildWaywoPrompt() {
+  const entries = getCurrentWeekEntries();
+  return {
+    systemPrompt: DRAFT_SYSTEM_PROMPT,
+    userPrompt: `Write a WAYWO (What Are You Working On) post. Follow the Problem → Context → Design Solution → Impact format for each work item.\n\nThis week's journal entries:\n${formatEntriesForPrompt(entries)}`
+  };
+}
+
+function buildHawkinsPrompt() {
+  const entries = getCurrentWeekEntries();
+  const recent = getRecentEntries(5);
+  const all = [...entries, ...recent.filter(r => !entries.find(e => e.date === r.date))];
+  const contribs = (state.contributions || []).slice(-10);
+  const contribText = contribs.length > 0
+    ? '\n\nRecent design system contributions:\n' + contribs.map(c => `- ${c.text} (${c.date})`).join('\n')
+    : '';
+  return {
+    systemPrompt: DRAFT_SYSTEM_PROMPT,
+    userPrompt: `Write a Hawkins design system update. Follow the Problem → Context → Design Solution → Impact format, focusing on design system contributions.\n\nJournal entries:\n${formatEntriesForPrompt(all)}${contribText}`
+  };
+}
+
+function buildDraftboardWipPrompt() {
+  const entries = getCurrentWeekEntries();
+  return {
+    systemPrompt: DRAFT_SYSTEM_PROMPT,
+    userPrompt: `Write an end-of-week Draftboard WIP update. Follow the Problem → Context → Design Solution → Impact format to summarize this week's progress. End with an open question for feedback.\n\nThis week's journal entries:\n${formatEntriesForPrompt(entries)}`
+  };
+}
+
+const DRAFT_PROMPT_BUILDERS = {
+  top3: buildTop3Prompt,
+  draftboard: buildDraftboardPrompt,
+  waywo: buildWaywoPrompt,
+  hawkins: buildHawkinsPrompt,
+  draftboardWip: buildDraftboardWipPrompt
+};
+
+let visibView = 'dashboard';
+let visibDetailId = null;
+let visibSuggestions = [];
+let visibLogType = '';
+let visibLogSubtype = '';
+let visibDraftType = null;
+let visibDraftText = '';
+
+function getVisibTypeLabel(id) {
+  return VISIBILITY_TYPES.find(t => t.id === id)?.label || id;
+}
+
+function getVisibTypeObj(id) {
+  return VISIBILITY_TYPES.find(t => t.id === id);
+}
+
+const AUDIENCE_LABELS = { pod: 'CIA Pod', cbp: 'CBP', org: 'XD Org' };
+function normalizeAudience(aud) {
+  if (aud === 'team') return 'pod';
+  if (aud === 'adjacent') return 'cbp';
+  return aud;
+}
+function getAudienceLabel(aud) {
+  return AUDIENCE_LABELS[normalizeAudience(aud)] || aud;
+}
+
+function getVisibActivitiesForWeek() {
+  const monday = getWeekMonday(todayStr());
+  const weekDates = getWeekDates(monday);
+  return state.visibilityActivities.filter(a => weekDates.includes(a.date));
+}
+
+function getVisibActivitiesLast30() {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 30);
+  const cutoffStr = cutoff.toISOString().split('T')[0];
+  return state.visibilityActivities.filter(a => a.date >= cutoffStr);
+}
+
+function getLastActivityByType(typeId) {
+  if (typeId === 'hawkins') {
+    const visibDates = state.visibilityActivities.filter(a => a.type === 'hawkins').map(a => a.date);
+    const contribDates = state.contributions.map(c => c.date).filter(d => d && d !== 'unknown');
+    const allDates = [...visibDates, ...contribDates].sort().reverse();
+    return allDates[0] || null;
+  }
+  const sorted = state.visibilityActivities.filter(a => a.type === typeId).sort((a, b) => b.date.localeCompare(a.date));
+  return sorted[0]?.date || null;
+}
+
+function getStalenessNudges() {
+  const today = todayStr();
+  const nudges = [];
+  for (const [typeId, threshold] of Object.entries(STALENESS_THRESHOLDS)) {
+    const lastDate = getLastActivityByType(typeId);
+    if (!lastDate) {
+      nudges.push({ type: typeId, label: getVisibTypeLabel(typeId), daysSince: null });
+    } else {
+      const diff = Math.floor((new Date(today + 'T12:00:00') - new Date(lastDate + 'T12:00:00')) / (1000 * 60 * 60 * 24));
+      if (diff > threshold) {
+        nudges.push({ type: typeId, label: getVisibTypeLabel(typeId), daysSince: diff });
+      }
+    }
+  }
+  return nudges;
+}
+
+function computeVectorCoverage(activities) {
+  const counts = {};
+  ALL_VECTORS.forEach(v => counts[v] = 0);
+  for (const a of activities) {
+    if (a.vectors) a.vectors.forEach(v => { if (counts[v] !== undefined) counts[v]++; });
+  }
+  return counts;
+}
+
+function computeReachDistribution(activities) {
+  const counts = { pod: 0, cbp: 0, org: 0 };
+  for (const a of activities) {
+    // Migrate legacy values
+    const aud = a.audience === 'team' ? 'pod' : a.audience === 'adjacent' ? 'cbp' : a.audience;
+    if (counts[aud] !== undefined) counts[aud]++;
+  }
+  const total = counts.pod + counts.cbp + counts.org;
+  if (total === 0) return { pod: 0, cbp: 0, org: 0, total: 0 };
+  return {
+    pod: Math.round(counts.pod / total * 100),
+    cbp: Math.round(counts.cbp / total * 100),
+    org: Math.round(counts.org / total * 100),
+    total
+  };
+}
+
+function renderVisibility() {
+  const panel = document.getElementById('panel-visibility');
+  if (visibView === 'draft' && visibDraftType) { renderVisibDraft(panel); return; }
+  if (visibView === 'log') { renderVisibLog(panel); return; }
+  if (visibView === 'detail' && visibDetailId) { renderVisibDetail(panel); return; }
+  renderVisibDashboard(panel);
+}
+
+function renderVisibDashboard(panel) {
+  const activities = state.visibilityActivities;
+  const weekActivities = getVisibActivitiesForWeek();
+  const last30 = getVisibActivitiesLast30();
+  const nudges = getStalenessNudges();
+  const vectorCoverage = computeVectorCoverage(last30);
+  const reach = computeReachDistribution(last30);
+
+  // Weekly rhythm strip
+  const monday = getWeekMonday(todayStr());
+  const weekDates = getWeekDates(monday);
+  const today = todayStr();
+  const todayDow = new Date(today + 'T12:00:00').getDay(); // 1=Mon..5=Fri
+
+  const RHYTHM_ICONS = { waywo: 'Slack.svg', draftboard: 'Draftboard.svg', hawkins: 'Hawkins.svg' };
+  const rhythmHtml = WEEKLY_RHYTHM.map((r, i) => {
+    const dateStr = weekDates[i];
+    const hasActivity = weekActivities.some(a => a.date === dateStr);
+    const isToday = dateStr === today;
+    const icon = RHYTHM_ICONS[r.icon || r.type] || 'Slack.svg';
+    return `<div class="visib-rhythm-card${hasActivity ? ' filled' : ''}${isToday ? ' today' : ''}" onclick="startVisibDraft('${RHYTHM_DRAFT_TYPES[i]}')">
+      <span class="visib-rhythm-day-label">${r.day}</span>
+      <img class="visib-rhythm-icon" src="${icon}" alt="${r.label}">
+      <span class="visib-rhythm-sublabel">${r.label}</span>
+    </div>`;
+  }).join('');
+
+  // Staleness nudges
+  const nudgeHtml = nudges.length > 0 ? `<div class="visib-nudges">${nudges.map(n =>
+    `<div class="visib-nudge">${n.daysSince === null ? `No ${n.label} logged yet` : `No ${n.label} in ${n.daysSince} days`}</div>`
+  ).join('')}</div>` : '';
+
+  // AI suggestions
+  const suggestionsHtml = visibSuggestions.length > 0
+    ? visibSuggestions.map((s, i) => `<div class="visib-suggestion-card">
+        <div class="visib-suggestion-item">
+          <div class="visib-suggestion-text">${escapeHtml(s)}</div>
+          <button class="visib-suggestion-dismiss" onclick="dismissVisibSuggestion(${i})">×</button>
+        </div>
+      </div>`).join('')
+    : '';
+
+  // Vector coverage bars
+  const maxCount = Math.max(1, ...Object.values(vectorCoverage));
+  const vectorHtml = ALL_VECTORS.map(v => {
+    const count = vectorCoverage[v];
+    const pct = Math.round(count / maxCount * 100);
+    return `<div class="visib-vector-row${count === 0 ? ' zero' : ''}">
+      <span class="visib-vector-label">${v}</span>
+      <div class="visib-vector-track"><div class="visib-vector-fill" style="width:${pct}%"></div></div>
+      <span class="visib-vector-count">${count}</span>
+    </div>`;
+  }).join('');
+
+  // Reach distribution bar
+  const reachHtml = reach.total > 0
+    ? `<div class="visib-reach-bar">
+        <div class="visib-reach-segment pod" style="width:${reach.pod}%"></div>
+        <div class="visib-reach-segment cbp" style="width:${reach.cbp}%"></div>
+        <div class="visib-reach-segment org" style="width:${reach.org}%"></div>
+      </div>
+      <div class="visib-reach-legend">
+        <span><span class="visib-reach-legend-dot pod"></span>CIA Pod ${reach.pod}%</span>
+        <span><span class="visib-reach-legend-dot cbp"></span>CBP ${reach.cbp}%</span>
+        <span><span class="visib-reach-legend-dot org"></span>XD Org ${reach.org}%</span>
+      </div>`
+    : `<div style="font-size:13px;color:var(--text-muted)">No activities logged yet</div>`;
+
+  // Recent activity list
+  const recent = [...activities].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20);
+  const recentHtml = recent.length > 0 ? recent.map(a => {
+    const typeObj = getVisibTypeObj(a.type);
+    return `<div class="visib-activity-card" onclick="openVisibDetail('${a.id}')">
+      <div class="visib-activity-card-header">
+        <span class="visib-activity-card-date">${formatDateShort(a.date)}</span>
+        <span class="visib-type-badge">${getVisibTypeLabel(a.type)}${a.subtype ? ' · ' + escapeHtml(a.subtype) : ''}</span>
+        <span class="visib-audience-tag ${normalizeAudience(a.audience)}">${getAudienceLabel(a.audience)}</span>
+      </div>
+      ${a.note ? `<div class="visib-activity-card-note">${escapeHtml(a.note)}</div>` : ''}
+      <div class="visib-activity-card-vectors">${(a.vectors || []).join(' · ')}</div>
+    </div>`;
+  }).join('') : '';
+
+  // Empty state
+  if (activities.length === 0) {
+    panel.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-xl)">
+        <span style="font-size:15px;font-weight:600">Visibility</span>
+        <button class="btn-secondary btn-accent" onclick="visibView='log';visibLogType='';visibLogSubtype='';renderVisibility()">Log Activity</button>
+      </div>
+      <div class="visib-rhythm-strip">${rhythmHtml}</div>
+      <div class="empty-state">
+        <div style="font-weight:600">Track where your work is visible and to whom.</div>
+        <div class="empty-state-secondary">Log your first visibility activity to start building your record.</div>
+      </div>`;
+    return;
+  }
+
+  panel.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-xl)">
+      <span style="font-size:15px;font-weight:600">Visibility</span>
+      <button class="btn-secondary btn-accent" onclick="visibView='log';visibLogType='';visibLogSubtype='';renderVisibility()">Log Activity</button>
+    </div>
+
+    <div class="visib-rhythm-strip">${rhythmHtml}</div>
+
+    ${nudgeHtml}
+
+    <div class="visib-section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-md)">
+        <span class="visib-section-title">AI Suggestions</span>
+        <button class="btn-secondary" id="visibSuggestBtn" onclick="getVisibSuggestions()">Get Suggestions</button>
+      </div>
+      <div id="visibSuggestionsContainer">${suggestionsHtml}</div>
+    </div>
+
+    <div class="visib-section">
+      <div class="visib-section-header" onclick="toggleVisibSection('vectors')">
+        <span class="visib-section-title">Vector Coverage (30 days)</span>
+        <span class="visib-section-toggle" id="visibVectorsToggle">▾</span>
+      </div>
+      <div id="visibVectorsBody">${vectorHtml}</div>
+    </div>
+
+    <div class="visib-section">
+      <div class="visib-section-header" onclick="toggleVisibSection('reach')">
+        <span class="visib-section-title">Reach Distribution (30 days)</span>
+        <span class="visib-section-toggle" id="visibReachToggle">▾</span>
+      </div>
+      <div id="visibReachBody">${reachHtml}</div>
+    </div>
+
+    <div class="visib-section">
+      <div class="visib-section-title" style="margin-bottom:var(--space-lg)">Recent Activity</div>
+      ${recentHtml}
+    </div>
+  `;
+}
+
+function toggleVisibSection(section) {
+  const body = document.getElementById(`visib${section.charAt(0).toUpperCase() + section.slice(1)}Body`);
+  const toggle = document.getElementById(`visib${section.charAt(0).toUpperCase() + section.slice(1)}Toggle`);
+  if (!body) return;
+  const hidden = body.style.display === 'none';
+  body.style.display = hidden ? '' : 'none';
+  if (toggle) toggle.textContent = hidden ? '▾' : '▸';
+}
+
+function openVisibDetail(id) {
+  visibDetailId = String(id);
+  visibView = 'detail';
+  renderVisibility();
+}
+
+function dismissVisibSuggestion(index) {
+  visibSuggestions.splice(index, 1);
+  const container = document.getElementById('visibSuggestionsContainer');
+  if (container) {
+    container.innerHTML = visibSuggestions.map((s, i) => `<div class="visib-suggestion-card">
+      <div class="visib-suggestion-item">
+        <div class="visib-suggestion-text">${escapeHtml(s)}</div>
+        <button class="visib-suggestion-dismiss" onclick="dismissVisibSuggestion(${i})">×</button>
+      </div>
+    </div>`).join('');
+  }
+}
+
+function renderVisibLog(panel) {
+  const typeObj = visibLogType ? getVisibTypeObj(visibLogType) : null;
+  const hasSubtypes = typeObj && typeObj.subtypes && typeObj.subtypes.length > 0;
+
+  const typeGrid = VISIBILITY_TYPES.map(t =>
+    `<button class="visib-type-btn${visibLogType === t.id ? ' selected' : ''}" onclick="selectVisibType('${t.id}')">${t.label}</button>`
+  ).join('');
+
+  const subtypeHtml = hasSubtypes ? `
+    <div class="form-group">
+      <label class="form-label">Subtype</label>
+      <div style="display:flex;gap:var(--space-sm)">
+        ${typeObj.subtypes.map(st =>
+          `<button class="visib-type-btn${visibLogSubtype === st ? ' selected' : ''}" onclick="selectVisibSubtype('${st}')" style="flex:1">${st}</button>`
+        ).join('')}
+      </div>
+    </div>` : '';
+
+  const vectorsHtml = typeObj ? `
+    <div class="form-group">
+      <label class="form-label">Vectors</label>
+      <div class="visib-vectors-display">
+        ${typeObj.vectors.map(v => `<span class="visib-vector-tag">${v}</span>`).join('')}
+      </div>
+    </div>` : '';
+
+  panel.innerHTML = `
+    <div style="margin-bottom:var(--space-xl)">
+      <button class="btn-ghost" onclick="visibView='dashboard';renderVisibility()">← Back</button>
+    </div>
+
+    <div class="visib-log-form">
+      <div class="form-group">
+        <label class="form-label">Activity Type</label>
+        <div class="visib-type-grid">${typeGrid}</div>
+      </div>
+
+      ${subtypeHtml}
+      ${vectorsHtml}
+
+      <div class="form-group">
+        <label class="form-label">Audience</label>
+        <div class="visib-audience-picker">
+          <label><input type="radio" name="visibAudience" value="pod" checked> CIA Pod</label>
+          <label><input type="radio" name="visibAudience" value="cbp"> CBP</label>
+          <label><input type="radio" name="visibAudience" value="org"> XD Org</label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Date</label>
+        <input class="form-input" type="date" id="visibLogDate" value="${todayStr()}">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Note (optional)</label>
+        <input class="form-input" id="visibLogNote" placeholder="One-liner about this activity">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Link (optional)</label>
+        <input class="form-input" id="visibLogLink" placeholder="https://...">
+      </div>
+
+      <button class="btn-primary" onclick="saveVisibActivity()" ${!visibLogType ? 'disabled' : ''}>Save Activity</button>
+    </div>
+  `;
+}
+
+function selectVisibType(typeId) {
+  visibLogType = typeId;
+  visibLogSubtype = '';
+  renderVisibLog(document.getElementById('panel-visibility'));
+}
+
+function selectVisibSubtype(subtype) {
+  visibLogSubtype = subtype;
+  const btns = document.querySelectorAll('.visib-log-form .visib-type-btn');
+  // Refresh the subtype buttons
+  renderVisibLog(document.getElementById('panel-visibility'));
+}
+
+function saveVisibActivity() {
+  if (!visibLogType) return;
+  const typeObj = getVisibTypeObj(visibLogType);
+  const audience = document.querySelector('input[name="visibAudience"]:checked')?.value || 'pod';
+  const date = document.getElementById('visibLogDate')?.value || todayStr();
+  const note = document.getElementById('visibLogNote')?.value.trim() || '';
+  const link = document.getElementById('visibLogLink')?.value.trim() || '';
+
+  const activity = {
+    id: Date.now(),
+    date,
+    type: visibLogType,
+    subtype: visibLogSubtype || '',
+    audience,
+    note,
+    link,
+    vectors: typeObj ? [...typeObj.vectors] : []
+  };
+
+  state.visibilityActivities.push(activity);
+  saveState();
+
+  // Auto-log to today's "work done" if activity is for today
+  if (date === todayStr()) {
+    const label = getVisibTypeLabel(visibLogType) + (activity.subtype ? ' (' + activity.subtype + ')' : '');
+    appendToWorkDone(label + (note ? ' — ' + note : ''));
+  }
+
+  visibView = 'dashboard';
+  visibLogType = '';
+  visibLogSubtype = '';
+  renderVisibility();
+  showToast('Activity logged');
+}
+
+async function getVisibSuggestions() {
+  const btn = document.getElementById('visibSuggestBtn');
+  const container = document.getElementById('visibSuggestionsContainer');
+  if (!state.settings.baseUrl) {
+    showToast('Set up API in Settings first');
+    return;
+  }
+
+  const weekEntries = getCurrentWeekEntries();
+  const weekActivities = getVisibActivitiesForWeek();
+  const vectorCoverage = computeVectorCoverage(getVisibActivitiesLast30());
+
+  if (weekEntries.length === 0) {
+    container.innerHTML = `<div class="visib-suggestion-card"><div class="visib-suggestion-text">No daily log entries this week yet. Log your work first, then come back for suggestions.</div></div>`;
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+
+  const entriesText = weekEntries.map(e =>
+    `[${e.date}] Work: ${e.workDone}${e.reflection ? ' | Reflection: ' + e.reflection : ''}`
+  ).join('\n');
+
+  const doneText = weekActivities.length > 0
+    ? weekActivities.map(a => `- ${getVisibTypeLabel(a.type)}${a.subtype ? ' (' + a.subtype + ')' : ''} on ${a.date}${a.note ? ': ' + a.note : ''}`).join('\n')
+    : 'None yet this week.';
+
+  const lowVectors = ALL_VECTORS.filter(v => vectorCoverage[v] === 0);
+  const vectorText = lowVectors.length > 0
+    ? `Under-represented vectors (0 activities in 30 days): ${lowVectors.join(', ')}`
+    : 'All vectors have some coverage.';
+
+  const prompt = `You are helping a Senior Product Designer decide what to share and where to share it this week.
+
+Here is what they logged in their daily journal this week:
+${entriesText}
+
+Visibility activities already done this week:
+${doneText}
+
+${vectorText}
+
+Suggest 2-3 specific visibility activities they could do based on the work logged. Each suggestion should be:
+- Tied to something concrete from their journal entries
+- Specific about what to share and where (WAYWO post, Draftboard, Design Crit, Rationale Doc, or Hawkins)
+- Brief: 1-2 sentences each
+
+Output only the suggestions, one per line, no numbering, no preamble.`;
+
+  try {
+    const result = await callClaude(
+      'You are a visibility coach for product designers. Be specific and actionable.',
+      prompt,
+      500
+    );
+    visibSuggestions = result.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+    container.innerHTML = visibSuggestions.map((s, i) => `<div class="visib-suggestion-card">
+      <div class="visib-suggestion-item">
+        <div class="visib-suggestion-text">${escapeHtml(s)}</div>
+        <button class="visib-suggestion-dismiss" onclick="dismissVisibSuggestion(${i})">×</button>
+      </div>
+    </div>`).join('');
+  } catch (e) {
+    container.innerHTML = `<div class="visib-suggestion-card"><div class="visib-suggestion-text" style="color:var(--accent-negative)">Failed to get suggestions. Check your API settings.</div></div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Get Suggestions';
+  }
+}
+
+async function startVisibDraft(draftType) {
+  const config = DRAFT_TYPE_CONFIG[draftType];
+  if (!config) return;
+  if (!state.settings.baseUrl) {
+    showToast('Set up API in Settings first');
+    return;
+  }
+  const weekEntries = getCurrentWeekEntries();
+  const recentEntries = getRecentEntries(5);
+  if (weekEntries.length === 0 && recentEntries.length === 0) {
+    showToast('Log some daily entries first');
+    return;
+  }
+  visibDraftType = draftType;
+  visibDraftText = '';
+  visibView = 'draft';
+  renderVisibility();
+
+  try {
+    const builder = DRAFT_PROMPT_BUILDERS[draftType];
+    const { systemPrompt, userPrompt } = builder();
+    const result = await callClaude(systemPrompt, userPrompt, config.maxTokens);
+    visibDraftText = result.trim();
+  } catch (e) {
+    if (e.message === 'no_key') {
+      visibDraftText = '';
+      showToast('Set up API in Settings first');
+      visibView = 'dashboard';
+    } else {
+      visibDraftText = '';
+      showToast('Failed to generate draft. Check API settings.');
+      visibView = 'dashboard';
+    }
+  }
+  renderVisibility();
+}
+
+function renderVisibDraft(panel) {
+  const config = DRAFT_TYPE_CONFIG[visibDraftType];
+  const label = config ? config.label : 'Draft';
+  const isLoading = visibDraftText === '';
+
+  panel.innerHTML = `
+    <div style="margin-bottom:var(--space-xl)">
+      <button class="btn-ghost" onclick="visibDraftBack()">← Back</button>
+    </div>
+    <div style="font-size:15px;font-weight:600;margin-bottom:var(--space-lg)">${escapeHtml(label)} Draft</div>
+    ${isLoading
+      ? `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--space-md);padding:80px 0;color:var(--text-muted)">
+           <span class="spinner dark" style="width:24px;height:24px;border-width:3px"></span>
+           <span style="font-size:14px">Generating draft...</span>
+         </div>`
+      : `<div id="visibDraftDisplay" class="visib-draft-display">${renderSimpleMarkdown(visibDraftText)}</div>
+         <textarea id="visibDraftTextarea" class="form-input visib-draft-edit" style="display:none">${escapeHtml(visibDraftText)}</textarea>
+         <div style="display:flex;gap:var(--space-sm);margin-top:var(--space-lg);align-items:stretch">
+           <button class="btn-secondary btn-accent" onclick="copyVisibDraft()" style="flex:1;justify-content:center;padding-top:var(--space-md);padding-bottom:var(--space-md)">Copy</button>
+           <button class="btn-secondary" onclick="saveVisibDraft()" style="color:var(--text-primary);padding-top:var(--space-md);padding-bottom:var(--space-md)">Save & Log</button>
+           <button class="btn-secondary" onclick="toggleVisibDraftEdit()" id="visibDraftEditBtn" style="color:var(--text-primary);padding-top:var(--space-md);padding-bottom:var(--space-md)">Edit</button>
+           <button class="btn-secondary" onclick="regenerateVisibDraft()" style="color:var(--text-primary);padding-top:var(--space-md);padding-bottom:var(--space-md)">Regenerate</button>
+         </div>`
+    }`;
+}
+
+function renderSimpleMarkdown(text) {
+  return text
+    .split('\n\n').map(block => {
+      block = block.trim();
+      if (!block) return '';
+      if (block.startsWith('### ')) return `<h4>${escapeHtml(block.slice(4))}</h4>`;
+      if (block.startsWith('## ')) return `<h3>${escapeHtml(block.slice(3))}</h3>`;
+      if (block.startsWith('# ')) return `<h2>${escapeHtml(block.slice(2))}</h2>`;
+      const lines = block.split('\n');
+      if (lines.every(l => /^[-*] /.test(l.trim()))) {
+        return '<ul>' + lines.map(l => `<li>${escapeHtml(l.trim().replace(/^[-*] /, '')).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')}</li>`).join('') + '</ul>';
+      }
+      return `<p>${escapeHtml(block).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')}</p>`;
+    }).join('');
+}
+
+function toggleVisibDraftEdit() {
+  const display = document.getElementById('visibDraftDisplay');
+  const textarea = document.getElementById('visibDraftTextarea');
+  const btn = document.getElementById('visibDraftEditBtn');
+  if (!display || !textarea) return;
+  const editing = textarea.style.display !== 'none';
+  if (editing) {
+    visibDraftText = textarea.value;
+    display.innerHTML = renderSimpleMarkdown(visibDraftText);
+    display.style.display = '';
+    textarea.style.display = 'none';
+    btn.textContent = 'Edit';
+  } else {
+    textarea.value = visibDraftText;
+    display.style.display = 'none';
+    textarea.style.display = '';
+    textarea.focus();
+    btn.textContent = 'Preview';
+  }
+}
+
+function copyVisibDraft() {
+  const textarea = document.getElementById('visibDraftTextarea');
+  const editing = textarea && textarea.style.display !== 'none';
+  const text = editing ? textarea.value : visibDraftText;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard'));
+  } else {
+    const tmp = document.createElement('textarea');
+    tmp.value = text;
+    document.body.appendChild(tmp);
+    tmp.select();
+    document.execCommand('copy');
+    document.body.removeChild(tmp);
+    showToast('Copied to clipboard');
+  }
+}
+
+function saveVisibDraft() {
+  const textarea = document.getElementById('visibDraftTextarea');
+  const editing = textarea && textarea.style.display !== 'none';
+  const text = (editing ? textarea.value : visibDraftText).trim();
+  if (!text) return;
+
+  const config = DRAFT_TYPE_CONFIG[visibDraftType];
+  const typeObj = getVisibTypeObj(config.visibType);
+
+  const activity = {
+    id: Date.now(),
+    date: todayStr(),
+    type: config.visibType,
+    subtype: config.subtype || '',
+    audience: config.audience,
+    note: text,
+    link: '',
+    vectors: typeObj ? [...typeObj.vectors] : []
+  };
+
+  state.visibilityActivities.push(activity);
+  saveState();
+
+  const label = getVisibTypeLabel(config.visibType) + (config.subtype ? ' (' + config.subtype + ')' : '');
+  appendToWorkDone(label);
+
+  visibDraftType = null;
+  visibDraftText = '';
+  visibView = 'dashboard';
+  renderVisibility();
+  showToast('Draft saved & activity logged');
+}
+
+function visibDraftBack() {
+  visibDraftType = null;
+  visibDraftText = '';
+  visibView = 'dashboard';
+  renderVisibility();
+}
+
+async function regenerateVisibDraft() {
+  const config = DRAFT_TYPE_CONFIG[visibDraftType];
+  if (!config) return;
+  visibDraftText = '';
+  renderVisibility();
+  try {
+    const builder = DRAFT_PROMPT_BUILDERS[visibDraftType];
+    const { systemPrompt, userPrompt } = builder();
+    const result = await callClaude(systemPrompt, userPrompt, config.maxTokens);
+    visibDraftText = result.trim();
+  } catch (e) {
+    showToast('Failed to regenerate. Check API settings.');
+    visibDraftText = '(generation failed — try again)';
+  }
+  renderVisibility();
+}
+
+function renderVisibDetail(panel) {
+  const a = state.visibilityActivities.find(x => String(x.id) === String(visibDetailId));
+  if (!a) { visibView = 'dashboard'; visibDetailId = null; renderVisibility(); return; }
+
+  const typeGrid = VISIBILITY_TYPES.map(t =>
+    `<button class="visib-type-btn${a.type === t.id ? ' selected' : ''}" onclick="document.querySelectorAll('#visibDetailTypeGrid .visib-type-btn').forEach(b=>b.classList.remove('selected'));this.classList.add('selected');document.getElementById('visibDetailType').value='${t.id}';updateVisibDetailVectors('${t.id}')">${t.label}</button>`
+  ).join('');
+
+  const typeObj = getVisibTypeObj(a.type);
+  const hasSubtypes = typeObj && typeObj.subtypes && typeObj.subtypes.length > 0;
+
+  panel.innerHTML = `
+    <div style="margin-bottom:var(--space-xl)">
+      <button class="btn-ghost" onclick="visibView='dashboard';visibDetailId=null;renderVisibility()">← Back</button>
+    </div>
+
+    <div class="contrib-detail">
+      <input type="hidden" id="visibDetailType" value="${a.type}">
+
+      <div class="form-group">
+        <label class="form-label">Activity Type</label>
+        <div class="visib-type-grid" id="visibDetailTypeGrid">${typeGrid}</div>
+      </div>
+
+      ${hasSubtypes ? `<div class="form-group">
+        <label class="form-label">Subtype</label>
+        <select class="form-input" id="visibDetailSubtype">
+          <option value="">—</option>
+          ${typeObj.subtypes.map(st => `<option value="${st}" ${a.subtype === st ? 'selected' : ''}>${st}</option>`).join('')}
+        </select>
+      </div>` : '<input type="hidden" id="visibDetailSubtype" value="">'}
+
+      <div class="form-group">
+        <label class="form-label">Vectors</label>
+        <div class="visib-vectors-display" id="visibDetailVectors">
+          ${(a.vectors || []).map(v => `<span class="visib-vector-tag">${v}</span>`).join('')}
+        </div>
+      </div>
+
+      <div class="contrib-detail-grid">
+        <div class="form-group">
+          <label class="form-label">Audience</label>
+          <select class="form-input" id="visibDetailAudience">
+            <option value="pod" ${normalizeAudience(a.audience) === 'pod' ? 'selected' : ''}>CIA Pod</option>
+            <option value="cbp" ${normalizeAudience(a.audience) === 'cbp' ? 'selected' : ''}>CBP</option>
+            <option value="org" ${normalizeAudience(a.audience) === 'org' ? 'selected' : ''}>XD Org</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date</label>
+          <input class="form-input" type="date" id="visibDetailDate" value="${a.date}">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Note</label>
+        <input class="form-input" id="visibDetailNote" value="${escapeHtml(a.note || '')}" placeholder="One-liner">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Link</label>
+        <input class="form-input" id="visibDetailLink" value="${escapeHtml(a.link || '')}" placeholder="https://...">
+      </div>
+
+      <div style="display:flex;gap:var(--space-sm);margin-top:var(--space-lg)">
+        <button class="btn-positive" onclick="saveVisibDetail()">Save</button>
+        <button class="btn-dismiss" onclick="visibView='dashboard';visibDetailId=null;renderVisibility()">Cancel</button>
+        <button class="btn-ghost" style="margin-left:auto;color:var(--accent-negative)" onclick="deleteVisibActivity()">Delete</button>
+      </div>
+    </div>
+  `;
+}
+
+function updateVisibDetailVectors(typeId) {
+  const typeObj = getVisibTypeObj(typeId);
+  const container = document.getElementById('visibDetailVectors');
+  if (container && typeObj) {
+    container.innerHTML = typeObj.vectors.map(v => `<span class="visib-vector-tag">${v}</span>`).join('');
+  }
+}
+
+function saveVisibDetail() {
+  const a = state.visibilityActivities.find(x => String(x.id) === String(visibDetailId));
+  if (!a) return;
+
+  const newType = document.getElementById('visibDetailType')?.value || a.type;
+  const typeObj = getVisibTypeObj(newType);
+
+  a.type = newType;
+  a.subtype = document.getElementById('visibDetailSubtype')?.value || '';
+  a.audience = document.getElementById('visibDetailAudience')?.value || a.audience;
+  a.date = document.getElementById('visibDetailDate')?.value || a.date;
+  a.note = document.getElementById('visibDetailNote')?.value.trim() || '';
+  a.link = document.getElementById('visibDetailLink')?.value.trim() || '';
+  a.vectors = typeObj ? [...typeObj.vectors] : a.vectors;
+
+  saveState();
+  visibView = 'dashboard';
+  visibDetailId = null;
+  renderVisibility();
+  showToast('Activity updated');
+}
+
+function deleteVisibActivity() {
+  if (!confirm('Delete this activity?')) return;
+  state.visibilityActivities = state.visibilityActivities.filter(x => String(x.id) !== String(visibDetailId));
+  saveState();
+  visibView = 'dashboard';
+  visibDetailId = null;
+  renderVisibility();
+  showToast('Activity deleted');
+}
+
+/* ========================================
    Init
    ======================================== */
 async function backfillTldrs() {
@@ -5113,6 +6421,7 @@ async function init() {
     logMode = 'intention';
   }
 
+  renderTabNav();
   renderLogTab();
   renderSettings();
 
