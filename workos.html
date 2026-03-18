@@ -685,6 +685,7 @@ body {
   margin-top: var(--space-sm);
 }
 .hidden { display: none; }
+.show-mobile { display: none; }
 .history-reflection .ai-icon {
   font-size: 14px;
   color: var(--accent-coaching);
@@ -1926,6 +1927,8 @@ body {
   .wins-actions-bar { margin-left: 0; }
 
   /* General */
+  .hide-mobile { display: none; }
+  .show-mobile { display: inline; }
   .btn-primary { font-size: 16px; padding: var(--space-lg); }
   .form-textarea, .form-input { font-size: 16px; }
 }
@@ -4693,7 +4696,7 @@ function renderContribDashboard(panel) {
           ${hasDateFilter ? '<div style="font-size:11px;color:var(--text-muted)">filtered</div>' : ''}
         </div>
       </div>
-      <button class="btn-secondary" onclick="openContribImport()">Import from Slack</button>
+      <button class="btn-secondary" onclick="openContribImport()"><span class="hide-mobile">Import from Slack</span><span class="show-mobile">Import</span></button>
     </div>
 
     <div class="contrib-stats">
