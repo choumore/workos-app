@@ -1525,7 +1525,7 @@ body {
 }
 .contrib-cat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(5, 1fr);
   gap: var(--space-sm);
   margin-bottom: var(--space-4xl);
 }
@@ -1539,7 +1539,7 @@ body {
   flex-direction: column;
   justify-content: space-between;
   text-align: center;
-  min-height: 110px;
+  aspect-ratio: 1 / 1;
 }
 .contrib-cat-card:hover { background: var(--accent-100); }
 .contrib-cat-card.active { background: var(--accent-200); }
@@ -1549,6 +1549,7 @@ body {
   font-weight: 600;
   line-height: 1.1;
   letter-spacing: -0.03em;
+  margin-top: auto;
 }
 .contrib-cat-card-label {
   font-size: 13px;
@@ -1556,7 +1557,6 @@ body {
   color: var(--text-muted);
   letter-spacing: -0.01em;
   line-height: 1.15;
-  margin-top: auto;
 }
 .contrib-cat-card.active .contrib-cat-card-label { color: var(--text-primary); }
 .contrib-cat-card-count { color: var(--text-primary); }
@@ -1897,10 +1897,9 @@ body {
     flex-wrap: wrap;
   }
   .contrib-cat-grid {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
   }
   .contrib-cat-card {
-    min-height: 90px;
     padding: var(--space-md);
   }
   .contrib-cat-card-count { font-size: 36px; }
@@ -4540,7 +4539,7 @@ function buildMonthLineChart(monthCounts) {
   ).join('');
 
   return `<div class="line-chart-wrap">
-    <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" width="100%" height="${h}">
+    <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet" width="100%">
       ${yLabels}
       <line x1="${padLeft}" y1="${padTop + chartH}" x2="${w - padRight}" y2="${padTop + chartH}" stroke="var(--text-muted)" stroke-width="0.75"/>
       <polygon points="${areaPoints}" fill="var(--accent-100)" opacity="0.5"/>
@@ -4710,8 +4709,8 @@ function renderContribDashboard(panel) {
     <div class="contrib-cat-grid">
       ${CONTRIB_CATEGORIES.filter(c => catCounts[c.id]).map(c =>
         `<div class="contrib-cat-card${contribFilterCat === c.id ? ' active' : ''}" data-cat="${c.id}" onclick="filterContribs('${c.id}')">
-          <div class="contrib-cat-card-count">${catCounts[c.id]}</div>
           <div class="contrib-cat-card-label">${c.label}</div>
+          <div class="contrib-cat-card-count">${catCounts[c.id]}</div>
         </div>`
       ).join('')}
     </div>
