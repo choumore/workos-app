@@ -2127,6 +2127,19 @@ function updateSyncStatus(status) {
 }
 
 async function manualSync() {
+  // Force-read inputs in case blur didn't fire (iOS Safari)
+  const tokenEl = document.getElementById('settingGhToken');
+  const gistEl = document.getElementById('settingGistId');
+  if (tokenEl) { state.settings.ghToken = tokenEl.value.trim(); }
+  if (gistEl) { state.settings.ghGistId = gistEl.value.trim(); }
+  localStorage.setItem('workos_state', JSON.stringify(state));
+
+  if (!state.settings.ghToken) {
+    updateSyncStatus('error');
+    showToast('Enter a GitHub token first');
+    return;
+  }
+
   updateSyncStatus('syncing');
   const result = await syncPull();
   if (result === 'ok') {
@@ -2136,13 +2149,11 @@ async function manualSync() {
     showToast('Data synced from cloud');
   } else if (result === 'auth_error') {
     updateSyncStatus('error');
-    showToast('Auth failed — check your GitHub token');
-  } else if (result === 'not_found') {
-    // Gist doesn't exist yet, push to create
+    showToast('Auth failed — token may be revoked or missing gist scope');
+  } else if (result === 'not_found' || result === 'no_config' || result === 'empty') {
     await syncPush();
     showToast('Data pushed to cloud');
-  } else if (state.settings.ghToken) {
-    // no_config, empty, or other — try pushing
+  } else {
     await syncPush();
     showToast('Data pushed to cloud');
   }
