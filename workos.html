@@ -2030,18 +2030,26 @@ async function syncPush() {
   if (!state.settings.ghToken || syncInFlight) return;
   syncInFlight = true;
   try {
-    // Exclude sensitive fields from sync payload
-    const syncState = JSON.parse(JSON.stringify(state));
-    syncState.settings.ghToken = '';
-    syncState.settings.ghGistId = '';
-    syncState.settings.apiKey = '';
+    // Build sync payload with ONLY safe fields — never include tokens
+    const syncState = {
+      settings: {
+        name: state.settings.name || '',
+        role: state.settings.role || '',
+        baseUrl: state.settings.baseUrl || '',
+        projectId: state.settings.projectId || '',
+        model: state.settings.model || 'sonnet',
+        slackWebhook: state.settings.slackWebhook || '',
+        promotionNotes: state.settings.promotionNotes || ''
+      },
+      entries: state.entries,
+      wins: state.wins,
+      weeklyBriefs: state.weeklyBriefs,
+      intentions: state.intentions,
+      dayPriorities: state.dayPriorities,
+      dayPlanChecked: state.dayPlanChecked,
+      contributions: state.contributions
+    };
     const content = JSON.stringify(syncState, null, 2);
-    // Safety check: abort if token leaked into payload
-    if (content.includes(state.settings.ghToken) && state.settings.ghToken.length > 10) {
-      console.error('ABORT: token found in sync payload');
-      syncInFlight = false;
-      return;
-    }
     const headers = {
       'Authorization': 'token ' + state.settings.ghToken,
       'Content-Type': 'application/json'
