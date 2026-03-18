@@ -2030,7 +2030,12 @@ async function syncPush() {
   if (!state.settings.ghToken || syncInFlight) return;
   syncInFlight = true;
   try {
-    const content = JSON.stringify(state, null, 2);
+    // Exclude sensitive fields from sync payload
+    const syncState = JSON.parse(JSON.stringify(state));
+    delete syncState.settings.ghToken;
+    delete syncState.settings.ghGistId;
+    delete syncState.settings.apiKey;
+    const content = JSON.stringify(syncState, null, 2);
     const headers = {
       'Authorization': 'token ' + state.settings.ghToken,
       'Content-Type': 'application/json'
