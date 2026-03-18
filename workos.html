@@ -904,8 +904,9 @@ body {
 .empty-state {
   text-align: center;
   padding: var(--space-4xl) var(--space-xl);
-  color: var(--text-secondary);
+  color: var(--text-primary);
   font-size: 15px;
+  font-weight: 600;
   line-height: 1.6;
 }
 .empty-state-secondary {
@@ -4119,17 +4120,17 @@ function renderThisWeek(container) {
   const monday = getWeekMonday(todayStr());
 
   container.innerHTML = `
-    <div style="font-size:15px;font-weight:500;margin-bottom:var(--space-xl)">This Week · ${formatWeekRange(monday)}</div>
-    <div class="card card-bordered" style="text-align:center;padding:var(--space-3xl)">
-      <div style="color:var(--text-secondary);margin-bottom:var(--space-lg)">You have ${weekEntries.length} ${weekEntries.length === 1 ? 'entry' : 'entries'} this week.</div>
+    <div class="empty-state">
+      This Week · ${formatWeekRange(monday)}
+      <div class="empty-state-secondary">You have ${weekEntries.length} ${weekEntries.length === 1 ? 'entry' : 'entries'} this week.</div>
       ${existingBrief ? `
-        <div style="margin-bottom:var(--space-lg)">
+        <div style="margin-top:var(--space-lg)">
           <button class="btn-ghost" onclick="viewBrief(${existingBrief.id})">View your latest brief →</button>
         </div>
-        <button class="btn-secondary" onclick="confirmRegenerate()">Regenerate Brief</button>
+        <div style="margin-top:var(--space-sm)"><button class="btn-secondary" onclick="confirmRegenerate()">Regenerate Brief</button></div>
       ` : `
-        ${weekEntries.length < 3 ? `<div class="form-hint" style="margin-bottom:var(--space-lg)">Briefs work best with 3+ entries. You have ${weekEntries.length} so far.</div>` : ''}
-        <button class="btn-secondary btn-accent" onclick="startGenerateBrief()">Generate Brief</button>
+        ${weekEntries.length < 3 ? `<div class="empty-state-secondary">Briefs work best with 3+ entries. You have ${weekEntries.length} so far.</div>` : ''}
+        <div style="margin-top:var(--space-lg)"><button class="btn-secondary btn-accent" onclick="startGenerateBrief()">Generate Brief</button></div>
       `}
     </div>
   `;
