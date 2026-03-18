@@ -612,6 +612,7 @@ body {
 .sub-nav-btn.active {
   font-weight: 600;
   color: var(--text-primary);
+  border-bottom: 2px solid var(--accent-interactive);
 }
 
 /* ========================================
@@ -879,12 +880,6 @@ body {
   color: var(--text-secondary);
 }
 .model-option input { accent-color: var(--accent-coaching); }
-
-/* Settings Sub-tabs */
-.settings-tab-nav { display: flex; gap: var(--space-xs); margin-bottom: var(--space-2xl); border-bottom: 1px solid var(--border-default); }
-.settings-tab-btn { background: none; border: none; padding: var(--space-sm) var(--space-md); font: 13px var(--font-family); color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
-.settings-tab-btn:hover { color: var(--text-primary); }
-.settings-tab-btn.active { color: var(--text-primary); font-weight: 600; border-bottom-color: var(--accent-interactive); }
 
 /* Feature Toggles */
 .feature-toggle-row { display: flex; align-items: center; justify-content: space-between; padding: var(--space-md) 0; border-bottom: 1px solid var(--border-default); }
@@ -4612,7 +4607,7 @@ function renderSettings() {
     { id: 'data', label: 'Data' }
   ];
   const tabNav = tabs.map(t =>
-    `<button class="settings-tab-btn${settingsSubTab === t.id ? ' active' : ''}" onclick="settingsSubTab='${t.id}';renderSettings()">${t.label}</button>`
+    `<button class="sub-nav-btn${settingsSubTab === t.id ? ' active' : ''}" onclick="settingsSubTab='${t.id}';renderSettings()">${t.label}</button>`
   ).join('');
 
   let content = '';
@@ -4621,7 +4616,7 @@ function renderSettings() {
   else if (settingsSubTab === 'integrations') content = settingsIntegrationsHtml();
   else if (settingsSubTab === 'data') content = settingsDataHtml();
 
-  panel.innerHTML = `<div class="settings-tab-nav">${tabNav}</div>${content}`;
+  panel.innerHTML = `<div class="sub-nav">${tabNav}</div>${content}`;
   attachSettingsListeners();
 }
 
