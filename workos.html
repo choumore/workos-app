@@ -1329,11 +1329,16 @@ body {
 .reminders-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--space-4xl);
+  gap: var(--space-sm);
   margin-top: var(--space-3xl);
   margin-bottom: 0;
   padding-bottom: var(--space-2xl);
   border-bottom: none;
+}
+.reminders-row > div {
+  background: var(--surface-card);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
 }
 .reminder-col-label {
   display: flex;
