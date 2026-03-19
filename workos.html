@@ -412,7 +412,6 @@ body {
   padding: var(--space-xl);
 }
 .card-bordered {
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
 }
 .card-ai {
   background: var(--surface-ai);
@@ -476,11 +475,9 @@ body {
 /* Win card */
 .win-card {
   background: var(--surface-card);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
   border-radius: var(--radius-md);
   padding: var(--space-lg);
   margin-bottom: var(--space-md);
-  transition: box-shadow var(--duration-fast), opacity var(--duration-fast);
 }
 .win-card.kept {
   border-left: 3px solid var(--accent-positive);
@@ -577,7 +574,7 @@ body {
   text-align: center;
   margin-top: var(--space-xl);
 }
-.nudge-card.solid { box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+.nudge-card.solid {}
 .nudge-title {
   font-size: 15px;
   font-weight: 500;
@@ -734,7 +731,6 @@ body {
    ======================================== */
 .past-brief-row {
   background: var(--surface-card);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
   border-radius: var(--radius-lg);
   padding: var(--space-lg);
   margin-bottom: var(--space-md);
@@ -742,9 +738,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  transition: box-shadow var(--duration-fast);
 }
-.past-brief-row:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
 .past-brief-info {}
 .past-brief-week {
   font-size: 15px;
@@ -770,7 +764,6 @@ body {
 }
 .wins-archive-card {
   background: var(--surface-card);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
   border-left: 3px solid var(--accent-positive);
   border-radius: var(--radius-md);
   padding: var(--space-lg);
@@ -1633,14 +1626,11 @@ body {
 .category-pill[data-cat="other"] { background: var(--surface-ai); color: var(--text-secondary); }
 .contrib-card {
   background: var(--surface-card);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
   border-radius: var(--radius-md);
   padding: var(--space-lg);
   margin-bottom: var(--space-sm);
   cursor: pointer;
-  transition: box-shadow var(--duration-fast);
 }
-.contrib-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
 .contrib-card-header {
   display: flex;
   align-items: center;
@@ -2072,14 +2062,11 @@ body {
 .visib-reach-legend-dot.org { background: var(--accent-700); }
 .visib-activity-card {
   background: var(--surface-card);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
   border-radius: var(--radius-md);
   padding: var(--space-lg);
   margin-bottom: var(--space-sm);
   cursor: pointer;
-  transition: box-shadow var(--duration-fast);
 }
-.visib-activity-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
 .visib-activity-card-header {
   display: flex;
   align-items: center;
