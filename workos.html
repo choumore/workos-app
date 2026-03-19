@@ -6389,12 +6389,6 @@ async function backfillTldrs() {
 async function init() {
   loadState();
 
-  // Pull latest from cloud if sync is configured
-  if (state.settings.ghToken && state.settings.ghGistId) {
-    const result = await syncPull();
-    if (result === 'ok') updateSyncStatus('synced');
-  }
-
   const today = todayStr();
   const todayEntry = getEntryForDate(today);
 
@@ -6407,6 +6401,17 @@ async function init() {
   renderTabNav();
   renderLogTab();
   renderSettings();
+
+  // Pull latest from cloud in background, then re-render if data changed
+  if (state.settings.ghToken && state.settings.ghGistId) {
+    syncPull().then(result => {
+      if (result === 'ok') {
+        updateSyncStatus('synced');
+        renderTabNav();
+        renderLogTab();
+      }
+    });
+  }
 
   // Backfill TLDRs for entries that haven't been processed
   backfillTldrs();
