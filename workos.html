@@ -7621,14 +7621,12 @@ function renderReminders(weekIntention, planData) {
         </div>
       </div>
       ${coachingRecap}
-      ${renderTodoHints()}
-      ${intentionEditBlock}`;
+            ${intentionEditBlock}`;
   }
 
   return `<div class="intention-reminder">${todosHtml}</div>
     ${coachingRecap}
-    ${renderTodoHints()}
-    <div style="margin-bottom:var(--space-xl)"><button class="btn-ghost" onclick="logMode='intention';renderLogTab()">+ Set weekly intention</button></div>`;
+        <div style="margin-bottom:var(--space-xl)"><button class="btn-ghost" onclick="logMode='intention';renderLogTab()">+ Set weekly intention</button></div>`;
 }
 
 function renderIntentionReminder(intention) {
