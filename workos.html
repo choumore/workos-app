@@ -3302,6 +3302,119 @@ body {
   .form-textarea, .form-input { font-size: 16px; }
 }
 
+/* Mobile Triage */
+.triage-mobile {
+  position: fixed;
+  inset: 0;
+  background: var(--surface-page);
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-lg);
+  padding-bottom: env(safe-area-inset-bottom, var(--space-lg));
+}
+.triage-mobile-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+.triage-mobile-title { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+.triage-mobile-progress {
+  flex: 1;
+  height: 4px;
+  background: var(--border-default);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.triage-mobile-progress-fill {
+  height: 100%;
+  background: var(--accent-interactive);
+  border-radius: 2px;
+  transition: width 300ms ease;
+}
+.triage-mobile-count { font-size: 13px; color: var(--text-muted); }
+.triage-mobile-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-xl);
+}
+.triage-mobile-card-text {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.5;
+  margin-bottom: var(--space-lg);
+}
+.triage-mobile-card-meta { font-size: 13px; color: var(--text-muted); }
+.triage-mobile-card-source { margin-bottom: 4px; }
+.triage-mobile-undo {
+  text-align: center;
+  margin-bottom: var(--space-md);
+  min-height: 24px;
+}
+.triage-mobile-undo button {
+  font: 13px var(--font-family);
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.triage-mobile-undo button:hover { color: var(--text-primary); }
+.triage-mobile-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
+}
+.triage-mobile-btn {
+  padding: 20px;
+  font: 15px var(--font-family);
+  font-weight: 600;
+  border: 1.5px solid var(--border-default);
+  background: var(--surface-card);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 150ms;
+  color: var(--text-primary);
+}
+.triage-mobile-btn:active { transform: scale(0.96); }
+.triage-mobile-btn.flash-today { background: rgba(45,138,78,0.15); border-color: #2d8a4e; }
+.triage-mobile-btn.flash-tomorrow { background: rgba(59,130,246,0.15); border-color: #3b82f6; }
+.triage-mobile-btn.flash-week { background: rgba(184,138,45,0.15); border-color: #b88a2d; }
+.triage-mobile-btn.flash-backlog { background: rgba(128,128,128,0.15); border-color: #888; }
+.triage-mobile-delete {
+  text-align: right;
+  margin-top: var(--space-sm);
+}
+.triage-mobile-delete button {
+  font: 12px var(--font-family);
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.triage-mobile-delete button:active { color: var(--accent-negative); }
+.triage-mobile-done {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+.triage-mobile-done-check { font-size: 48px; margin-bottom: var(--space-lg); }
+.triage-mobile-done-title { font-size: 18px; font-weight: 600; margin-bottom: var(--space-sm); }
+.triage-mobile-done-count { font-size: 14px; color: var(--text-muted); margin-bottom: var(--space-xl); }
+.triage-mobile-done-breakdown { font-size: 13px; color: var(--text-secondary); line-height: 2; }
+.triage-card-enter { animation: triageCardIn 150ms ease; }
+.triage-card-exit { animation: triageCardOut 200ms ease forwards; }
+@keyframes triageCardIn { from { transform: translateX(-30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes triageCardOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(60px); opacity: 0; } }
+
 /* To-Dos */
 .todo-list {
   display: flex;
@@ -7729,6 +7842,193 @@ function isTodayFocusConfirmed() {
   return state.todayFocusConfirmedAt.substring(0, 10) === todayStr();
 }
 
+/* ========================================
+   Mobile Triage
+   ======================================== */
+let triageQueue = [];
+let triageIndex = 0;
+let triageLastAction = null;
+let triageLastPriority = 'today';
+let triageCounts = { today: 0, tomorrow: 0, 'this-week': 0, backlog: 0, deleted: 0 };
+
+function openMobileTriage() {
+  triageQueue = (state.todos || []).filter(t => t.status === 'open' && t.priority === 'inbox');
+  if (triageQueue.length === 0) { showToast('Inbox is empty'); return; }
+  triageIndex = 0;
+  triageLastAction = null;
+  triageCounts = { today: 0, tomorrow: 0, 'this-week': 0, backlog: 0, deleted: 0 };
+
+  const overlay = document.createElement('div');
+  overlay.className = 'triage-mobile';
+  overlay.id = 'mobileTriage';
+  document.body.appendChild(overlay);
+  renderTriageCard();
+
+  // Swipe gesture support
+  let touchStartX = 0;
+  overlay.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+  overlay.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (dx > 80) triageMobileAction(triageLastPriority); // swipe right = repeat last
+    else if (dx < -80) triageSkip(); // swipe left = skip
+  });
+}
+
+function renderTriageCard() {
+  const overlay = document.getElementById('mobileTriage');
+  if (!overlay) return;
+  const total = triageQueue.length;
+  const progress = triageIndex / total * 100;
+
+  if (triageIndex >= total) {
+    // Done state
+    const totalTriaged = Object.values(triageCounts).reduce((a, b) => a + b, 0);
+    const breakdown = [
+      triageCounts.today ? `Today: ${triageCounts.today}` : '',
+      triageCounts.tomorrow ? `Next workday: ${triageCounts.tomorrow}` : '',
+      triageCounts['this-week'] ? `This Week: ${triageCounts['this-week']}` : '',
+      triageCounts.backlog ? `Backlog: ${triageCounts.backlog}` : '',
+      triageCounts.deleted ? `Deleted: ${triageCounts.deleted}` : '',
+    ].filter(Boolean).join('<br>');
+
+    overlay.innerHTML = `
+      <div class="triage-mobile-header">
+        <span class="triage-mobile-title">INBOX</span>
+        <div class="triage-mobile-progress"><div class="triage-mobile-progress-fill" style="width:100%"></div></div>
+        <span class="triage-mobile-count">${total}/${total}</span>
+      </div>
+      <div class="triage-mobile-done">
+        <div class="triage-mobile-done-check">✓</div>
+        <div class="triage-mobile-done-title">Inbox clear</div>
+        <div class="triage-mobile-done-count">${totalTriaged} item${totalTriaged !== 1 ? 's' : ''} triaged</div>
+        <div class="triage-mobile-done-breakdown">${breakdown}</div>
+        <button class="btn-secondary btn-accent" style="margin-top:var(--space-xl)" onclick="closeMobileTriage()">Back to Dashboard</button>
+      </div>`;
+    return;
+  }
+
+  const item = triageQueue[triageIndex];
+  const age = Math.floor((Date.now() - new Date(item.createdAt || 0).getTime()) / 86400000);
+  const sourceLabel = item.sourceTitle || item.source || 'manual';
+  const undoHtml = triageLastAction
+    ? `<button onclick="triageUndo()">↩ Undo: "${escapeHtml((triageLastAction.text || '').substring(0, 30))}" → ${triageLastAction.priority}</button>`
+    : '';
+
+  overlay.innerHTML = `
+    <div class="triage-mobile-header">
+      <span class="triage-mobile-title">INBOX</span>
+      <div class="triage-mobile-progress"><div class="triage-mobile-progress-fill" style="width:${progress}%"></div></div>
+      <span class="triage-mobile-count">${triageIndex}/${total}</span>
+    </div>
+    <div class="triage-mobile-card triage-card-enter" id="triageCard">
+      <div class="triage-mobile-card-text">${escapeHtml(item.text)}</div>
+      <div class="triage-mobile-card-meta">
+        <div class="triage-mobile-card-source">from: ${escapeHtml(sourceLabel)}</div>
+        <div>${age}d ago</div>
+      </div>
+    </div>
+    <div class="triage-mobile-undo">${undoHtml}</div>
+    <div class="triage-mobile-actions">
+      <button class="triage-mobile-btn" id="triBtn-today" onclick="triageMobileAction('today')">Today</button>
+      <button class="triage-mobile-btn" id="triBtn-tomorrow" onclick="triageMobileAction('tomorrow')">Next workday</button>
+      <button class="triage-mobile-btn" id="triBtn-this-week" onclick="triageMobileAction('this-week')">This Week</button>
+      <button class="triage-mobile-btn" id="triBtn-backlog" onclick="triageMobileAction('backlog')">Backlog</button>
+    </div>
+    <div class="triage-mobile-delete"><button onclick="triageMobileAction('delete')">🗑 Delete</button></div>`;
+}
+
+function triageMobileAction(priority) {
+  const item = triageQueue[triageIndex];
+  if (!item) return;
+
+  // Flash button
+  const flashMap = { today: 'flash-today', tomorrow: 'flash-tomorrow', 'this-week': 'flash-week', backlog: 'flash-backlog' };
+  const btn = document.getElementById('triBtn-' + priority);
+  if (btn && flashMap[priority]) {
+    btn.classList.add(flashMap[priority]);
+    setTimeout(() => btn.classList.remove(flashMap[priority]), 150);
+  }
+
+  // Animate card out
+  const card = document.getElementById('triageCard');
+  if (card) card.className = 'triage-mobile-card triage-card-exit';
+
+  // Store for undo
+  triageLastAction = { todoId: item.id, text: item.text, priority: priority === 'delete' ? 'deleted' : priority, previousPriority: item.priority };
+  if (priority !== 'delete') triageLastPriority = priority;
+
+  // Apply action
+  if (priority === 'delete') {
+    state.todos = state.todos.filter(t => t.id !== item.id);
+    triageCounts.deleted++;
+  } else {
+    const todo = state.todos.find(t => t.id === item.id);
+    if (todo) {
+      todo.priority = priority;
+      todo.triagedAt = new Date().toISOString();
+    }
+    triageCounts[priority] = (triageCounts[priority] || 0) + 1;
+  }
+
+  triageIndex++;
+  saveState();
+  setTimeout(renderTriageCard, 200);
+}
+
+function triageSkip() {
+  // Move current item to end of queue
+  const item = triageQueue.splice(triageIndex, 1)[0];
+  if (item) triageQueue.push(item);
+  const card = document.getElementById('triageCard');
+  if (card) card.className = 'triage-mobile-card triage-card-exit';
+  setTimeout(renderTriageCard, 200);
+}
+
+function triageUndo() {
+  if (!triageLastAction) return;
+  const { todoId, previousPriority } = triageLastAction;
+
+  if (triageLastAction.priority === 'deleted') {
+    // Can't undo delete if todo was removed — re-create it
+    // Actually the todo was spliced from state.todos, we need to re-add
+    // For simplicity, we stored the text — recreate
+    state.todos.push({
+      id: todoId,
+      text: triageLastAction.text,
+      status: 'open',
+      priority: 'inbox',
+      source: 'manual',
+      createdAt: new Date().toISOString()
+    });
+    triageCounts.deleted--;
+  } else {
+    const todo = state.todos.find(t => t.id === todoId);
+    if (todo) {
+      todo.priority = 'inbox';
+      todo.triagedAt = null;
+    }
+    triageCounts[triageLastAction.priority] = Math.max(0, (triageCounts[triageLastAction.priority] || 0) - 1);
+  }
+
+  triageIndex = Math.max(0, triageIndex - 1);
+  // Re-insert item at current position in queue
+  const existingIdx = triageQueue.findIndex(t => t.id === todoId);
+  if (existingIdx === -1) {
+    const restored = state.todos.find(t => t.id === todoId);
+    if (restored) triageQueue.splice(triageIndex, 0, restored);
+  }
+
+  triageLastAction = null;
+  saveState();
+  renderTriageCard();
+}
+
+function closeMobileTriage() {
+  const overlay = document.getElementById('mobileTriage');
+  if (overlay) overlay.remove();
+  renderDashboard();
+}
+
 function addCoachingTodo(btn, date) {
   const text = prompt('What action should you take?');
   if (!text || !text.trim()) return;
@@ -7965,7 +8265,7 @@ function renderDashboard() {
       <div class="dash-section-title">TODAY'S FOCUS</div>
       <div class="focus-list" id="focusList">${focusItemsHtml || '<div style="color:var(--text-muted);font-size:13px;padding:var(--space-sm) 0">No items for today yet. Add from inbox or create new ones.</div>'}</div>
       <div class="focus-footer">
-        ${inboxCount > 0 ? `<button class="btn-ghost" style="font-size:12px" onclick="toggleFocusInbox()">Inbox (${inboxCount})</button>` : ''}
+        ${inboxCount > 0 ? `<button class="btn-ghost" style="font-size:12px" onclick="toggleFocusInbox()">Inbox (${inboxCount})</button><button class="btn-ghost" style="font-size:12px" onclick="openMobileTriage()">Triage all →</button>` : ''}
         <button class="btn-ghost" style="font-size:12px" onclick="addFocusItem()">+ Add item</button>
         <button class="btn-secondary btn-accent focus-confirm" onclick="confirmTodayFocus()">Confirm Today's Focus</button>
       </div>
@@ -12752,6 +13052,11 @@ async function init() {
 }
 
 init();
+
+// Handle #triage URL hash for direct mobile access
+if (window.location.hash === '#triage') {
+  setTimeout(() => openMobileTriage(), 500);
+}
 </script>
 </body>
 </html>
