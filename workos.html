@@ -3246,6 +3246,26 @@ body {
 .visib-matrix-dot.high { background: rgba(45,138,78,0.3); }
 .visib-matrix-dot.mid { background: rgba(184,138,45,0.2); }
 .visib-matrix-dot.empty { background: var(--surface-card); }
+.visib-evidence-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
+}
+.visib-evidence-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--surface-card);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  border: 1.5px solid var(--border-default);
+  font-size: 13px;
+}
+.visib-evidence-option:has(input:checked) { border-color: var(--accent-primary); }
+.visib-evidence-option input[type="radio"] { margin-top: 3px; flex-shrink: 0; }
+.visib-evidence-name { font-weight: 600; color: var(--text-primary); font-size: 13px; }
+.visib-evidence-desc { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
 
 /* ========================================
    Responsive — Mobile
@@ -13088,11 +13108,11 @@ function renderVisibLog(panel) {
 
       <div class="form-group">
         <label class="form-label">Evidence type — what happened?</label>
-        <div class="visib-audience-picker">
-          <label><input type="radio" name="visibEvidence" value="shared" checked> Shared (I published/presented)</label>
-          <label><input type="radio" name="visibEvidence" value="referenced"> Referenced (someone cited my work)</label>
-          <label><input type="radio" name="visibEvidence" value="invited"> Invited (pulled in to contribute)</label>
-          <label><input type="radio" name="visibEvidence" value="decided"> Decided (influenced a decision)</label>
+        <div class="visib-evidence-picker">
+          <label class="visib-evidence-option"><input type="radio" name="visibEvidence" value="shared" checked><div><div class="visib-evidence-name">Shared</div><div class="visib-evidence-desc">I published or presented</div></div></label>
+          <label class="visib-evidence-option"><input type="radio" name="visibEvidence" value="referenced"><div><div class="visib-evidence-name">Referenced</div><div class="visib-evidence-desc">Someone cited my work</div></div></label>
+          <label class="visib-evidence-option"><input type="radio" name="visibEvidence" value="invited"><div><div class="visib-evidence-name">Invited</div><div class="visib-evidence-desc">Pulled in to contribute</div></div></label>
+          <label class="visib-evidence-option"><input type="radio" name="visibEvidence" value="decided"><div><div class="visib-evidence-name">Decided</div><div class="visib-evidence-desc">Influenced a decision</div></div></label>
         </div>
       </div>
 
