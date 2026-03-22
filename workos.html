@@ -3813,6 +3813,7 @@ let state = {
 
 let logMode = 'form'; // 'form' | 'submitted' | 'intention' | 'editing'
 let logForDate = null; // if set, log entry for this date instead of today
+let logSubView = 'entry'; // 'entry' | 'history'
 let editingEntryId = null;
 let briefsView = 'list'; // 'list' | 'loading' | 'detail'
 let briefsSubView = 'weekly'; // 'weekly' | 'meeting-prep' | 'wins'
@@ -6378,7 +6379,6 @@ function renderTabNav() {
   const tabs = [
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'log', label: 'Log' },
-    { id: 'history', label: 'History' },
     { id: 'briefs', label: 'Briefs' },
     f.todos !== false ? { id: 'todos', label: 'To-Dos' } : null,
     f.meetings !== false ? { id: 'meetings', label: 'Meetings' } : null,
@@ -9151,6 +9151,42 @@ function saveManualVectors() {
    ======================================== */
 function renderLogTab() {
   const panel = document.getElementById('panel-log');
+
+  // History sub-view
+  if (logSubView === 'history') {
+    const subNav = `<div class="sub-nav" style="margin-bottom:var(--space-xl)">
+      <button class="sub-nav-btn" onclick="logSubView='entry';renderLogTab()">Entry</button>
+      <button class="sub-nav-btn active" onclick="logSubView='history';renderLogTab()">History</button>
+    </div>`;
+    const entries = [...state.entries].sort((a, b) => b.date.localeCompare(a.date));
+    if (entries.length === 0) {
+      panel.innerHTML = subNav + '<div class="empty-state">No entries yet.</div>';
+      return;
+    }
+    const calendarHtml = renderHistoryCalendar();
+    panel.innerHTML = subNav + calendarHtml + entries.map((entry, i) => `
+      <div class="history-entry">
+        <div class="history-entry-header">
+          <span><span class="history-entry-date">${formatDateDisplay(entry.date)}</span>${entry.mood ? ` <span class="history-entry-mood-emoji">${entry.mood}</span>` : ''} <span class="history-entry-mood">${entry.energy}/10</span></span>
+          <span class="history-entry-edit" onclick="logSubView='entry';editEntryById(${entry.id})">Edit</span>
+        </div>
+        <div class="history-section-label"><span class="section-emoji">✅</span> Work done</div>
+        <div class="history-section-body">${formatBulletList(entry.tldr?.workDone || entry.workDone)}</div>
+        ${entry.reflection ? `<div class="history-section-label"><span class="section-emoji">🪞</span> Reflection</div><div class="history-section-body">${formatBulletList(entry.tldr?.reflection || entry.reflection)}</div>` : ''}
+        ${entry.weeklyRetro ? `<div class="history-section-label"><span class="section-emoji">🔄</span> Weekly retro</div><div class="history-section-body">${formatBulletList(entry.tldr?.weeklyRetro || entry.weeklyRetro)}</div>` : ''}
+        ${entry.aiReflection ? `
+          <div class="history-section-label" style="cursor:pointer" onclick="toggleCoachingNote(this)"><span class="section-emoji">💬</span> Coaching note <span class="reminder-cta"><span class="cta-icon">▾</span> Hide</span></div>
+          <div class="history-reflection">
+            <div class="ai-text">${formatCoachingNote(entry.aiReflection)}</div>
+            <button class="btn-reanalyze" style="margin-top:var(--space-sm)" onclick="event.stopPropagation();reanalyzeCoaching(${entry.id}, this)">Reanalyze</button>
+          </div>` : ''}
+      </div>
+      ${i < entries.length - 1 ? '<hr class="history-divider">' : ''}
+    `).join('');
+    return;
+  }
+
+  // Entry sub-view
   const today = logForDate || todayStr();
   const existingEntry = getEntryForDate(today);
 
@@ -9181,6 +9217,10 @@ function renderLogTab() {
   const showNudge = dayOfWeek >= 3 && dayOfWeek <= 5 && weekEntryCount >= 3;
 
   panel.innerHTML = `
+    <div class="sub-nav" style="margin-bottom:var(--space-lg)">
+      <button class="sub-nav-btn active" onclick="logSubView='entry';renderLogTab()">Entry</button>
+      <button class="sub-nav-btn" onclick="logSubView='history';renderLogTab()">History</button>
+    </div>
     <div class="log-header-row">
       <input type="date" id="logDatePicker" value="${today}" class="log-date-picker" onchange="logForDate=this.value;renderLogTab()">
       <div class="log-header-right">
