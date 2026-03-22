@@ -3686,6 +3686,112 @@ body {
   background: var(--border-default);
 }
 .todo-dismiss-btn:hover { color: var(--accent-negative); }
+.todo-star {
+  background: none;
+  border: none;
+  font-size: 15px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 2px;
+  transition: color var(--duration-fast);
+}
+.todo-star:hover { color: #d4a017; }
+.todo-star.starred { color: #d4a017; }
+.todo-item.starred .todo-text { font-weight: 600; }
+.triage-star {
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: 15px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 700;
+  transition: color var(--duration-fast);
+}
+.triage-star:hover { color: #d4a017; }
+.triage-star.starred { color: #d4a017; }
+
+/* Recurring to-dos */
+.todo-recurrence-btn {
+  background: none;
+  border: none;
+  font: 11px var(--font-family);
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  transition: color var(--duration-fast);
+}
+.todo-recurrence-btn:hover { color: var(--accent-interactive); }
+.todo-recurrence-menu {
+  position: absolute;
+  z-index: 100;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  padding: var(--space-xs) 0;
+  min-width: 140px;
+  animation: fadeIn 0.15s ease;
+}
+.todo-recurrence-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  font: 13px var(--font-family);
+  color: var(--text-primary);
+  padding: var(--space-sm) var(--space-md);
+  cursor: pointer;
+}
+.todo-recurrence-menu button:hover { background: var(--bg-hover); }
+.todo-recurrence-menu button.selected { color: var(--accent-interactive); font-weight: 600; }
+.todo-recurrence-badge {
+  font-size: 11px;
+  color: var(--accent-interactive);
+  font-weight: 600;
+  cursor: pointer;
+}
+.todo-recurrence-badge:hover { text-decoration: underline; }
+.todo-add-recurrence {
+  background: none;
+  border: 1px dashed var(--border-default);
+  font: 12px var(--font-family);
+  color: var(--text-muted);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--duration-fast);
+}
+.todo-add-recurrence:hover { border-color: var(--accent-interactive); color: var(--accent-interactive); }
+.todo-add-recurrence.active { border-style: solid; border-color: var(--accent-interactive); color: var(--accent-interactive); }
+
+/* Inline todo editing */
+.todo-item:not(.done) .todo-text { cursor: pointer; }
+.todo-text-editing {
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--accent-interactive);
+  outline: none;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  line-height: inherit;
+}
+
 .todo-suggestions {
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
@@ -3828,6 +3934,7 @@ let meetingsSubTab = 'entries'; // 'entries' | 'insights'
 let meetingsInsightsPeriod = 'week'; // 'today' | 'week' | 'month' | 'quarter' | 'year' | 'all'
 let todosFilter = 'inbox'; // 'inbox' | 'today' | 'tomorrow' | 'this-week' | 'backlog' | 'done'
 let todosAgeFilter = 'all'; // 'all' | '1d' | '1w' | '2w' | '1m'
+let newTodoRecurrence = null;
 
 function loadState() {
   try {
@@ -4686,6 +4793,14 @@ function runMigrations() {
       if (!a.evidenceType) a.evidenceType = 'shared';
     }
     state.dataVersion = 5;
+    changed = true;
+  }
+
+  if (v < 6) {
+    for (const t of (state.todos || [])) {
+      if (t.recurrence === undefined) t.recurrence = null;
+    }
+    state.dataVersion = 6;
     changed = true;
   }
 
@@ -6097,9 +6212,9 @@ function renderTodos() {
 
   let items;
   if (todosFilter === 'done') {
-    items = (state.todos || []).filter(t => t.status === 'done').sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || ''));
+    items = (state.todos || []).filter(t => t.status === 'done').sort((a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0) || (b.completedAt || '').localeCompare(a.completedAt || ''));
   } else {
-    items = (state.todos || []).filter(t => t.status === 'open' && (t.priority === todosFilter || (todosFilter === 'backlog' && t.priority === 'later'))).sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+    items = (state.todos || []).filter(t => t.status === 'open' && (t.priority === todosFilter || (todosFilter === 'backlog' && t.priority === 'later'))).sort((a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0) || (a.createdAt || '').localeCompare(b.createdAt || ''));
   }
 
   // Apply age filter
@@ -6142,8 +6257,9 @@ function renderTodos() {
       <div class="sub-nav" style="margin-bottom:0">${filterHtml}</div>
       ${triageBtnHtml ? `<div style="margin-top:var(--space-md)">${triageBtnHtml}</div>` : ''}
     </div>
-    ${todosFilter !== 'done' ? `<div class="todo-add-item">
-      <input type="text" id="addManualTodoInput" placeholder="Add a to-do..." onkeydown="if(event.key==='Enter'){addManualTodo();event.preventDefault()}">
+    ${todosFilter !== 'done' ? `<div class="todo-add-item" style="display:flex;gap:var(--space-sm);align-items:center">
+      <input type="text" id="addManualTodoInput" style="flex:1" placeholder="Add a to-do..." onkeydown="if(event.key==='Enter'){addManualTodo();event.preventDefault()}">
+      <button class="todo-add-recurrence${newTodoRecurrence ? ' active' : ''}" onclick="toggleNewTodoRecurrenceMenu(this)">${recurrenceLabel(newTodoRecurrence)}</button>
     </div>` : ''}
     <div class="todo-list">${listHtml}</div>
   `;
@@ -6155,7 +6271,11 @@ function renderTodoItem(todo) {
   const meeting = isManual ? null : state.meetings.find(m => m.id === todo.meetingId);
   const meetingDeleted = !meeting && todo.meetingId;
   let sourceLabel, sourceClick, sourceClass;
-  if (isManual) {
+  if (todo.source === 'recurring') {
+    sourceLabel = 'Recurring';
+    sourceClick = '';
+    sourceClass = 'todo-source';
+  } else if (isManual) {
     sourceLabel = 'Manually added';
     sourceClick = '';
     sourceClass = 'todo-source';
@@ -6184,15 +6304,21 @@ function renderTodoItem(todo) {
   if (todo.addedToPlan) addedIndicators.push('Added to plan');
   const addedHtml = addedIndicators.length ? `<span class="todo-added-indicator">${addedIndicators.join(' · ')}</span>` : '';
 
-  return `<div class="todo-item${isDone ? ' done' : ''}">
+  const recurrenceMeta = todo.recurrence
+    ? `<span class="todo-recurrence-badge" onclick="toggleTodoRecurrenceMenu('${todo.id}', this)" title="Change recurrence">🔄 ${recurrenceLabel(todo.recurrence)}</span>`
+    : (!isDone ? `<button class="todo-recurrence-btn" onclick="toggleTodoRecurrenceMenu('${todo.id}', this)">+ repeat</button>` : '');
+
+  return `<div class="todo-item${isDone ? ' done' : ''}${todo.starred ? ' starred' : ''}" data-todo-id="${todo.id}">
     <div class="todo-item-main">
       <input type="checkbox" ${isDone ? 'checked' : ''} onchange="toggleTodo('${todo.id}')">
+      <button class="todo-star${todo.starred ? ' starred' : ''}" onclick="toggleTodoStar('${todo.id}')" title="${todo.starred ? 'Unstar' : 'Star'}">${todo.starred ? '★' : '☆'}</button>
       <div class="todo-item-content">
-        <div class="todo-text">${escapeHtml(todo.text)}</div>
+        <div class="todo-text" ondblclick="startEditTodo('${todo.id}')">${escapeHtml(todo.text)}</div>
         <div class="todo-meta">
           <span class="${sourceClass}" ${sourceClick}>${sourceLabel}</span>
           ${!isManual && todo.meetingDate ? `<span class="todo-date">${(todo.meetingDate || '').substring(0, 10)}</span>` : ''}
           <span class="todo-age">${todoAge(todo.createdAt)}</span>
+          ${recurrenceMeta}
           ${addedHtml}
         </div>
       </div>
@@ -6226,10 +6352,26 @@ function toggleTodo(id) {
     if (todayEntry && todayEntry.workDone && !todayEntry.workDone.includes(todo.text)) {
       todayEntry.workDone += '\n✓ ' + todo.text;
     }
+    // Spawn next recurring instance
+    if (todo.recurrence) {
+      const hasOpenChild = state.todos.some(t => t.parentId === todo.id && t.status === 'open');
+      if (!hasOpenChild) {
+        spawnRecurringInstance(todo);
+        showToast('Next recurring to-do created');
+      }
+    }
     saveState();
     renderTodos();
     showFollowUpPrompt(id, 'todos');
   }
+}
+
+function toggleTodoStar(id) {
+  const todo = state.todos.find(t => t.id === id);
+  if (!todo) return;
+  todo.starred = !todo.starred;
+  saveState();
+  renderTodos();
 }
 
 function showFollowUpPrompt(todoId, context) {
@@ -6328,6 +6470,178 @@ function dismissTodo(id) {
   });
 }
 
+/* ---- Recurring To-Dos ---- */
+function recurrenceLabel(freq) {
+  const map = { daily: 'Daily', weekdays: 'Weekdays', weekly: 'Weekly', biweekly: 'Biweekly', monthly: 'Monthly' };
+  return map[freq] || 'Once';
+}
+
+function getNextRecurrenceDate(frequency, fromDate) {
+  const d = fromDate ? new Date(fromDate + 'T00:00:00') : new Date();
+  switch (frequency) {
+    case 'daily': d.setDate(d.getDate() + 1); break;
+    case 'weekdays':
+      d.setDate(d.getDate() + 1);
+      while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+      break;
+    case 'weekly': d.setDate(d.getDate() + 7); break;
+    case 'biweekly': d.setDate(d.getDate() + 14); break;
+    case 'monthly': d.setMonth(d.getMonth() + 1); break;
+    default: return null;
+  }
+  return d.toISOString().split('T')[0];
+}
+
+function spawnRecurringInstance(todo) {
+  const newTodo = {
+    id: 'todo_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+    text: todo.text,
+    meetingId: null, meetingTitle: null, meetingDate: null,
+    status: 'open',
+    priority: 'inbox',
+    source: 'recurring',
+    recurrence: todo.recurrence,
+    scheduledFor: getNextRecurrenceDate(todo.recurrence, todayStr()),
+    parentId: todo.id,
+    createdAt: new Date().toISOString(),
+    completedAt: null,
+    triagedAt: null,
+    starred: false
+  };
+  state.todos.push(newTodo);
+  return newTodo;
+}
+
+function checkRecurringTodos() {
+  const today = todayStr();
+  let changed = false;
+  for (const todo of (state.todos || [])) {
+    if (todo.status !== 'open' || !todo.recurrence || !todo.scheduledFor) continue;
+    if (todo.scheduledFor > today) continue;
+    // Don't spawn if an open child already exists
+    const hasOpenChild = state.todos.some(t => t.parentId === todo.id && t.status === 'open');
+    if (hasOpenChild) continue;
+    spawnRecurringInstance(todo);
+    todo.scheduledFor = getNextRecurrenceDate(todo.recurrence, today);
+    changed = true;
+  }
+  if (changed) saveState();
+}
+
+function setTodoRecurrence(id, frequency) {
+  const todo = state.todos.find(t => t.id === id);
+  if (!todo) return;
+  if (frequency) {
+    todo.recurrence = frequency;
+    todo.scheduledFor = getNextRecurrenceDate(frequency, todayStr());
+  } else {
+    todo.recurrence = null;
+    todo.scheduledFor = null;
+  }
+  saveState();
+  renderTodos();
+}
+
+function toggleNewTodoRecurrenceMenu(btn) {
+  const existing = document.querySelector('.todo-recurrence-menu');
+  if (existing) { existing.remove(); return; }
+  const options = [
+    { value: null, label: 'Once' },
+    { value: 'daily', label: 'Daily' },
+    { value: 'weekdays', label: 'Weekdays' },
+    { value: 'weekly', label: 'Weekly' },
+    { value: 'biweekly', label: 'Biweekly' },
+    { value: 'monthly', label: 'Monthly' }
+  ];
+  const menu = document.createElement('div');
+  menu.className = 'todo-recurrence-menu';
+  menu.style.position = 'absolute';
+  menu.style.bottom = '100%';
+  menu.style.left = '0';
+  menu.style.marginBottom = '4px';
+  menu.innerHTML = options.map(o =>
+    `<button class="${newTodoRecurrence === o.value ? 'selected' : ''}" data-freq="${o.value || ''}">${o.label}</button>`
+  ).join('');
+  menu.querySelectorAll('button').forEach(b => {
+    b.addEventListener('click', () => {
+      newTodoRecurrence = b.dataset.freq || null;
+      btn.textContent = recurrenceLabel(newTodoRecurrence);
+      btn.classList.toggle('active', !!newTodoRecurrence);
+      menu.remove();
+    });
+  });
+  btn.parentElement.style.position = 'relative';
+  btn.parentElement.appendChild(menu);
+  const dismiss = (e) => { if (!menu.contains(e.target) && e.target !== btn) { menu.remove(); document.removeEventListener('click', dismiss); } };
+  setTimeout(() => document.addEventListener('click', dismiss), 0);
+}
+
+function toggleTodoRecurrenceMenu(todoId, btn) {
+  const existing = document.querySelector('.todo-recurrence-menu');
+  if (existing) { existing.remove(); return; }
+  const todo = state.todos.find(t => t.id === todoId);
+  if (!todo) return;
+  const options = [
+    { value: null, label: 'Once (remove)' },
+    { value: 'daily', label: 'Daily' },
+    { value: 'weekdays', label: 'Weekdays' },
+    { value: 'weekly', label: 'Weekly' },
+    { value: 'biweekly', label: 'Biweekly' },
+    { value: 'monthly', label: 'Monthly' }
+  ];
+  const menu = document.createElement('div');
+  menu.className = 'todo-recurrence-menu';
+  menu.style.position = 'absolute';
+  menu.style.bottom = '100%';
+  menu.style.right = '0';
+  menu.style.marginBottom = '4px';
+  menu.innerHTML = options.map(o =>
+    `<button class="${todo.recurrence === o.value ? 'selected' : ''}" data-freq="${o.value || ''}">${o.label}</button>`
+  ).join('');
+  menu.querySelectorAll('button').forEach(b => {
+    b.addEventListener('click', () => {
+      setTodoRecurrence(todoId, b.dataset.freq || null);
+      menu.remove();
+    });
+  });
+  btn.style.position = 'relative';
+  btn.appendChild(menu);
+  const dismiss = (e) => { if (!menu.contains(e.target) && e.target !== btn) { menu.remove(); document.removeEventListener('click', dismiss); } };
+  setTimeout(() => document.addEventListener('click', dismiss), 0);
+}
+
+/* ---- Inline Todo Editing ---- */
+function startEditTodo(id) {
+  const todo = state.todos.find(t => t.id === id);
+  if (!todo || todo.status === 'done') return;
+  const item = document.querySelector(`[data-todo-id="${id}"]`);
+  if (!item) return;
+  const textEl = item.querySelector('.todo-text');
+  if (!textEl || textEl.querySelector('.todo-text-editing')) return;
+  const input = document.createElement('input');
+  input.className = 'todo-text-editing';
+  input.value = todo.text;
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); saveEditTodo(id, input.value); }
+    if (e.key === 'Escape') { e.preventDefault(); renderTodos(); }
+  });
+  input.addEventListener('blur', () => saveEditTodo(id, input.value));
+  textEl.textContent = '';
+  textEl.appendChild(input);
+  input.focus();
+  input.select();
+}
+
+function saveEditTodo(id, newText) {
+  const trimmed = (newText || '').trim();
+  if (!trimmed) { renderTodos(); return; }
+  const todo = state.todos.find(t => t.id === id);
+  if (!todo || todo.text === trimmed) { renderTodos(); return; }
+  todo.text = trimmed;
+  saveState();
+  renderTodos();
+}
+
 function addManualTodo() {
   const input = document.getElementById('addManualTodoInput');
   if (!input) return;
@@ -6345,8 +6659,11 @@ function addManualTodo() {
     createdAt: new Date().toISOString(),
     completedAt: null,
     addedToIntention: null,
-    addedToPlan: null
+    addedToPlan: null,
+    recurrence: newTodoRecurrence || null,
+    scheduledFor: newTodoRecurrence ? getNextRecurrenceDate(newTodoRecurrence) : null
   });
+  newTodoRecurrence = null;
   saveState();
   input.value = '';
   renderTodos();
@@ -8108,11 +8425,16 @@ function renderWeeklyTriage(panel) {
     weeklyTriageStep = 1;
     const itemsHtml = inboxItems.map(t => {
       const age = Math.floor((Date.now() - new Date(t.createdAt || 0).getTime()) / 86400000);
-      const sourceLabel = t.sourceTitle || t.source || '';
+      const sourceLabel = t.sourceTitle || (t.source === 'recurring' ? 'Recurring' : t.source || '');
+      const recBadge = t.recurrence
+        ? `<button class="btn-secondary" style="font-size:11px;padding:var(--space-xs) var(--space-md);color:var(--accent-interactive)" onclick="event.stopPropagation();toggleTodoRecurrenceMenu('${t.id}', this)">🔄 ${recurrenceLabel(t.recurrence)}</button>`
+        : `<button class="btn-secondary" style="font-size:11px;padding:var(--space-xs) var(--space-md);color:var(--text-primary)" onclick="event.stopPropagation();toggleTodoRecurrenceMenu('${t.id}', this)">🔄 Set Recurring</button>`;
       return `<div class="triage-item" id="triage-${t.id}">
         <div class="triage-item-text">${escapeHtml(t.text)}</div>
         <div class="triage-item-meta">${sourceLabel ? 'from: ' + escapeHtml(sourceLabel) + ' · ' : ''}${age}d ago</div>
-        <div class="triage-item-actions">
+        <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap;margin-top:var(--space-sm)">
+          <button class="btn-secondary" style="font-size:11px;padding:var(--space-xs) var(--space-md);color:#d4a017" onclick="event.stopPropagation();toggleTodoStar('${t.id}');renderDashboard()">${t.starred ? '★ Starred' : '☆ Star'}</button>
+          ${recBadge}
           <button class="triage-btn" onclick="triageTodo('${t.id}','today')">Today</button>
           <button class="triage-btn" onclick="triageTodo('${t.id}','this-week')">This Week</button>
           <button class="triage-btn" onclick="triageTodo('${t.id}','backlog')">Backlog</button>
@@ -8352,9 +8674,18 @@ function renderMobileToday() {
 
   const itemsHtml = allItems.length > 0 ? allItems.map(t => {
     const isDone = t.status === 'done';
-    return `<div class="mobile-today-item${isDone ? ' done' : ''}" onclick="toggleMobileTodo('${t.id}')">
-      <span class="mobile-today-check">${isDone ? '✓' : '○'}</span>
-      <span class="mobile-today-text${isDone ? ' strikethrough' : ''}">${escapeHtml(t.text)}</span>
+    const recBadge = t.recurrence
+      ? `<button class="btn-secondary" style="font-size:12px;padding:var(--space-xs) var(--space-md);color:var(--accent-interactive)" onclick="event.stopPropagation();toggleTriageRecurrenceMenu('${t.id}', this)">🔄 ${recurrenceLabel(t.recurrence)}</button>`
+      : (!isDone ? `<button class="btn-secondary" style="font-size:12px;padding:var(--space-xs) var(--space-md);color:var(--text-primary)" onclick="event.stopPropagation();toggleTriageRecurrenceMenu('${t.id}', this)">🔄 Set Recurring</button>` : '');
+    return `<div class="mobile-today-item${isDone ? ' done' : ''}" style="display:flex;flex-direction:column;gap:var(--space-sm);padding:var(--space-sm) 0">
+      <div style="display:flex;align-items:center;gap:var(--space-sm)">
+        <span class="mobile-today-check" onclick="toggleMobileTodo('${t.id}')">${isDone ? '✓' : '○'}</span>
+        <span class="mobile-today-text${isDone ? ' strikethrough' : ''}" onclick="toggleMobileTodo('${t.id}')" style="flex:1">${escapeHtml(t.text)}</span>
+      </div>
+      ${!isDone ? `<div style="display:flex;gap:var(--space-sm);padding-left:28px;flex-wrap:wrap">
+        <button class="btn-secondary" style="font-size:12px;padding:var(--space-xs) var(--space-md);color:#d4a017" onclick="event.stopPropagation();toggleTodoStar('${t.id}');renderMobileToday()">${t.starred ? '★ Starred' : '☆ Star'}</button>
+        ${recBadge}
+      </div>` : ''}
     </div>`;
   }).join('') : '<div style="text-align:center;color:var(--text-muted);font-size:15px;padding:var(--space-xl)">No items for today. Triage your inbox to add some.</div>';
 
@@ -8419,7 +8750,10 @@ function renderTriageCard() {
   const item = triageQueue[triageIndex];
   const age = Math.floor((Date.now() - new Date(item.createdAt || 0).getTime()) / 86400000);
   const meeting = item.meetingId ? state.meetings.find(m => m.id === item.meetingId) : null;
-  const sourceLabel = meeting ? meeting.title : item.sourceTitle || (item.source === 'follow-up' ? 'Follow-up' : item.source === 'coaching' ? 'Coaching' : item.source === 'visibility' ? 'Visibility' : 'Manual');
+  const sourceLabel = meeting ? meeting.title : item.sourceTitle || (item.source === 'recurring' ? 'Recurring' : item.source === 'follow-up' ? 'Follow-up' : item.source === 'coaching' ? 'Coaching' : item.source === 'visibility' ? 'Visibility' : 'Manual');
+  const recurrenceBtnHtml = item.recurrence
+    ? `<button class="btn-secondary" style="color:var(--accent-interactive)" onclick="toggleTriageRecurrenceMenu('${item.id}', this)">🔄 ${recurrenceLabel(item.recurrence)}</button>`
+    : `<button class="btn-secondary" style="color:var(--text-primary)" onclick="toggleTriageRecurrenceMenu('${item.id}', this)">🔄 Set Recurring</button>`;
   const undoHtml = triageLastAction
     ? `<button onclick="triageUndo()">↩ Undo: "${escapeHtml((triageLastAction.text || '').substring(0, 30))}" → ${triageLastAction.priority}</button>`
     : '';
@@ -8434,10 +8768,12 @@ function renderTriageCard() {
       <div class="triage-mobile-card-text">${escapeHtml(item.text)}</div>
       <div class="triage-mobile-card-meta">
         <span>from: ${escapeHtml(sourceLabel)} · ${age}d ago</span>
-        <span style="display:flex;gap:var(--space-md);align-items:center">
-          <button style="font:inherit;color:#2d8a4e;background:none;border:none;cursor:pointer;font-weight:700;display:flex;align-items:center;gap:3px" onclick="triageMobileAction('done')">✓ Done</button>
-          <button style="font:inherit;color:var(--accent-negative);background:none;border:none;cursor:pointer;font-weight:700;display:flex;align-items:center;gap:3px" onclick="triageMobileAction('delete')"><span>✕</span> Delete</button>
-        </span>
+      </div>
+      <div style="display:flex;gap:var(--space-sm);justify-content:center;flex-wrap:wrap;margin-top:var(--space-md)">
+        <button class="btn-secondary" style="color:#d4a017" onclick="toggleTodoStar('${item.id}');renderTriageCard()">${item.starred ? '★ Starred' : '☆ Star'}</button>
+        ${recurrenceBtnHtml}
+        <button class="btn-secondary" style="color:#2d8a4e" onclick="triageMobileAction('done')">✓ Done</button>
+        <button class="btn-secondary" style="color:var(--accent-negative)" onclick="triageMobileAction('delete')">✕ Delete</button>
       </div>
     </div>
     <div class="triage-mobile-undo">${undoHtml}</div>
@@ -8448,6 +8784,45 @@ function renderTriageCard() {
       <button class="triage-mobile-btn" id="triBtn-backlog" onclick="triageMobileAction('backlog')">Backlog</button>
     </div>
     <div style="text-align:center;margin-top:var(--space-sm)"><button style="font:14px var(--font-family);color:var(--text-muted);background:none;border:none;cursor:pointer;padding:var(--space-sm) var(--space-lg)" onclick="triageSkip()">Skip — decide later</button></div>`;
+}
+
+function toggleTriageRecurrenceMenu(todoId, btn) {
+  const existing = document.querySelector('.todo-recurrence-menu');
+  if (existing) { existing.remove(); return; }
+  const todo = state.todos.find(t => t.id === todoId);
+  if (!todo) return;
+  const options = [
+    { value: null, label: 'Once (remove)' },
+    { value: 'daily', label: 'Daily' },
+    { value: 'weekdays', label: 'Weekdays' },
+    { value: 'weekly', label: 'Weekly' },
+    { value: 'biweekly', label: 'Biweekly' },
+    { value: 'monthly', label: 'Monthly' }
+  ];
+  const menu = document.createElement('div');
+  menu.className = 'todo-recurrence-menu';
+  menu.style.bottom = '100%';
+  menu.style.right = '0';
+  menu.style.marginBottom = '4px';
+  menu.innerHTML = options.map(o =>
+    `<button class="${todo.recurrence === o.value ? 'selected' : ''}" data-freq="${o.value || ''}">${o.label}</button>`
+  ).join('');
+  menu.querySelectorAll('button').forEach(b => {
+    b.addEventListener('click', () => {
+      setTodoRecurrence(todoId, b.dataset.freq || null);
+      // Update the triageQueue item reference too
+      const qItem = triageQueue[triageIndex];
+      if (qItem && qItem.id === todoId) {
+        qItem.recurrence = b.dataset.freq || null;
+      }
+      menu.remove();
+      renderTriageCard();
+    });
+  });
+  btn.style.position = 'relative';
+  btn.appendChild(menu);
+  const dismiss = (e) => { if (!menu.contains(e.target) && e.target !== btn) { menu.remove(); document.removeEventListener('click', dismiss); } };
+  setTimeout(() => document.addEventListener('click', dismiss), 0);
 }
 
 function triageMobileAction(priority) {
@@ -8482,6 +8857,10 @@ function triageMobileAction(priority) {
       const todayEntry = getEntryForDate(todayStr());
       if (todayEntry && todayEntry.workDone && !todayEntry.workDone.includes(todo.text)) {
         todayEntry.workDone += '\n✓ ' + todo.text;
+      }
+      if (todo.recurrence) {
+        const hasOpenChild = state.todos.some(t => t.parentId === todo.id && t.status === 'open');
+        if (!hasOpenChild) spawnRecurringInstance(todo);
       }
     }
     triageCounts.done = (triageCounts.done || 0) + 1;
@@ -8644,6 +9023,7 @@ function toggleFocusInbox() {
 
 function renderDashboard() {
   promoteTomorrowItems();
+  checkRecurringTodos();
   const panel = document.getElementById('panel-dashboard');
 
   // Monthly/quarterly reflection (blocking, takes priority)
@@ -9352,8 +9732,8 @@ async function handleSubmit(e) {
     mood: selectedMood ? selectedMood.dataset.mood : '',
     energy: parseInt(document.getElementById('energySlider').value),
     planTomorrow: collectPlanTomorrow(),
-    isMonday: isMonday(today),
-    isFriday: isFriday(today),
+    isMonday: isMonday(entryDate),
+    isFriday: isFriday(entryDate),
     weeklyRetro: document.getElementById('weeklyRetro')?.value.trim() || '',
     aiReflection: null
   };
