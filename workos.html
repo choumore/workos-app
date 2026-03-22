@@ -3344,14 +3344,13 @@ body {
   padding: var(--space-xl);
 }
 .triage-mobile-card-text {
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.5;
   margin-bottom: var(--space-lg);
 }
-.triage-mobile-card-meta { font-size: 13px; color: var(--text-muted); }
-.triage-mobile-card-source { margin-bottom: 4px; }
+.triage-mobile-card-meta { font-size: 15px; color: var(--text-muted); display: flex; align-items: center; gap: var(--space-sm); flex-wrap: wrap; justify-content: center; }
 .triage-mobile-undo {
   text-align: center;
   margin-bottom: var(--space-md);
@@ -3371,8 +3370,8 @@ body {
   gap: var(--space-sm);
 }
 .triage-mobile-btn {
-  padding: 20px;
-  font: 15px var(--font-family);
+  padding: 28px 20px;
+  font: 17px var(--font-family);
   font-weight: 600;
   border: 1.5px solid var(--border-default);
   background: var(--surface-card);
@@ -3386,18 +3385,6 @@ body {
 .triage-mobile-btn.flash-tomorrow { background: rgba(59,130,246,0.15); border-color: #3b82f6; }
 .triage-mobile-btn.flash-week { background: rgba(184,138,45,0.15); border-color: #b88a2d; }
 .triage-mobile-btn.flash-backlog { background: rgba(128,128,128,0.15); border-color: #888; }
-.triage-mobile-delete {
-  text-align: right;
-  margin-top: var(--space-sm);
-}
-.triage-mobile-delete button {
-  font: 12px var(--font-family);
-  color: var(--text-muted);
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-.triage-mobile-delete button:active { color: var(--accent-negative); }
 .triage-mobile-done {
   flex: 1;
   display: flex;
@@ -7923,8 +7910,11 @@ function renderTriageCard() {
     <div class="triage-mobile-card triage-card-enter" id="triageCard">
       <div class="triage-mobile-card-text">${escapeHtml(item.text)}</div>
       <div class="triage-mobile-card-meta">
-        <div class="triage-mobile-card-source">from: ${escapeHtml(sourceLabel)}</div>
-        <div>${age}d ago</div>
+        <span>from: ${escapeHtml(sourceLabel)}</span>
+        <span>·</span>
+        <span>${age}d ago</span>
+        <span>·</span>
+        <button style="font:inherit;color:var(--accent-negative);background:none;border:none;cursor:pointer" onclick="triageMobileAction('delete')">Delete</button>
       </div>
     </div>
     <div class="triage-mobile-undo">${undoHtml}</div>
@@ -7933,8 +7923,7 @@ function renderTriageCard() {
       <button class="triage-mobile-btn" id="triBtn-tomorrow" onclick="triageMobileAction('tomorrow')">Next workday</button>
       <button class="triage-mobile-btn" id="triBtn-this-week" onclick="triageMobileAction('this-week')">This Week</button>
       <button class="triage-mobile-btn" id="triBtn-backlog" onclick="triageMobileAction('backlog')">Backlog</button>
-    </div>
-    <div class="triage-mobile-delete"><button onclick="triageMobileAction('delete')">🗑 Delete</button></div>`;
+    </div>`;
 }
 
 function triageMobileAction(priority) {
