@@ -1715,8 +1715,7 @@ body {
 #panel-log .log-header-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-xl);
+  gap: var(--space-lg);
   margin-bottom: var(--space-lg);
 }
 .log-date-picker {
@@ -6116,16 +6115,9 @@ function renderTodos() {
     `<button class="sub-nav-btn${todosFilter === f.key ? ' active' : ''}" onclick="todosFilter='${f.key}';todosAgeFilter='all';renderTodos()">${f.label}${counts[f.key] ? ' (' + counts[f.key] + ')' : ''}</button>`
   ).join('');
 
-  const ageFilters = [
-    { key: 'all', label: 'All' },
-    { key: '1d', label: '1d' },
-    { key: '1w', label: '1w' },
-    { key: '2w', label: '2w' },
-    { key: '1m', label: '1m' }
-  ];
-  const ageFilterHtml = todosFilter === 'inbox' ? ageFilters.map(f =>
-    `<button class="todo-age-btn${todosAgeFilter === f.key ? ' active' : ''}" onclick="todosAgeFilter='${f.key}';renderTodos()">${f.label}</button>`
-  ).join('') : '';
+  const triageBtnHtml = todosFilter === 'inbox' && items.length > 0
+    ? `<button class="btn-secondary btn-accent" style="font-size:12px" onclick="openMobileTriage('inbox')">Triage (${items.length})</button>`
+    : '';
 
   const emptyMessages = {
     inbox: 'No new action items. Meeting action items will appear here automatically.',
@@ -6139,7 +6131,7 @@ function renderTodos() {
   if (!items.length) {
     listHtml = `<div class="todo-empty">${emptyMessages[todosFilter]}</div>`;
   } else if (todosFilter === 'inbox') {
-    listHtml = `<div style="text-align:center;margin-bottom:var(--space-lg)"><button class="btn-secondary btn-accent" onclick="openMobileTriage('inbox')">Triage Inbox (${items.length})</button></div>` + items.map(t => renderTodoItem(t)).join('');
+    listHtml = items.map(t => renderTodoItem(t)).join('');
   } else {
     listHtml = items.map(t => renderTodoItem(t)).join('');
   }
@@ -6147,7 +6139,7 @@ function renderTodos() {
   panel.innerHTML = `
     <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:var(--space-xl)">
       <div class="sub-nav" style="margin-bottom:0">${filterHtml}</div>
-      ${ageFilterHtml ? `<div class="todo-age-filter">${ageFilterHtml}</div>` : ''}
+      ${triageBtnHtml}
     </div>
     ${todosFilter !== 'done' ? `<div class="todo-add-item">
       <input type="text" id="addManualTodoInput" placeholder="Add a to-do..." onkeydown="if(event.key==='Enter'){addManualTodo();event.preventDefault()}">
