@@ -8334,7 +8334,7 @@ function getMobileTabsHtml() {
   return `<div class="triage-mobile-tabs">
     <button class="triage-mobile-tab${mobileMode === 'inbox' ? ' active' : ''}" onclick="openMobileTriage('inbox')">Inbox${inboxCount ? ' (' + inboxCount + ')' : ''}</button>
     <button class="triage-mobile-tab${mobileMode === 'today' ? ' active' : ''}" onclick="openMobileTriage('today')">Today${todayOpen + todayDone ? ' (' + todayDone + '/' + (todayOpen + todayDone) + ')' : ''}</button>
-    <button class="btn-secondary btn-accent" style="font-size:13px;margin-left:auto;padding:var(--space-xs) var(--space-lg)" onclick="closeMobileTriage()">Done</button>
+    <button class="btn-secondary btn-accent" style="font-size:13px;margin-left:auto;padding:var(--space-md) var(--space-lg)" onclick="closeMobileTriage()">Done</button>
   </div>`;
 }
 
@@ -8431,9 +8431,9 @@ function renderTriageCard() {
       <div class="triage-mobile-card-text">${escapeHtml(item.text)}</div>
       <div class="triage-mobile-card-meta">
         <span>from: ${escapeHtml(sourceLabel)} · ${age}d ago</span>
-        <span style="display:flex;gap:var(--space-md)">
-          <button style="font:inherit;color:#2d8a4e;background:none;border:none;cursor:pointer;font-weight:600" onclick="triageMobileAction('done')">✓ Done</button>
-          <button style="font:inherit;color:var(--accent-negative);background:none;border:none;cursor:pointer;font-weight:600" onclick="triageMobileAction('delete')">✕ Delete</button>
+        <span style="display:flex;gap:var(--space-md);align-items:center">
+          <button style="font:inherit;color:#2d8a4e;background:none;border:none;cursor:pointer;font-weight:700;display:flex;align-items:center;gap:3px" onclick="triageMobileAction('done')"><span style="font-weight:900">✓</span> Done</button>
+          <button style="font:inherit;color:var(--accent-negative);background:none;border:none;cursor:pointer;font-weight:700;display:flex;align-items:center;gap:3px" onclick="triageMobileAction('delete')"><span style="font-weight:900">✕</span> Delete</button>
         </span>
       </div>
     </div>
