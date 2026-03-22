@@ -9062,11 +9062,6 @@ function renderLogTab() {
   const today = logForDate || todayStr();
   const existingEntry = getEntryForDate(today);
 
-  if (logMode === 'intention') {
-    renderIntentionScreen(panel);
-    return;
-  }
-
   if (existingEntry && logMode === 'submitted') {
     renderPostSubmit(panel, existingEntry);
     return;
@@ -9082,28 +9077,6 @@ function renderLogTab() {
 
   logMode = 'form';
   const draft = loadDraft();
-  let weekIntention = getWeekIntention(today);
-
-  // Weekly intention rollover: seed unchecked items from last week
-  if (!weekIntention) {
-    const monday = getWeekMonday(today);
-    const dayOfWeek = new Date(today + 'T12:00:00').getDay();
-    if (dayOfWeek >= 1 && dayOfWeek <= 2) { // Mon or Tue
-      const lastMonday = new Date(monday + 'T12:00:00');
-      lastMonday.setDate(lastMonday.getDate() - 7);
-      const lastMondayStr = lastMonday.toISOString().split('T')[0];
-      const lastIntention = state.intentions[lastMondayStr] || '';
-      if (lastIntention) {
-        const lines = getIntentionLines(lastIntention);
-        const unchecked = lines.filter(l => !l.checked);
-        if (unchecked.length > 0) {
-          const seeded = unchecked.map(l => `- [ ] ${l.text}`).join('\n');
-          saveIntention(seeded);
-          weekIntention = seeded;
-        }
-      }
-    }
-  }
 
   const dayName = getDayName(today);
   const mon = isMonday(today);
@@ -9135,8 +9108,6 @@ function renderLogTab() {
     </div>
 
     <div id="meetingNudges">${renderMeetingNudgeBanners()}</div>
-
-    ${renderReminders(weekIntention, getAccumulatedPlanItems())}
 
     <form id="logForm">
       <div class="mood-energy-row">
