@@ -6050,6 +6050,8 @@ function renderTodos() {
   let listHtml;
   if (!items.length) {
     listHtml = `<div class="todo-empty">${emptyMessages[todosFilter]}</div>`;
+  } else if (todosFilter === 'inbox') {
+    listHtml = `<div style="text-align:center;margin-bottom:var(--space-lg)"><button class="btn-secondary btn-accent" onclick="openMobileTriage('inbox')">Triage Inbox (${items.length})</button></div>` + items.map(t => renderTodoItem(t)).join('');
   } else {
     listHtml = items.map(t => renderTodoItem(t)).join('');
   }
@@ -6084,14 +6086,17 @@ function renderTodoItem(todo) {
     sourceClass = meeting ? 'todo-source clickable' : 'todo-source';
   }
 
-  const allPriorities = ['today', 'tomorrow', 'this-week', 'backlog'];
-  const labels = { inbox: 'Inbox', today: 'Today', tomorrow: 'Tomorrow', 'this-week': 'This Week', backlog: 'Backlog', later: 'Backlog' };
-  const available = allPriorities.filter(p => p !== todo.priority && !(todo.priority === 'backlog' && p === 'later'));
-  // Always show 4 buttons in 2x2: swap out current priority for inbox
-  const gridItems = todo.priority === 'inbox' ? allPriorities : [...available.slice(0, 3), 'inbox'].slice(0, 4);
-  const priorityBtns = isDone ? '' : gridItems.map(p =>
-    `<button class="todo-priority-btn" onclick="setTodoPriority('${todo.id}','${p}')">${labels[p] || p}</button>`
-  ).join('');
+  // No priority buttons for inbox items — use triage flow instead
+  let priorityBtns = '';
+  if (!isDone && todo.priority !== 'inbox') {
+    const allPriorities = ['today', 'tomorrow', 'this-week', 'backlog'];
+    const labels = { inbox: 'Inbox', today: 'Today', tomorrow: 'Tomorrow', 'this-week': 'This Week', backlog: 'Backlog', later: 'Backlog' };
+    const available = allPriorities.filter(p => p !== todo.priority);
+    const gridItems = [...available.slice(0, 3), 'inbox'].slice(0, 4);
+    priorityBtns = gridItems.map(p =>
+      `<button class="todo-priority-btn" onclick="setTodoPriority('${todo.id}','${p}')">${labels[p] || p}</button>`
+    ).join('');
+  }
 
   const addedIndicators = [];
   if (todo.addedToIntention) addedIndicators.push('Added to intention');
