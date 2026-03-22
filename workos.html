@@ -11444,10 +11444,13 @@ function attachMeetingsListeners() {
       cards.forEach((card, i) => {
         if (card.getBoundingClientRect().top < 150) currentCardIdx = i;
       });
+      const headerOffset = 56;
       if (dx < -60 && currentCardIdx < cards.length - 1) {
-        cards[currentCardIdx + 1].scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const y = cards[currentCardIdx + 1].getBoundingClientRect().top + window.scrollY - headerOffset;
+        window.scrollTo({ top: y, behavior: 'smooth' });
       } else if (dx > 60 && currentCardIdx > 0) {
-        cards[currentCardIdx - 1].scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const y = cards[currentCardIdx - 1].getBoundingClientRect().top + window.scrollY - headerOffset;
+        window.scrollTo({ top: y, behavior: 'smooth' });
       }
     });
   }
