@@ -3204,9 +3204,11 @@ body {
    Responsive — Mobile
    ======================================== */
 @media (max-width: 600px) {
+  html, body { overflow-x: hidden; }
   #app {
     padding: 0 var(--space-lg);
     padding-bottom: 60px;
+    overflow-x: hidden;
   }
   .app-header {
     flex-direction: row;
