@@ -8416,7 +8416,7 @@ function renderTriageCard() {
   const item = triageQueue[triageIndex];
   const age = Math.floor((Date.now() - new Date(item.createdAt || 0).getTime()) / 86400000);
   const meeting = item.meetingId ? state.meetings.find(m => m.id === item.meetingId) : null;
-  const sourceLabel = meeting ? meeting.title : 'Manual';
+  const sourceLabel = meeting ? meeting.title : item.sourceTitle || (item.source === 'follow-up' ? 'Follow-up' : item.source === 'coaching' ? 'Coaching' : item.source === 'visibility' ? 'Visibility' : 'Manual');
   const undoHtml = triageLastAction
     ? `<button onclick="triageUndo()">↩ Undo: "${escapeHtml((triageLastAction.text || '').substring(0, 30))}" → ${triageLastAction.priority}</button>`
     : '';
