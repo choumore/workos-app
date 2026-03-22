@@ -6108,12 +6108,16 @@ function renderTodos() {
     if (cutoff) items = items.filter(t => t.createdAt && (now - new Date(t.createdAt).getTime()) >= cutoff);
   }
 
-  const filterHtml = filters.map(f =>
-    `<button class="sub-nav-btn${todosFilter === f.key ? ' active' : ''}" onclick="todosFilter='${f.key}';todosAgeFilter='all';renderTodos()">${f.label}${counts[f.key] ? ' (' + counts[f.key] + ')' : ''}</button>`
-  ).join('');
+  const isMobile = window.innerWidth <= 600;
+  const mobileLabels = { inbox: 'Inbox', today: 'Today', tomorrow: 'Tmr', 'this-week': 'Wk', backlog: 'Backlog', done: '☑' };
+  const filterHtml = filters.map(f => {
+    const label = isMobile ? mobileLabels[f.key] : f.label;
+    const count = !isMobile && counts[f.key] ? ' (' + counts[f.key] + ')' : '';
+    return `<button class="sub-nav-btn${todosFilter === f.key ? ' active' : ''}" onclick="todosFilter='${f.key}';todosAgeFilter='all';renderTodos()">${label}${count}</button>`;
+  }).join('');
 
   const triageBtnHtml = todosFilter === 'inbox' && items.length > 0
-    ? `<button class="btn-secondary btn-accent" style="font-size:12px" onclick="openMobileTriage('inbox')">Triage (${items.length})</button>`
+    ? `<button class="btn-secondary btn-accent" style="font-size:12px;${isMobile ? 'width:100%' : ''}" onclick="openMobileTriage('inbox')">Triage (${items.length})</button>`
     : '';
 
   const emptyMessages = {
