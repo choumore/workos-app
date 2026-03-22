@@ -9788,9 +9788,10 @@ function renderHistoryCalendar() {
   const today = new Date(todayStr() + 'T12:00:00');
   const todayISO = todayStr();
 
-  // Go back ~52 weeks, align to Monday
+  // Go back ~52 weeks (26 on mobile), align to Monday
+  const numWeeks = window.innerWidth <= 600 ? 26 : 52;
   const start = new Date(today);
-  start.setDate(start.getDate() - 52 * 7);
+  start.setDate(start.getDate() - numWeeks * 7);
   const dayOfWeek = start.getDay();
   const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
   start.setDate(start.getDate() + mondayOffset);
