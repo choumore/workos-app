@@ -3403,6 +3403,42 @@ body {
 .triage-card-exit { animation: triageCardOut 200ms ease forwards; }
 @keyframes triageCardIn { from { transform: translateX(-30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 @keyframes triageCardOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(60px); opacity: 0; } }
+.triage-mobile-tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  border-bottom: 1px solid var(--border-default);
+  padding-bottom: var(--space-sm);
+}
+.triage-mobile-tab {
+  font: 14px var(--font-family);
+  font-weight: 500;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+}
+.triage-mobile-tab.active {
+  color: var(--text-primary);
+  background: var(--surface-card);
+  font-weight: 600;
+}
+.mobile-today-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  padding: var(--space-lg) var(--space-md);
+  border-bottom: 1px solid var(--border-default);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.mobile-today-item:active { background: var(--surface-card); }
+.mobile-today-item.done { opacity: 0.5; }
+.mobile-today-check { font-size: 20px; flex-shrink: 0; line-height: 1; }
+.mobile-today-text { font-size: 16px; line-height: 1.5; color: var(--text-primary); }
+.mobile-today-text.strikethrough { text-decoration: line-through; color: var(--text-muted); }
 
 /* To-Dos */
 .todo-list {
@@ -7839,19 +7875,31 @@ let triageIndex = 0;
 let triageLastAction = null;
 let triageLastPriority = 'today';
 let triageCounts = { today: 0, tomorrow: 0, 'this-week': 0, backlog: 0, deleted: 0 };
+let mobileMode = 'inbox'; // 'inbox' | 'today'
 
-function openMobileTriage() {
-  triageQueue = (state.todos || []).filter(t => t.status === 'open' && t.priority === 'inbox');
-  if (triageQueue.length === 0) { showToast('Inbox is empty'); return; }
+function openMobileTriage(mode) {
+  mobileMode = mode || 'inbox';
+
+  if (mobileMode === 'inbox') {
+    triageQueue = (state.todos || []).filter(t => t.status === 'open' && t.priority === 'inbox');
+    if (triageQueue.length === 0 && mode === 'inbox') { mobileMode = 'today'; } // auto-switch if inbox empty
+  }
   triageIndex = 0;
   triageLastAction = null;
   triageCounts = { today: 0, tomorrow: 0, 'this-week': 0, backlog: 0, deleted: 0 };
 
-  const overlay = document.createElement('div');
-  overlay.className = 'triage-mobile';
-  overlay.id = 'mobileTriage';
-  document.body.appendChild(overlay);
-  renderTriageCard();
+  if (!document.getElementById('mobileTriage')) {
+    const overlay = document.createElement('div');
+    overlay.className = 'triage-mobile';
+    overlay.id = 'mobileTriage';
+    document.body.appendChild(overlay);
+  }
+
+  if (mobileMode === 'today') {
+    renderMobileToday();
+  } else {
+    renderTriageCard();
+  }
 
   // Swipe gesture support
   let touchStartX = 0;
@@ -7861,6 +7909,60 @@ function openMobileTriage() {
     if (dx > 80) triageMobileAction(triageLastPriority); // swipe right = repeat last
     else if (dx < -80) triageSkip(); // swipe left = skip
   });
+}
+
+function getMobileTabsHtml() {
+  const inboxCount = (state.todos || []).filter(t => t.status === 'open' && t.priority === 'inbox').length;
+  const todayItems = (state.todos || []).filter(t => t.priority === 'today');
+  const todayOpen = todayItems.filter(t => t.status === 'open').length;
+  const todayDone = todayItems.filter(t => t.status === 'done' && t.completedAt && t.completedAt.substring(0, 10) === todayStr()).length;
+  return `<div class="triage-mobile-tabs">
+    <button class="triage-mobile-tab${mobileMode === 'inbox' ? ' active' : ''}" onclick="openMobileTriage('inbox')">Inbox${inboxCount ? ' (' + inboxCount + ')' : ''}</button>
+    <button class="triage-mobile-tab${mobileMode === 'today' ? ' active' : ''}" onclick="openMobileTriage('today')">Today${todayOpen + todayDone ? ' (' + todayDone + '/' + (todayOpen + todayDone) + ')' : ''}</button>
+    <button style="font:13px var(--font-family);color:var(--text-muted);background:none;border:none;cursor:pointer;margin-left:auto" onclick="closeMobileTriage()">Done</button>
+  </div>`;
+}
+
+function renderMobileToday() {
+  const overlay = document.getElementById('mobileTriage');
+  if (!overlay) return;
+
+  const todayItems = (state.todos || []).filter(t => t.priority === 'today');
+  const openItems = todayItems.filter(t => t.status === 'open');
+  const doneItems = todayItems.filter(t => t.status === 'done' && t.completedAt && t.completedAt.substring(0, 10) === todayStr());
+  const allItems = [...openItems, ...doneItems];
+
+  const itemsHtml = allItems.length > 0 ? allItems.map(t => {
+    const isDone = t.status === 'done';
+    return `<div class="mobile-today-item${isDone ? ' done' : ''}" onclick="toggleMobileTodo('${t.id}')">
+      <span class="mobile-today-check">${isDone ? '✓' : '○'}</span>
+      <span class="mobile-today-text${isDone ? ' strikethrough' : ''}">${escapeHtml(t.text)}</span>
+    </div>`;
+  }).join('') : '<div style="text-align:center;color:var(--text-muted);font-size:15px;padding:var(--space-xl)">No items for today. Triage your inbox to add some.</div>';
+
+  overlay.innerHTML = `
+    ${getMobileTabsHtml()}
+    <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;margin-top:var(--space-md)">
+      ${itemsHtml}
+    </div>`;
+}
+
+function toggleMobileTodo(todoId) {
+  const t = state.todos.find(t => t.id === todoId);
+  if (!t) return;
+  if (t.status === 'done') {
+    t.status = 'open';
+    t.completedAt = null;
+  } else {
+    t.status = 'done';
+    t.completedAt = new Date().toISOString();
+    const todayEntry = getEntryForDate(todayStr());
+    if (todayEntry && todayEntry.workDone && !todayEntry.workDone.includes(t.text)) {
+      todayEntry.workDone += '\n✓ ' + t.text;
+    }
+  }
+  saveState();
+  renderMobileToday();
 }
 
 function renderTriageCard() {
@@ -7881,8 +7983,8 @@ function renderTriageCard() {
     ].filter(Boolean).join('<br>');
 
     overlay.innerHTML = `
-      <div class="triage-mobile-header">
-        <span class="triage-mobile-title">INBOX</span>
+      ${getMobileTabsHtml()}
+      <div class="triage-mobile-header" style="margin-top:var(--space-md)">
         <div class="triage-mobile-progress"><div class="triage-mobile-progress-fill" style="width:100%"></div></div>
         <span class="triage-mobile-count">${total}/${total}</span>
       </div>
@@ -7891,7 +7993,6 @@ function renderTriageCard() {
         <div class="triage-mobile-done-title">Inbox clear</div>
         <div class="triage-mobile-done-count">${totalTriaged} item${totalTriaged !== 1 ? 's' : ''} triaged</div>
         <div class="triage-mobile-done-breakdown">${breakdown}</div>
-        <button class="btn-secondary btn-accent" style="margin-top:var(--space-xl)" onclick="closeMobileTriage()">Back to Dashboard</button>
       </div>`;
     return;
   }
@@ -7904,8 +8005,8 @@ function renderTriageCard() {
     : '';
 
   overlay.innerHTML = `
-    <div class="triage-mobile-header">
-      <span class="triage-mobile-title">INBOX</span>
+    ${getMobileTabsHtml()}
+    <div class="triage-mobile-header" style="margin-top:var(--space-md)">
       <div class="triage-mobile-progress"><div class="triage-mobile-progress-fill" style="width:${progress}%"></div></div>
       <span class="triage-mobile-count">${triageIndex}/${total}</span>
     </div>
@@ -13045,9 +13146,11 @@ async function init() {
 
 init();
 
-// Handle #triage URL hash for direct mobile access
+// Handle URL hash for direct mobile access
 if (window.location.hash === '#triage') {
-  setTimeout(() => openMobileTriage(), 500);
+  setTimeout(() => openMobileTriage('inbox'), 500);
+} else if (window.location.hash === '#today') {
+  setTimeout(() => openMobileTriage('today'), 500);
 }
 </script>
 </body>
