@@ -6109,11 +6109,9 @@ function renderTodos() {
   }
 
   const isMobile = window.innerWidth <= 600;
-  const mobileLabels = { inbox: 'Inbox', today: 'Today', tomorrow: 'Tmr', 'this-week': 'Wk', backlog: 'Backlog', done: '☑' };
   const filterHtml = filters.map(f => {
-    const label = isMobile ? mobileLabels[f.key] : f.label;
     const count = !isMobile && counts[f.key] ? ' (' + counts[f.key] + ')' : '';
-    return `<button class="sub-nav-btn${todosFilter === f.key ? ' active' : ''}" onclick="todosFilter='${f.key}';todosAgeFilter='all';renderTodos()">${label}${count}</button>`;
+    return `<button class="sub-nav-btn${todosFilter === f.key ? ' active' : ''}" onclick="todosFilter='${f.key}';todosAgeFilter='all';renderTodos()">${f.label}${count}</button>`;
   }).join('');
 
   const triageBtnHtml = todosFilter === 'inbox' && items.length > 0
