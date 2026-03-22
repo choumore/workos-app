@@ -3266,6 +3266,8 @@ body {
 .visib-evidence-option input[type="radio"] { margin-top: 3px; flex-shrink: 0; }
 .visib-evidence-name { font-weight: 600; color: var(--text-primary); font-size: 13px; }
 .visib-evidence-desc { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.visib-type-add { border-style: dashed; color: var(--text-muted); }
+.visib-type-add:hover { color: var(--text-primary); }
 
 /* ========================================
    Responsive — Mobile
@@ -3799,6 +3801,7 @@ let state = {
   todayAiSuggestions: null,
   vectorEvidenceDenied: [],
   weeklyTriageCompletedAt: null,
+  customVisibilityTypes: [],
   openLoops: [],
   coachingState: { activeObservations: [], resolvedObservations: [], lastUpdated: null },
   loopStreakWeeks: 0,
@@ -3856,6 +3859,7 @@ function loadState() {
       state.lastDayPromoted = saved.lastDayPromoted || null;
       state.todayAiSuggestions = saved.todayAiSuggestions || null;
       state.weeklyTriageCompletedAt = saved.weeklyTriageCompletedAt || null;
+      state.customVisibilityTypes = saved.customVisibilityTypes || [];
       state.openLoops = saved.openLoops || [];
       state.coachingState = saved.coachingState || { activeObservations: [], resolvedObservations: [], lastUpdated: null };
       state.loopStreakWeeks = saved.loopStreakWeeks || 0;
@@ -4751,7 +4755,8 @@ async function syncPush() {
       loopStreakWeeks: state.loopStreakWeeks || 0,
       loopStreakBestWeeks: state.loopStreakBestWeeks || 0,
       monthlyReflections: state.monthlyReflections || {},
-      quarterlyReflections: state.quarterlyReflections || {}
+      quarterlyReflections: state.quarterlyReflections || {},
+      customVisibilityTypes: state.customVisibilityTypes || []
     };
     const content = JSON.stringify(syncState, null, 2);
     const headers = {
@@ -12645,13 +12650,17 @@ function deleteContrib() {
 /* ========================================
    Visibility Tab
    ======================================== */
-const VISIBILITY_TYPES = [
+const BUILTIN_VISIBILITY_TYPES = [
   { id: 'waywo', label: 'WAYWO Post', vectors: ['Communication', 'Craft'] },
   { id: 'draftboard', label: 'Draftboard', vectors: ['Craft', 'Collaboration'], subtypes: ['WIP post', 'Feedback given'] },
   { id: 'crit', label: 'Design Crit', vectors: ['Craft', 'Collaboration'] },
   { id: 'rationale', label: 'Rationale Doc', vectors: ['Strategy', 'Communication'] },
   { id: 'hawkins', label: 'Hawkins', vectors: ['Technical Depth', 'Cross-team Influence'] }
 ];
+
+function getVisibilityTypes() {
+  return [...BUILTIN_VISIBILITY_TYPES, ...(state.customVisibilityTypes || [])];
+}
 
 const ALL_VECTORS = ['Communication', 'Craft', 'Technical Depth', 'Cross-team Influence', 'Strategy', 'Leadership', 'Collaboration'];
 
@@ -12765,11 +12774,11 @@ let visibDraftType = null;
 let visibDraftText = '';
 
 function getVisibTypeLabel(id) {
-  return VISIBILITY_TYPES.find(t => t.id === id)?.label || id;
+  return getVisibilityTypes().find(t => t.id === id)?.label || id;
 }
 
 function getVisibTypeObj(id) {
-  return VISIBILITY_TYPES.find(t => t.id === id);
+  return getVisibilityTypes().find(t => t.id === id);
 }
 
 const AUDIENCE_LABELS = { pod: 'CIA Pod', cbp: 'CBP', org: 'XD Org' };
@@ -13060,9 +13069,9 @@ function renderVisibLog(panel) {
   const typeObj = visibLogType ? getVisibTypeObj(visibLogType) : null;
   const hasSubtypes = typeObj && typeObj.subtypes && typeObj.subtypes.length > 0;
 
-  const typeGrid = VISIBILITY_TYPES.map(t =>
+  const typeGrid = getVisibilityTypes().map(t =>
     `<button class="visib-type-btn${visibLogType === t.id ? ' selected' : ''}" onclick="selectVisibType('${t.id}')">${t.label}</button>`
-  ).join('');
+  ).join('') + `<button class="visib-type-btn visib-type-add" onclick="addCustomVisibilityType()">+ Add</button>`;
 
   const subtypeHtml = hasSubtypes ? `
     <div class="form-group">
@@ -13147,6 +13156,17 @@ function selectVisibSubtype(subtype) {
   const btns = document.querySelectorAll('.visib-log-form .visib-type-btn');
   // Refresh the subtype buttons
   renderVisibLog(document.getElementById('panel-visibility'));
+}
+
+function addCustomVisibilityType() {
+  const label = prompt('Activity type name:');
+  if (!label || !label.trim()) return;
+  const id = 'custom-' + Date.now();
+  if (!state.customVisibilityTypes) state.customVisibilityTypes = [];
+  state.customVisibilityTypes.push({ id, label: label.trim(), vectors: [] });
+  saveState();
+  visibLogType = id;
+  renderVisibility();
 }
 
 function saveVisibActivity() {
@@ -13436,7 +13456,7 @@ function renderVisibDetail(panel) {
   const a = state.visibilityActivities.find(x => String(x.id) === String(visibDetailId));
   if (!a) { visibView = 'dashboard'; visibDetailId = null; renderVisibility(); return; }
 
-  const typeGrid = VISIBILITY_TYPES.map(t =>
+  const typeGrid = getVisibilityTypes().map(t =>
     `<button class="visib-type-btn${a.type === t.id ? ' selected' : ''}" onclick="document.querySelectorAll('#visibDetailTypeGrid .visib-type-btn').forEach(b=>b.classList.remove('selected'));this.classList.add('selected');document.getElementById('visibDetailType').value='${t.id}';updateVisibDetailVectors('${t.id}')">${t.label}</button>`
   ).join('');
 
