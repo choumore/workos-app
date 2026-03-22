@@ -6133,9 +6133,9 @@ function renderTodos() {
   }
 
   panel.innerHTML = `
-    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:var(--space-xl)">
+    <div style="margin-bottom:var(--space-xl)">
       <div class="sub-nav" style="margin-bottom:0">${filterHtml}</div>
-      ${triageBtnHtml}
+      ${triageBtnHtml ? `<div style="margin-top:var(--space-md)">${triageBtnHtml}</div>` : ''}
     </div>
     ${todosFilter !== 'done' ? `<div class="todo-add-item">
       <input type="text" id="addManualTodoInput" placeholder="Add a to-do..." onkeydown="if(event.key==='Enter'){addManualTodo();event.preventDefault()}">
