@@ -2847,9 +2847,13 @@ body {
 .meeting-card-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-sm);
   margin-bottom: var(--space-xs);
 }
+.meeting-card-header-left { display: flex; align-items: center; gap: var(--space-sm); }
+.meeting-card-header-right { font-size: 13px; color: var(--text-muted); white-space: nowrap; }
+.meeting-card-actions { display: flex; gap: var(--space-xs); white-space: nowrap; flex-shrink: 0; }
 .meeting-card-date {
   font-size: 13px;
   color: var(--text-muted);
@@ -2871,13 +2875,6 @@ body {
 .meeting-title-placeholder {
   color: var(--text-muted);
   border-bottom: 1px dashed var(--border-default);
-}
-.meeting-card-meta {
-  font-size: 13px;
-  color: var(--text-muted);
-  white-space: nowrap;
-  flex: 1;
-  text-align: right;
 }
 .btn-reanalyze {
   background: none;
@@ -5633,18 +5630,22 @@ function renderMeetingCard(m) {
   if (m.link) metaParts.push(`<a href="${escapeHtml(m.link)}" target="_blank" style="color:var(--accent)">link</a>`);
   const truncated = (m.transcript || '').length > 200000;
 
+  const metaHtml = metaParts.length ? metaParts.join(' &middot; ') : '';
+
   return `<div class="meeting-card" data-meeting-id="${escapeHtml(m.id)}">
     <div class="meeting-card-header">
-      <span class="meeting-card-date" style="cursor:pointer" title="Click to edit date" onclick="editMeetingDate('${escapeHtml(m.id)}', this)">${dateStr || 'No date'}</span>
-      ${truncated ? `<span style="font-size:10px;font-weight:600;color:var(--text-muted);background:var(--bg-primary);padding:2px 6px;border-radius:var(--radius-full);border:1px solid var(--border-default)" title="Transcript is ${Math.round((m.transcript || '').length / 1000)}K chars — analysis used first 40K">Truncated</span>` : ''}
-      <select class="meeting-type-select" style="color:${typeInfo.color.text};background-color:${typeInfo.color.bg}" onchange="reprocessMeeting('${escapeHtml(m.id)}', this.value)">
-        ${typeOptions}
-      </select>
+      <div class="meeting-card-header-left">
+        <span class="meeting-card-date" style="cursor:pointer" title="Click to edit date" onclick="editMeetingDate('${escapeHtml(m.id)}', this)">${dateStr || 'No date'}</span>
+        ${truncated ? `<span style="font-size:10px;font-weight:600;color:var(--text-muted);background:var(--bg-primary);padding:2px 6px;border-radius:var(--radius-full);border:1px solid var(--border-default)" title="Transcript is ${Math.round((m.transcript || '').length / 1000)}K chars — analysis used first 40K">Truncated</span>` : ''}
+        <select class="meeting-type-select" style="color:${typeInfo.color.text};background-color:${typeInfo.color.bg}" onchange="reprocessMeeting('${escapeHtml(m.id)}', this.value)">
+          ${typeOptions}
+        </select>
+      </div>
+      ${metaHtml ? `<div class="meeting-card-header-right">${metaHtml}</div>` : ''}
     </div>
     <div class="meeting-card-title-row">
       <span class="meeting-card-title${(m.title || '') === 'Meeting Transcription' ? ' meeting-title-placeholder' : ''}" style="cursor:pointer" title="Click to edit title" onclick="editMeetingTitle('${escapeHtml(m.id)}', this)">${escapeHtml(m.title || 'Untitled')}${(m.title || '') === 'Meeting Transcription' ? ' <span style="font-size:11px;font-weight:400;color:var(--text-muted)">— click to rename</span>' : ''}</span>
-      <span class="meeting-card-meta">
-        ${metaParts.length ? metaParts.join(' &middot; ') + ' &middot; ' : ''}
+      <span class="meeting-card-actions">
         <button class="btn-reanalyze" onclick="reanalyzeMeeting('${escapeHtml(m.id)}', this)">Reanalyze</button>
         <button class="btn-reanalyze" style="color:var(--accent-negative)" onclick="event.stopPropagation();deleteMeeting('${escapeHtml(m.id)}')">Delete</button>
       </span>
