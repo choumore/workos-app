@@ -9223,19 +9223,16 @@ function renderLogTab() {
     </div>
     <div class="log-header-row">
       <input type="date" id="logDatePicker" value="${today}" class="log-date-picker" onchange="logForDate=this.value;renderLogTab()">
-      <div class="log-header-right">
-        ${mon ? '<span class="date-label">Start of week</span>' : ''}
-        <div class="week-strip">
-          ${weekDates.map((d, i) => {
-            const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-            const filled = !!getEntryForDate(d);
-            const isToday = d === today;
-            return `<div class="week-day">
-              <span class="week-day-label">${labels[i]}</span>
-              <div class="week-day-dot${filled ? ' filled' : ''}${isToday ? ' today' : ''}"></div>
-            </div>`;
-          }).join('')}
-        </div>
+      <div class="week-strip">
+        ${weekDates.map((d, i) => {
+          const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+          const filled = !!getEntryForDate(d);
+          const isToday = d === today;
+          return `<div class="week-day">
+            <span class="week-day-label">${labels[i]}</span>
+            <div class="week-day-dot${filled ? ' filled' : ''}${isToday ? ' today' : ''}"></div>
+          </div>`;
+        }).join('')}
       </div>
     </div>
 
