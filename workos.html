@@ -7922,10 +7922,11 @@ function renderTriageCard() {
     <div class="triage-mobile-undo">${undoHtml}</div>
     <div class="triage-mobile-actions">
       <button class="triage-mobile-btn" id="triBtn-today" onclick="triageMobileAction('today')">Today</button>
-      <button class="triage-mobile-btn" id="triBtn-tomorrow" onclick="triageMobileAction('tomorrow')">Next workday</button>
+      <button class="triage-mobile-btn" id="triBtn-tomorrow" onclick="triageMobileAction('tomorrow')">Next WeekDay</button>
       <button class="triage-mobile-btn" id="triBtn-this-week" onclick="triageMobileAction('this-week')">This Week</button>
       <button class="triage-mobile-btn" id="triBtn-backlog" onclick="triageMobileAction('backlog')">Backlog</button>
-    </div>`;
+    </div>
+    <div style="text-align:center;margin-top:var(--space-sm)"><button style="font:14px var(--font-family);color:var(--text-muted);background:none;border:none;cursor:pointer;padding:var(--space-sm) var(--space-lg)" onclick="triageSkip()">Skip — decide later</button></div>`;
 }
 
 function triageMobileAction(priority) {
