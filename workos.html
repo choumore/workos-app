@@ -3196,6 +3196,56 @@ body {
   font-size: 12px;
   color: var(--text-muted);
 }
+.visib-matrix {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.visib-matrix th {
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: var(--space-xs) var(--space-sm);
+  text-align: center;
+  font-size: 11px;
+}
+.visib-matrix td { padding: var(--space-sm); text-align: center; }
+.visib-matrix-row-label {
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-align: left;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.visib-matrix-cell {
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 13px;
+  transition: all 150ms;
+}
+.visib-matrix-cell.high { background: rgba(45,138,78,0.2); color: #2d8a4e; }
+.visib-matrix-cell.mid { background: rgba(184,138,45,0.15); color: #b88a2d; }
+.visib-matrix-cell.empty { background: var(--surface-card); color: var(--text-muted); }
+.visib-matrix-cell:hover { opacity: 0.7; }
+.visib-matrix-legend {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: var(--space-sm);
+  display: flex;
+  gap: var(--space-md);
+  align-items: center;
+}
+.visib-matrix-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  margin-right: 3px;
+  vertical-align: middle;
+}
+.visib-matrix-dot.high { background: rgba(45,138,78,0.3); }
+.visib-matrix-dot.mid { background: rgba(184,138,45,0.2); }
+.visib-matrix-dot.empty { background: var(--surface-card); }
 
 /* ========================================
    Responsive — Mobile
@@ -4601,6 +4651,17 @@ function runMigrations() {
       });
     }
     state.dataVersion = 4;
+    changed = true;
+  }
+
+  if (v < 5) {
+    // Phase 4: Generalized visibility model
+    const audienceMap = { pod: 'team', cbp: 'function', org: 'organization' };
+    for (const a of (state.visibilityActivities || [])) {
+      if (!a.reach) a.reach = audienceMap[a.audience] || 'team';
+      if (!a.evidenceType) a.evidenceType = 'shared';
+    }
+    state.dataVersion = 5;
     changed = true;
   }
 
@@ -12830,29 +12891,43 @@ function renderVisibDashboard(panel) {
     </div>`;
   }).join('');
 
-  // Reach distribution bar
-  const reachHtml = reach.total > 0
-    ? `<div class="visib-reach-bar">
-        <div class="visib-reach-segment pod" style="width:${reach.pod}%"></div>
-        <div class="visib-reach-segment cbp" style="width:${reach.cbp}%"></div>
-        <div class="visib-reach-segment org" style="width:${reach.org}%"></div>
-      </div>
-      <div class="visib-reach-legend">
-        <span><span class="visib-reach-legend-dot pod"></span>CIA Pod ${reach.pod}%</span>
-        <span><span class="visib-reach-legend-dot cbp"></span>CBP ${reach.cbp}%</span>
-        <span><span class="visib-reach-legend-dot org"></span>XD Org ${reach.org}%</span>
-      </div>`
-    : `<div style="font-size:13px;color:var(--text-muted)">No activities logged yet</div>`;
+  // Reach × Evidence matrix
+  const reachLevels = ['team', 'function', 'cross-functional', 'organization'];
+  const evidenceTypes = ['shared', 'referenced', 'invited', 'decided'];
+  const reachLabels = { team: 'Team', 'function': 'Function', 'cross-functional': 'Cross-func', organization: 'Org' };
+  const evidenceLabels = { shared: 'Shared', referenced: 'Referenced', invited: 'Invited', decided: 'Decided' };
+  const matrixCounts = {};
+  for (const r of reachLevels) for (const e of evidenceTypes) matrixCounts[r + ':' + e] = 0;
+  for (const a of last30) {
+    const r = a.reach || 'team';
+    const e = a.evidenceType || 'shared';
+    const key = r + ':' + e;
+    if (matrixCounts[key] !== undefined) matrixCounts[key]++;
+  }
+  const matrixHtml = `<table class="visib-matrix">
+    <tr><th></th>${evidenceTypes.map(e => `<th>${evidenceLabels[e]}</th>`).join('')}</tr>
+    ${reachLevels.map(r => `<tr>
+      <td class="visib-matrix-row-label">${reachLabels[r]}</td>
+      ${evidenceTypes.map(e => {
+        const count = matrixCounts[r + ':' + e];
+        const level = count >= 3 ? 'high' : count >= 1 ? 'mid' : 'empty';
+        return `<td class="visib-matrix-cell ${level}" onclick="showMatrixDetail('${r}','${e}')">${count || ''}</td>`;
+      }).join('')}
+    </tr>`).join('')}
+  </table>
+  <div class="visib-matrix-legend"><span class="visib-matrix-dot high"></span> 3+ <span class="visib-matrix-dot mid"></span> 1-2 <span class="visib-matrix-dot empty"></span> none</div>`;
 
   // Recent activity list
   const recent = [...activities].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20);
   const recentHtml = recent.length > 0 ? recent.map(a => {
     const typeObj = getVisibTypeObj(a.type);
+    const rLabel = { team: 'Team', 'function': 'Function', 'cross-functional': 'Cross-func', organization: 'Org' }[a.reach] || a.reach || 'Team';
+    const eLabel = { shared: 'Shared', referenced: 'Referenced', invited: 'Invited', decided: 'Decided' }[a.evidenceType] || 'Shared';
     return `<div class="visib-activity-card" onclick="openVisibDetail('${a.id}')">
       <div class="visib-activity-card-header">
         <span class="visib-activity-card-date">${formatDateShort(a.date)}</span>
         <span class="visib-type-badge">${getVisibTypeLabel(a.type)}${a.subtype ? ' · ' + escapeHtml(a.subtype) : ''}</span>
-        <span class="visib-audience-tag ${normalizeAudience(a.audience)}">${getAudienceLabel(a.audience)}</span>
+        <span class="visib-audience-tag">${rLabel} · ${eLabel}</span>
       </div>
       ${a.note ? `<div class="visib-activity-card-note">${escapeHtml(a.note)}</div>` : ''}
       <div class="visib-activity-card-vectors">${(a.vectors || []).join(' · ')}</div>
@@ -12901,11 +12976,9 @@ function renderVisibDashboard(panel) {
     </div>
 
     <div class="visib-section">
-      <div class="visib-section-header" onclick="toggleVisibSection('reach')">
-        <span class="visib-section-title">Reach Distribution (30 days)</span>
-        <span class="visib-section-toggle" id="visibReachToggle">▾</span>
-      </div>
-      <div id="visibReachBody">${reachHtml}</div>
+      <div class="visib-section-title" style="margin-bottom:var(--space-md)">Reach × Evidence (30 days)</div>
+      ${matrixHtml}
+      <div id="matrixDetailContainer"></div>
     </div>
 
     <div class="visib-section">
@@ -12913,6 +12986,26 @@ function renderVisibDashboard(panel) {
       ${recentHtml}
     </div>
   `;
+}
+
+function showMatrixDetail(reach, evidenceType) {
+  const container = document.getElementById('matrixDetailContainer');
+  if (!container) return;
+  const last30 = getVisibActivitiesLast30();
+  const items = last30.filter(a => (a.reach || 'team') === reach && (a.evidenceType || 'shared') === evidenceType);
+  const rLabel = { team: 'Team', 'function': 'Function', 'cross-functional': 'Cross-functional', organization: 'Organization' }[reach];
+  const eLabel = { shared: 'Shared', referenced: 'Referenced', invited: 'Invited', decided: 'Decided' }[evidenceType];
+
+  if (items.length === 0) {
+    container.innerHTML = `<div style="font-size:13px;color:var(--text-muted);padding:var(--space-md)">No ${rLabel} · ${eLabel} activities in the last 30 days.</div>`;
+  } else {
+    container.innerHTML = `<div style="margin-top:var(--space-md)">
+      <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:var(--space-sm)">${rLabel} · ${eLabel} (${items.length})</div>
+      ${items.map(a => `<div style="font-size:13px;padding:4px 0;border-bottom:1px solid var(--border-default)">
+        ${formatDateShort(a.date)} · ${getVisibTypeLabel(a.type)} ${a.note ? '— ' + escapeHtml(a.note.substring(0, 100)) : ''}
+      </div>`).join('')}
+    </div>`;
+  }
 }
 
 function toggleVisibSection(section) {
@@ -12984,11 +13077,22 @@ function renderVisibLog(panel) {
       ${vectorsHtml}
 
       <div class="form-group">
-        <label class="form-label">Audience</label>
+        <label class="form-label">Reach — who saw this?</label>
         <div class="visib-audience-picker">
-          <label><input type="radio" name="visibAudience" value="pod" checked> CIA Pod</label>
-          <label><input type="radio" name="visibAudience" value="cbp"> CBP</label>
-          <label><input type="radio" name="visibAudience" value="org"> XD Org</label>
+          <label><input type="radio" name="visibReach" value="team" checked> Team</label>
+          <label><input type="radio" name="visibReach" value="function"> Function</label>
+          <label><input type="radio" name="visibReach" value="cross-functional"> Cross-functional</label>
+          <label><input type="radio" name="visibReach" value="organization"> Organization</label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Evidence type — what happened?</label>
+        <div class="visib-audience-picker">
+          <label><input type="radio" name="visibEvidence" value="shared" checked> Shared (I published/presented)</label>
+          <label><input type="radio" name="visibEvidence" value="referenced"> Referenced (someone cited my work)</label>
+          <label><input type="radio" name="visibEvidence" value="invited"> Invited (pulled in to contribute)</label>
+          <label><input type="radio" name="visibEvidence" value="decided"> Decided (influenced a decision)</label>
         </div>
       </div>
 
@@ -13028,7 +13132,8 @@ function selectVisibSubtype(subtype) {
 function saveVisibActivity() {
   if (!visibLogType) return;
   const typeObj = getVisibTypeObj(visibLogType);
-  const audience = document.querySelector('input[name="visibAudience"]:checked')?.value || 'pod';
+  const reach = document.querySelector('input[name="visibReach"]:checked')?.value || 'team';
+  const evidenceType = document.querySelector('input[name="visibEvidence"]:checked')?.value || 'shared';
   const date = document.getElementById('visibLogDate')?.value || todayStr();
   const note = document.getElementById('visibLogNote')?.value.trim() || '';
   const link = document.getElementById('visibLogLink')?.value.trim() || '';
@@ -13038,7 +13143,9 @@ function saveVisibActivity() {
     date,
     type: visibLogType,
     subtype: visibLogSubtype || '',
-    audience,
+    reach,
+    evidenceType,
+    audience: reach, // legacy compat
     note,
     link,
     vectors: typeObj ? [...typeObj.vectors] : []
