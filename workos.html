@@ -10787,12 +10787,14 @@ function copyPrep() {
    ======================================== */
 function renderMeetings() {
   const panel = document.getElementById('panel-meetings');
-  const subNav = `<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:var(--space-xl)">
+  const importBtn = meetingsSubTab === 'entries' ? `<button class="btn-secondary" id="importMeetingsBtn" style="margin-left:auto;font-size:12px">Import</button>` : '';
+  const subNav = `<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:var(--space-xl);gap:var(--space-sm)">
     <div class="sub-nav" style="margin-bottom:0">
       <button class="sub-nav-btn${meetingsSubTab === 'entries' ? ' active' : ''}" onclick="meetingsSubTab='entries';renderMeetings()">Entries</button>
       <button class="sub-nav-btn${meetingsSubTab === 'insights' ? ' active' : ''}" onclick="meetingsSubTab='insights';renderMeetings()">Insights</button>
     </div>
-    ${buildInsightsPeriodFilter(meetingsSubTab !== 'insights')}
+    ${meetingsSubTab === 'insights' ? buildInsightsPeriodFilter(false) : ''}
+    ${importBtn}
   </div>`;
   const content = meetingsSubTab === 'insights' ? meetingsInsightsHtml() : meetingsEntriesHtml();
   panel.innerHTML = subNav + content;
@@ -11249,16 +11251,7 @@ function attachMeetingsInsightsListeners() {
 function meetingsEntriesHtml() {
   return `
     <div class="settings-section">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-lg)">
-        <div style="font-weight:600">Meeting Entries</div>
-        <div style="display:flex;gap:var(--space-sm);align-items:center">
-          <button class="btn-secondary" id="importMeetingsBtn">Import</button>
-          ${state.settings.meetingsGistId ?
-            `<button class="btn-secondary btn-accent" id="fetchMeetingsBtnEntries">Fetch Meetings</button>` : ''
-          }
-          <div class="api-status" id="meetingSyncStatusEntries"></div>
-        </div>
-      </div>
+      ${state.settings.meetingsGistId ? `<div style="display:flex;justify-content:flex-end;align-items:center;gap:var(--space-sm);margin-bottom:var(--space-md)"><button class="btn-secondary btn-accent" id="fetchMeetingsBtnEntries">Fetch Meetings</button><div class="api-status" id="meetingSyncStatusEntries"></div></div>` : ''}
       ${state.meetings.length > 0 ?
         state.meetings.map(m => renderMeetingCard(m)).join('') :
       `<div style="color:var(--text-muted);text-align:center;padding:var(--space-xl) 0">
@@ -11431,6 +11424,30 @@ function attachMeetingsListeners() {
     saveState();
     showToast('Meeting type settings saved');
   });
+
+  // Mobile swipe between meeting entries
+  if (window.innerWidth <= 600) {
+    const cards = document.querySelectorAll('.meeting-card');
+    let currentCardIdx = 0;
+    const panel = document.getElementById('panel-meetings');
+    let touchStartX = 0;
+    panel.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+    panel.addEventListener('touchend', e => {
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      if (Math.abs(dx) < 60) return;
+      // Find current visible card
+      const scrollTop = window.scrollY;
+      const headerHeight = 60;
+      cards.forEach((card, i) => {
+        if (card.getBoundingClientRect().top < 150) currentCardIdx = i;
+      });
+      if (dx < -60 && currentCardIdx < cards.length - 1) {
+        cards[currentCardIdx + 1].scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (dx > 60 && currentCardIdx > 0) {
+        cards[currentCardIdx - 1].scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  }
 }
 
 function renderSettings() {
