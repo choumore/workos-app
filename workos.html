@@ -8615,7 +8615,7 @@ let triageIndex = 0;
 let triageLastAction = null;
 let triageLastPriority = 'today';
 let triageCounts = { today: 0, tomorrow: 0, 'this-week': 0, backlog: 0, deleted: 0 };
-let mobileMode = 'inbox'; // 'inbox' | 'today'
+let mobileMode = 'inbox'; // 'inbox' | 'today' | 'this-week' | 'backlog'
 
 function openMobileTriage(mode) {
   mobileMode = mode || 'inbox';
@@ -8635,10 +8635,10 @@ function openMobileTriage(mode) {
     document.body.appendChild(overlay);
   }
 
-  if (mobileMode === 'today') {
-    renderMobileToday();
-  } else {
+  if (mobileMode === 'inbox') {
     renderTriageCard();
+  } else {
+    renderMobileBucket(mobileMode);
   }
 
   // Swipe gesture support
@@ -8652,24 +8652,31 @@ function openMobileTriage(mode) {
 }
 
 function getMobileTabsHtml() {
-  const inboxCount = (state.todos || []).filter(t => t.status === 'open' && t.priority === 'inbox').length;
-  const todayItems = (state.todos || []).filter(t => t.priority === 'today');
-  const todayOpen = todayItems.filter(t => t.status === 'open').length;
-  const todayDone = todayItems.filter(t => t.status === 'done' && t.completedAt && t.completedAt.substring(0, 10) === todayStr()).length;
+  const count = (p) => (state.todos || []).filter(t => t.status === 'open' && t.priority === p).length;
+  const inboxCount = count('inbox');
+  const todayCount = count('today');
+  const weekCount = count('this-week');
+  const backlogCount = count('backlog') + count('later');
+  const tab = (mode, label, c) =>
+    `<button class="triage-mobile-tab${mobileMode === mode ? ' active' : ''}" onclick="openMobileTriage('${mode}')">${label}${c ? ' (' + c + ')' : ''}</button>`;
   return `<div class="triage-mobile-tabs">
-    <button class="triage-mobile-tab${mobileMode === 'inbox' ? ' active' : ''}" onclick="openMobileTriage('inbox')">Inbox${inboxCount ? ' (' + inboxCount + ')' : ''}</button>
-    <button class="triage-mobile-tab${mobileMode === 'today' ? ' active' : ''}" onclick="openMobileTriage('today')">Today${todayOpen + todayDone ? ' (' + todayDone + '/' + (todayOpen + todayDone) + ')' : ''}</button>
+    ${tab('inbox', 'Inbox', inboxCount)}
+    ${tab('today', 'Today', todayCount)}
+    ${tab('this-week', 'Week', weekCount)}
+    ${tab('backlog', 'Later', backlogCount)}
     <button class="btn-secondary btn-accent" style="font-size:13px;margin-left:auto;padding:var(--space-md) var(--space-lg)" onclick="closeMobileTriage()">Done</button>
   </div>`;
 }
 
-function renderMobileToday() {
+function renderMobileBucket(bucket) {
   const overlay = document.getElementById('mobileTriage');
   if (!overlay) return;
 
-  const todayItems = (state.todos || []).filter(t => t.priority === 'today');
-  const openItems = todayItems.filter(t => t.status === 'open');
-  const doneItems = todayItems.filter(t => t.status === 'done' && t.completedAt && t.completedAt.substring(0, 10) === todayStr());
+  const emptyMsg = { today: 'No items for today.', 'this-week': 'No items this week.', backlog: 'No items in backlog.' };
+  const matchPriority = bucket === 'backlog' ? (p => p === 'backlog' || p === 'later') : (p => p === bucket);
+  const bucketItems = (state.todos || []).filter(t => matchPriority(t.priority));
+  const openItems = bucketItems.filter(t => t.status === 'open');
+  const doneItems = bucket === 'today' ? bucketItems.filter(t => t.status === 'done' && t.completedAt && t.completedAt.substring(0, 10) === todayStr()) : [];
   const allItems = [...openItems, ...doneItems];
 
   const itemsHtml = allItems.length > 0 ? allItems.map(t => {
@@ -8683,11 +8690,11 @@ function renderMobileToday() {
         <span class="mobile-today-text${isDone ? ' strikethrough' : ''}" onclick="toggleMobileTodo('${t.id}')" style="flex:1">${escapeHtml(t.text)}</span>
       </div>
       ${!isDone ? `<div style="display:flex;gap:var(--space-sm);padding-left:28px;flex-wrap:wrap">
-        <button class="btn-secondary" style="font-size:12px;padding:var(--space-xs) var(--space-md);color:#d4a017" onclick="event.stopPropagation();toggleTodoStar('${t.id}');renderMobileToday()">${t.starred ? '★ Starred' : '☆ Star'}</button>
+        <button class="btn-secondary" style="font-size:12px;padding:var(--space-xs) var(--space-md);color:#d4a017" onclick="event.stopPropagation();toggleTodoStar('${t.id}');renderMobileBucket('${bucket}')">${t.starred ? '★ Starred' : '☆ Star'}</button>
         ${recBadge}
       </div>` : ''}
     </div>`;
-  }).join('') : '<div style="text-align:center;color:var(--text-muted);font-size:15px;padding:var(--space-xl)">No items for today. Triage your inbox to add some.</div>';
+  }).join('') : `<div style="text-align:center;color:var(--text-muted);font-size:15px;padding:var(--space-xl)">${emptyMsg[bucket] || 'No items.'}</div>`;
 
   overlay.innerHTML = `
     ${getMobileTabsHtml()}
@@ -8711,7 +8718,7 @@ function toggleMobileTodo(todoId) {
     }
   }
   saveState();
-  renderMobileToday();
+  renderMobileBucket(mobileMode);
 }
 
 function renderTriageCard() {
