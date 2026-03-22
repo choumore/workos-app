@@ -7979,6 +7979,7 @@ function renderTriageCard() {
       triageCounts.tomorrow ? `Next workday: ${triageCounts.tomorrow}` : '',
       triageCounts['this-week'] ? `This Week: ${triageCounts['this-week']}` : '',
       triageCounts.backlog ? `Backlog: ${triageCounts.backlog}` : '',
+      triageCounts.done ? `Done: ${triageCounts.done}` : '',
       triageCounts.deleted ? `Deleted: ${triageCounts.deleted}` : '',
     ].filter(Boolean).join('<br>');
 
@@ -8017,6 +8018,8 @@ function renderTriageCard() {
         <span>·</span>
         <span>${age}d ago</span>
         <span>·</span>
+        <button style="font:inherit;color:#2d8a4e;background:none;border:none;cursor:pointer;font-weight:600" onclick="triageMobileAction('done')">Done ✓</button>
+        <span>·</span>
         <button style="font:inherit;color:var(--accent-negative);background:none;border:none;cursor:pointer" onclick="triageMobileAction('delete')">Delete</button>
       </div>
     </div>
@@ -8054,6 +8057,17 @@ function triageMobileAction(priority) {
   if (priority === 'delete') {
     state.todos = state.todos.filter(t => t.id !== item.id);
     triageCounts.deleted++;
+  } else if (priority === 'done') {
+    const todo = state.todos.find(t => t.id === item.id);
+    if (todo) {
+      todo.status = 'done';
+      todo.completedAt = new Date().toISOString();
+      const todayEntry = getEntryForDate(todayStr());
+      if (todayEntry && todayEntry.workDone && !todayEntry.workDone.includes(todo.text)) {
+        todayEntry.workDone += '\n✓ ' + todo.text;
+      }
+    }
+    triageCounts.done = (triageCounts.done || 0) + 1;
   } else {
     const todo = state.todos.find(t => t.id === item.id);
     if (todo) {
