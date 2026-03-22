@@ -3683,7 +3683,7 @@ body {
 
 <div id="app">
   <header class="app-header">
-    <span class="app-name"><span class="app-logo-wrap"><object class="app-logo" data="logo.svg" type="image/svg+xml" width="27" height="21"></object></span>WorkOS</span>
+    <span class="app-name"><span class="app-logo-wrap"><img class="app-logo" src="logo.svg" width="27" height="21" alt="WorkOS"></span>WorkOS</span>
     <nav class="tab-nav" id="tabNav"></nav>
   </header>
 
@@ -10764,14 +10764,14 @@ function copyPrep() {
    ======================================== */
 function renderMeetings() {
   const panel = document.getElementById('panel-meetings');
-  const importBtn = meetingsSubTab === 'entries' ? `<button class="btn-secondary" id="importMeetingsBtn" style="margin-left:auto;font-size:12px">Import</button>` : '';
+  const entryBtns = meetingsSubTab === 'entries' ? `<div style="display:flex;gap:var(--space-sm);margin-left:auto;align-items:center">${state.settings.meetingsGistId ? `<button class="btn-secondary btn-accent" id="fetchMeetingsBtnEntries" style="font-size:12px">Fetch</button>` : ''}<button class="btn-secondary" id="importMeetingsBtn" style="font-size:12px">Import</button></div>` : '';
   const subNav = `<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:var(--space-xl);gap:var(--space-sm)">
     <div class="sub-nav" style="margin-bottom:0">
       <button class="sub-nav-btn${meetingsSubTab === 'entries' ? ' active' : ''}" onclick="meetingsSubTab='entries';renderMeetings()">Entries</button>
       <button class="sub-nav-btn${meetingsSubTab === 'insights' ? ' active' : ''}" onclick="meetingsSubTab='insights';renderMeetings()">Insights</button>
     </div>
     ${meetingsSubTab === 'insights' ? buildInsightsPeriodFilter(false) : ''}
-    ${importBtn}
+    ${entryBtns}
   </div>`;
   const content = meetingsSubTab === 'insights' ? meetingsInsightsHtml() : meetingsEntriesHtml();
   panel.innerHTML = subNav + content;
@@ -11228,7 +11228,6 @@ function attachMeetingsInsightsListeners() {
 function meetingsEntriesHtml() {
   return `
     <div class="settings-section">
-      ${state.settings.meetingsGistId ? `<div style="display:flex;justify-content:flex-end;align-items:center;gap:var(--space-sm);margin-bottom:var(--space-md)"><button class="btn-secondary btn-accent" id="fetchMeetingsBtnEntries">Fetch Meetings</button><div class="api-status" id="meetingSyncStatusEntries"></div></div>` : ''}
       ${state.meetings.length > 0 ?
         state.meetings.map(m => renderMeetingCard(m)).join('') :
       `<div style="color:var(--text-muted);text-align:center;padding:var(--space-xl) 0">
