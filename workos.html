@@ -6115,7 +6115,7 @@ function renderTodos() {
   }).join('');
 
   const triageBtnHtml = todosFilter === 'inbox' && items.length > 0
-    ? `<button class="btn-secondary btn-accent" style="font-size:${isMobile ? '14px' : '12px'};${isMobile ? 'width:100%;padding:var(--space-md) var(--space-lg);text-align:center' : ''}" onclick="openMobileTriage('inbox')">Triage To-Dos (${items.length})</button>`
+    ? `<button class="btn-secondary btn-accent" style="font-size:${isMobile ? '15px' : '12px'};${isMobile ? 'width:100%;padding:var(--space-lg) var(--space-xl);display:flex;justify-content:center;align-items:center' : ''}" onclick="openMobileTriage('inbox')">Triage To-Dos (${items.length})</button>`
     : '';
 
   const emptyMessages = {
