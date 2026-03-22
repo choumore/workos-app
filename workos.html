@@ -736,7 +736,7 @@ body {
   list-style: disc;
 }
 .history-bullets li {
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.6;
   color: var(--text-primary);
 }
@@ -928,9 +928,6 @@ body {
   font-size: 13px;
   line-height: 1.6;
   color: var(--text-secondary);
-}
-.prep-section-body .history-bullets li {
-  font-size: 13px;
 }
 .prep-history-toggle {
   font: 13px var(--font-family);
@@ -1539,7 +1536,6 @@ body {
   position: relative;
 }
 .dash-evidence-item { cursor: default; position: relative; }
-.dash-evidence-text .history-bullets li { font-size: 13px; }
 .dash-evidence-text p { font-size: 13px; }
 .dash-evidence-reason {
   font-size: 12px;
@@ -10881,7 +10877,7 @@ function copyPrep() {
    ======================================== */
 function renderMeetings() {
   const panel = document.getElementById('panel-meetings');
-  const entryBtns = meetingsSubTab === 'entries' ? `<div style="display:flex;gap:var(--space-sm);margin-left:auto;align-items:center">${state.settings.meetingsGistId ? `<button class="btn-secondary btn-accent" id="fetchMeetingsBtnEntries" style="font-size:12px">Fetch</button>` : ''}<button class="btn-secondary" id="importMeetingsBtn" style="font-size:12px">Import</button></div>` : '';
+  const entryBtns = meetingsSubTab === 'entries' ? `<div style="display:flex;gap:var(--space-sm);margin-left:auto;align-items:center"><button class="btn-secondary" id="importMeetingsBtn" style="font-size:12px">Import</button>${state.settings.meetingsGistId ? `<button class="btn-secondary btn-accent" id="fetchMeetingsBtnEntries" style="font-size:12px">Fetch</button>` : ''}</div>` : '';
   const subNav = `<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:var(--space-xl);gap:var(--space-sm)">
     <div class="sub-nav" style="margin-bottom:0">
       <button class="sub-nav-btn${meetingsSubTab === 'entries' ? ' active' : ''}" onclick="meetingsSubTab='entries';renderMeetings()">Entries</button>
