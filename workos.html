@@ -3719,7 +3719,9 @@ let state = {
   openLoops: [],
   coachingState: { activeObservations: [], resolvedObservations: [], lastUpdated: null },
   loopStreakWeeks: 0,
-  loopStreakBestWeeks: 0
+  loopStreakBestWeeks: 0,
+  monthlyReflections: {},
+  quarterlyReflections: {}
 };
 
 let logMode = 'form'; // 'form' | 'submitted' | 'intention' | 'editing'
@@ -3775,6 +3777,8 @@ function loadState() {
       state.coachingState = saved.coachingState || { activeObservations: [], resolvedObservations: [], lastUpdated: null };
       state.loopStreakWeeks = saved.loopStreakWeeks || 0;
       state.loopStreakBestWeeks = saved.loopStreakBestWeeks || 0;
+      state.monthlyReflections = saved.monthlyReflections || {};
+      state.quarterlyReflections = saved.quarterlyReflections || {};
 
       // Migrate old weeklyIntention values from entries
       for (const entry of state.entries) {
@@ -4651,7 +4655,9 @@ async function syncPush() {
       openLoops: state.openLoops || [],
       coachingState: state.coachingState || {},
       loopStreakWeeks: state.loopStreakWeeks || 0,
-      loopStreakBestWeeks: state.loopStreakBestWeeks || 0
+      loopStreakBestWeeks: state.loopStreakBestWeeks || 0,
+      monthlyReflections: state.monthlyReflections || {},
+      quarterlyReflections: state.quarterlyReflections || {}
     };
     const content = JSON.stringify(syncState, null, 2);
     const headers = {
@@ -4760,6 +4766,9 @@ async function syncPull() {
     if (remote.coachingState && remote.coachingState.lastUpdated > (state.coachingState?.lastUpdated || '')) {
       state.coachingState = remote.coachingState;
     }
+    // Reflections: merge by key, remote wins
+    if (remote.monthlyReflections) state.monthlyReflections = { ...state.monthlyReflections, ...remote.monthlyReflections };
+    if (remote.quarterlyReflections) state.quarterlyReflections = { ...state.quarterlyReflections, ...remote.quarterlyReflections };
     // Merge deleted meeting IDs from both local and remote
     const remoteDeleted = remote.deletedMeetingIds || [];
     const localDeleted = state.deletedMeetingIds || [];
@@ -7672,6 +7681,315 @@ function cancelIntentionEdit() {
    ======================================== */
 let dashboardTimeRange = 'quarter'; // 'month' | 'quarter' | '6mo'
 
+/* ========================================
+   Monthly / Quarterly Reflections
+   ======================================== */
+let reflectionStep = 0; // 0=not active, 1=data, 2=reflect, 3=synthesis
+let reflectionType = null; // 'monthly' | 'quarterly'
+let reflectionPeriodKey = null;
+
+function getLastMonthKey() {
+  const d = new Date();
+  d.setMonth(d.getMonth() - 1);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+function getLastQuarterKey() {
+  const d = new Date();
+  const q = Math.floor(d.getMonth() / 3);
+  const prevQ = q === 0 ? 3 : q - 1;
+  const year = q === 0 ? d.getFullYear() - 1 : d.getFullYear();
+  return year + '-Q' + (prevQ + 1);
+}
+
+function isReflectionNeeded() {
+  const today = todayStr();
+  const dom = new Date().getDate();
+
+  // Quarterly: first 7 days of Jan/Apr/Jul/Oct
+  const month = new Date().getMonth();
+  if ([0, 3, 6, 9].includes(month) && dom <= 7) {
+    const qKey = getLastQuarterKey();
+    if (!state.quarterlyReflections[qKey]) {
+      reflectionType = 'quarterly';
+      reflectionPeriodKey = qKey;
+      return true;
+    }
+  }
+
+  // Monthly: first 5 days of each month
+  if (dom <= 5) {
+    const mKey = getLastMonthKey();
+    if (!state.monthlyReflections[mKey]) {
+      reflectionType = 'monthly';
+      reflectionPeriodKey = mKey;
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function getReflectionData(periodKey, type) {
+  // Determine date range
+  let startDate, endDate;
+  if (type === 'monthly') {
+    const [y, m] = periodKey.split('-');
+    startDate = `${y}-${m}-01`;
+    const end = new Date(parseInt(y), parseInt(m), 0);
+    endDate = `${y}-${m}-${String(end.getDate()).padStart(2, '0')}`;
+  } else {
+    const [y, qStr] = periodKey.split('-Q');
+    const q = parseInt(qStr) - 1;
+    const startMonth = q * 3;
+    startDate = `${y}-${String(startMonth + 1).padStart(2, '0')}-01`;
+    const endMonth = startMonth + 2;
+    const endDay = new Date(parseInt(y), endMonth + 1, 0).getDate();
+    endDate = `${y}-${String(endMonth + 1).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`;
+  }
+
+  // Gather data for period
+  const entries = (state.entries || []).filter(e => e.date >= startDate && e.date <= endDate);
+  const energyAvg = entries.length > 0 ? (entries.reduce((s, e) => s + (e.energy || 0), 0) / entries.length).toFixed(1) : '?';
+  const moodCounts = {};
+  entries.forEach(e => { if (e.mood) moodCounts[e.mood] = (moodCounts[e.mood] || 0) + 1; });
+  const topMood = Object.entries(moodCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '?';
+
+  // Vector comparison
+  const vectorData = (state.vectors || []).map(v => {
+    const sc = state.vectorScoreCache[v.id] || { tier: 'No evidence', total: 0 };
+    return { name: v.name, tier: sc.tier, total: sc.total };
+  });
+
+  // Loop performance
+  const loopsOpened = (state.openLoops || []).filter(l => l.createdAt >= startDate && l.createdAt <= endDate + 'T23:59:59').length;
+  const loopsClosed = (state.openLoops || []).filter(l => l.resolvedAt && l.resolvedAt >= startDate && l.resolvedAt <= endDate + 'T23:59:59' && l.status === 'resolved').length;
+  const choseNotToAct = (state.openLoops || []).filter(l => l.status === 'chose_not_to_act' && l.resolvedAt >= startDate && l.resolvedAt <= endDate + 'T23:59:59');
+
+  // Key evidence
+  const wins = (state.wins || []).filter(w => w.status === 'confirmed' && w.date >= startDate && w.date <= endDate);
+
+  return { startDate, endDate, entries, energyAvg, topMood, vectorData, loopsOpened, loopsClosed, choseNotToAct, wins };
+}
+
+function renderReflectionFlow(panel) {
+  if (reflectionStep === 0) reflectionStep = 1;
+  const data = getReflectionData(reflectionPeriodKey, reflectionType);
+  const periodLabel = reflectionType === 'monthly'
+    ? new Date(data.startDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    : reflectionPeriodKey.replace('-', ' ');
+  const totalSteps = reflectionType === 'quarterly' ? 3 : 3;
+
+  if (reflectionStep === 1) {
+    // Step 1: Data presentation
+    const vectorRows = data.vectorData.map(v =>
+      `<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:14px"><span>${escapeHtml(v.name)}</span><span class="dash-tier-${v.tier.toLowerCase().replace(/\s/g, '-')}" style="font-weight:500">${v.tier}</span></div>`
+    ).join('');
+
+    const winsHtml = data.wins.length > 0
+      ? data.wins.map(w => `<div style="font-size:13px;padding:2px 0">· ${escapeHtml(w.description)}</div>`).join('')
+      : '<div style="font-size:13px;color:var(--text-muted)">No confirmed wins this period.</div>';
+
+    let choseNotHtml = '';
+    if (reflectionType === 'quarterly' && data.choseNotToAct.length > 0) {
+      choseNotHtml = `
+        <div style="margin-top:var(--space-xl)">
+          <div class="dash-section-title">THINGS YOU CHOSE NOT TO ACT ON</div>
+          ${data.choseNotToAct.map(l => `<div style="font-size:13px;padding:4px 0;color:var(--accent-negative)">· ${escapeHtml(l.description)}</div>`).join('')}
+        </div>`;
+    }
+
+    panel.innerHTML = `
+      <div style="max-width:600px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:var(--space-xl)">
+          <div style="font-size:18px;font-weight:600">${reflectionType === 'quarterly' ? 'Quarterly' : 'Monthly'} Reflection: ${periodLabel}</div>
+          <span style="font-size:12px;color:var(--text-muted)">Step 1/${totalSteps}</span>
+        </div>
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:var(--space-xl)">Review your data before reflecting. This is required to continue using WorkOS.</div>
+
+        <div class="dash-section-title">VECTOR PROGRESS</div>
+        <div style="background:var(--surface-card);border-radius:var(--radius-md);padding:var(--space-lg);margin-bottom:var(--space-xl)">${vectorRows}</div>
+
+        <div class="dash-section-title">LOOP PERFORMANCE</div>
+        <div style="font-size:14px;margin-bottom:var(--space-xl)">Opened: ${data.loopsOpened} · Closed: ${data.loopsClosed}${data.choseNotToAct.length > 0 ? ' · Chose not to act: ' + data.choseNotToAct.length : ''}</div>
+
+        <div class="dash-section-title">ENERGY & MOOD</div>
+        <div style="font-size:14px;margin-bottom:var(--space-xl)">Avg energy: ${data.energyAvg}/10 · ${data.entries.length} entries · Most common mood: ${topMood}</div>
+
+        <div class="dash-section-title">KEY EVIDENCE</div>
+        <div style="margin-bottom:var(--space-xl)">${winsHtml}</div>
+
+        ${choseNotHtml}
+
+        <div style="text-align:right;margin-top:var(--space-xl)">
+          <button class="btn-secondary btn-accent" onclick="reflectionStep=2;renderDashboard()">Continue to reflection</button>
+        </div>
+      </div>`;
+    return true;
+
+  } else if (reflectionStep === 2) {
+    // Step 2: Structured reflection
+    const extraQuestions = reflectionType === 'quarterly' ? `
+      <div class="form-group">
+        <label class="form-label">Looking at items you chose not to act on — would you make the same choices today?</label>
+        <textarea class="form-input" id="reflectChoices" rows="3" placeholder="Were those the right calls?"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">If your promotion case were presented tomorrow, what's the biggest hole?</label>
+        <textarea class="form-input" id="reflectHole" rows="3" placeholder="What's missing?"></textarea>
+      </div>` : '';
+
+    panel.innerHTML = `
+      <div style="max-width:600px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:var(--space-xl)">
+          <div style="font-size:18px;font-weight:600">${reflectionType === 'quarterly' ? 'Quarterly' : 'Monthly'} Reflection: ${periodLabel}</div>
+          <span style="font-size:12px;color:var(--text-muted)">Step 2/${totalSteps}</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">What worked this period?</label>
+          <textarea class="form-input" id="reflectWorked" rows="3" placeholder="What went well? What should you keep doing?"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">What didn't work? What are you avoiding?</label>
+          <textarea class="form-input" id="reflectDidnt" rows="3" placeholder="Be honest about what's not working."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">What surprised you in the data?</label>
+          <textarea class="form-input" id="reflectSurprise" rows="3" placeholder="Anything unexpected from the previous screen?"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">What's your one priority for next ${reflectionType === 'quarterly' ? 'quarter' : 'month'}?</label>
+          <textarea class="form-input" id="reflectPriority" rows="2" placeholder="One thing to focus on."></textarea>
+        </div>
+        ${extraQuestions}
+
+        <div style="text-align:right;margin-top:var(--space-xl)">
+          <button class="btn-secondary btn-accent" onclick="submitReflectionResponses()">Submit reflection</button>
+        </div>
+      </div>`;
+    return true;
+
+  } else if (reflectionStep === 3) {
+    // Step 3: AI synthesis (loading or display)
+    const store = reflectionType === 'quarterly' ? state.quarterlyReflections : state.monthlyReflections;
+    const saved = store[reflectionPeriodKey];
+    if (saved && saved.synthesis) {
+      panel.innerHTML = `
+        <div style="max-width:600px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:var(--space-xl)">
+            <div style="font-size:18px;font-weight:600">${periodLabel} Synthesis</div>
+            <span style="font-size:12px;color:var(--text-muted)">Step 3/${totalSteps}</span>
+          </div>
+          <div class="prep-section-body" style="font-size:14px;line-height:1.7">${formatBulletList(saved.synthesis)}</div>
+          <div style="display:flex;justify-content:space-between;margin-top:var(--space-xl)">
+            <button class="btn-ghost" onclick="navigator.clipboard.writeText(${JSON.stringify(saved.synthesis).replace(/'/g, "\\'")});showToast('Copied')">Copy</button>
+            <button class="btn-secondary btn-accent" onclick="reflectionStep=0;reflectionType=null;renderDashboard()">Done</button>
+          </div>
+        </div>`;
+    } else {
+      panel.innerHTML = `
+        <div style="max-width:600px;text-align:center;padding-top:var(--space-4xl)">
+          <div style="font-size:15px;color:var(--text-muted)">Generating synthesis...</div>
+          <div class="synthesis-loading-bar" style="margin:var(--space-lg) auto;width:60%"></div>
+        </div>`;
+    }
+    return true;
+  }
+  return false;
+}
+
+function submitReflectionResponses() {
+  const worked = document.getElementById('reflectWorked')?.value.trim() || '';
+  const didnt = document.getElementById('reflectDidnt')?.value.trim() || '';
+  const surprise = document.getElementById('reflectSurprise')?.value.trim() || '';
+  const priority = document.getElementById('reflectPriority')?.value.trim() || '';
+
+  if (!worked && !didnt) { showToast('Write at least something for the first two questions'); return; }
+
+  const responses = { worked, didnt, surprise, priority };
+  if (reflectionType === 'quarterly') {
+    responses.choices = document.getElementById('reflectChoices')?.value.trim() || '';
+    responses.hole = document.getElementById('reflectHole')?.value.trim() || '';
+  }
+
+  const store = reflectionType === 'quarterly' ? state.quarterlyReflections : state.monthlyReflections;
+  const data = getReflectionData(reflectionPeriodKey, reflectionType);
+  store[reflectionPeriodKey] = {
+    responses,
+    dataSnapshot: {
+      vectorData: data.vectorData,
+      energyAvg: data.energyAvg,
+      loopsOpened: data.loopsOpened,
+      loopsClosed: data.loopsClosed,
+      entryCount: data.entries.length,
+      winCount: data.wins.length
+    },
+    completedAt: new Date().toISOString(),
+    synthesis: null
+  };
+  saveState();
+
+  reflectionStep = 3;
+  renderDashboard();
+
+  // Generate synthesis
+  generateReflectionSynthesis(reflectionPeriodKey, reflectionType, responses, data);
+}
+
+async function generateReflectionSynthesis(periodKey, type, responses, data) {
+  if (!state.settings.baseUrl) {
+    const store = type === 'quarterly' ? state.quarterlyReflections : state.monthlyReflections;
+    store[periodKey].synthesis = 'AI not configured — your reflection has been saved.';
+    saveState();
+    renderDashboard();
+    return;
+  }
+
+  const periodLabel = type === 'monthly'
+    ? new Date(data.startDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    : periodKey;
+
+  const vectorSummary = data.vectorData.map(v => `${v.name}: ${v.tier}`).join('\n');
+  const winsList = data.wins.map(w => '- ' + w.description).join('\n') || 'None';
+
+  let prompt = `This is a ${type} reflection for ${periodLabel}.
+
+VECTOR STATUS:
+${vectorSummary}
+
+LOOP PERFORMANCE: Opened ${data.loopsOpened}, Closed ${data.loopsClosed}
+ENERGY: ${data.energyAvg}/10 avg over ${data.entries.length} entries
+WINS: ${winsList}
+
+USER'S REFLECTION:
+What worked: ${responses.worked}
+What didn't: ${responses.didnt}
+Surprises: ${responses.surprise}
+Priority for next period: ${responses.priority}
+${responses.choices ? 'On things they chose not to act on: ' + responses.choices : ''}
+${responses.hole ? 'Biggest promotion gap: ' + responses.hole : ''}
+
+Generate a ${type} synthesis (~300 words) with:
+1. TRAJECTORY — how are things trending? What moved, what stalled?
+2. WHAT CHANGED — the most significant shift this period
+3. RECOMMENDATION — one specific, actionable focus for next ${type === 'quarterly' ? 'quarter' : 'month'}, grounded in the data`;
+
+  try {
+    const text = await callClaude(getSystemPrompt(), prompt, 1500);
+    const store = type === 'quarterly' ? state.quarterlyReflections : state.monthlyReflections;
+    store[periodKey].synthesis = text;
+    saveState();
+    renderDashboard();
+    showToast('Synthesis generated');
+  } catch (e) {
+    const store = type === 'quarterly' ? state.quarterlyReflections : state.monthlyReflections;
+    store[periodKey].synthesis = 'Synthesis generation failed. Your reflection has been saved.';
+    saveState();
+    renderDashboard();
+  }
+}
+
 let weeklyTriageStep = 0; // 0 = not active, 1 = inbox, 2 = this-week, 3 = share
 
 function isWeeklyTriageNeeded() {
@@ -8228,6 +8546,11 @@ function toggleFocusInbox() {
 function renderDashboard() {
   promoteTomorrowItems();
   const panel = document.getElementById('panel-dashboard');
+
+  // Monthly/quarterly reflection (blocking, takes priority)
+  if (isReflectionNeeded() || reflectionStep > 0) {
+    if (renderReflectionFlow(panel)) return;
+  }
 
   // Monday weekly triage (blocking)
   if (isWeeklyTriageNeeded() || weeklyTriageStep > 0) {
