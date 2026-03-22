@@ -9284,9 +9284,9 @@ function renderLogTab() {
           const planHtml = allToday.map(t => {
             const isDone = t.status === 'done';
             return `<div style="display:flex;align-items:center;gap:var(--space-sm);padding:var(--space-xs) 0;font-size:13px">
-              <span>${isDone ? '✓' : '○'}</span>
-              <span style="${isDone ? 'text-decoration:line-through;color:var(--text-muted)' : 'color:var(--text-primary)'}">${escapeHtml(t.text)}</span>
-              ${!isDone ? `<span style="margin-left:auto;display:flex;gap:4px"><button class="btn-ghost" style="font-size:11px" onclick="const t=state.todos.find(t=>t.id==='${t.id}');if(t){t.status='done';t.completedAt=new Date().toISOString();saveState();renderLogTab()}">Done</button><button class="btn-ghost" style="font-size:11px" onclick="moveTodoPriority('${t.id}','tomorrow');renderLogTab()">→ Tomorrow</button></span>` : ''}
+              <input type="checkbox" ${isDone ? 'checked' : ''} onchange="const todo=state.todos.find(t=>t.id==='${t.id}');if(todo){todo.status=this.checked?'done':'open';todo.completedAt=this.checked?new Date().toISOString():null;saveState();renderLogTab()}">
+              <span style="${isDone ? 'text-decoration:line-through;color:var(--text-muted)' : 'color:var(--text-primary);flex:1'}">${escapeHtml(t.text)}</span>
+              ${!isDone ? `<button class="btn-ghost" style="font-size:11px;flex-shrink:0" onclick="moveTodoPriority('${t.id}','tomorrow');renderLogTab()">→ Tomorrow</button>` : ''}
             </div>`;
           }).join('');
           return `<div class="form-group"><label class="form-label">Today's Plan <span style="font-weight:400;color:var(--text-muted)">${doneCount}/${allToday.length} done</span></label>${planHtml}</div>`;
