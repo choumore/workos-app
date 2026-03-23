@@ -9621,6 +9621,7 @@ function renderLogTab() {
         }).join('')}
       </div>
     </div>
+    ${existingEntry ? `<div class="form-error show" style="margin-bottom:var(--space-md)">An entry already exists for ${formatDateDisplay(today)}. <span class="history-entry-edit" onclick="editEntryById(${existingEntry.id})">Edit existing entry</span></div>` : ''}
 
     <div id="meetingNudges">${renderMeetingNudgeBanners()}</div>
 
@@ -9677,7 +9678,7 @@ function renderLogTab() {
         return '';
       })()}
 
-      <button type="submit" class="btn-primary" id="saveBtn">Save Entry</button>
+      <button type="submit" class="btn-primary" id="saveBtn" ${existingEntry ? 'disabled' : ''}>Save Entry</button>
     </form>
 
     ${showNudge ? `
@@ -9736,6 +9737,12 @@ async function handleSubmit(e) {
   }
 
   const entryDate = logForDate || todayStr();
+  const existingForDate = state.entries.find(e => e.date === entryDate);
+  if (existingForDate) {
+    showToast('Entry already exists for this date — use Edit instead');
+    return;
+  }
+
   const selectedMood = document.querySelector('.mood-btn.selected');
   const entry = {
     id: Date.now(),
