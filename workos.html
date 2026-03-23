@@ -1586,25 +1586,32 @@ body {
 
 /* Open Loops */
 .loop-list { display: flex; flex-direction: column; gap: 2px; margin-top: var(--space-sm); }
+
+.loop-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+@media (max-width: 799px) { .loop-grid { grid-template-columns: 1fr; } }
 .loop-item {
-  display: flex; flex-direction: column; gap: var(--space-xs);
-  padding: var(--space-sm) var(--space-md);
+  display: flex; flex-direction: column; gap: var(--space-sm);
+  padding: var(--space-md);
   background: var(--surface-card); border-radius: var(--radius-sm);
   font-size: 13px;
 }
 .loop-item.critical { border-left: 3px solid var(--accent-negative); }
 .loop-item.warning { border-left: 3px solid #b88a2d; }
-.loop-item-main { display: flex; align-items: center; gap: var(--space-sm); }
+.loop-item-header { display: flex; align-items: center; gap: var(--space-sm); }
 .loop-level {
   font-size: 10px; font-weight: 700; color: var(--text-muted);
   background: var(--border-default); padding: 1px 5px; border-radius: 3px; flex-shrink: 0;
 }
 .loop-item.critical .loop-level { background: var(--accent-negative); color: white; }
 .loop-item.warning .loop-level { background: #b88a2d; color: white; }
+.loop-age { font-size: 11px; color: var(--text-muted); }
 .loop-text { flex: 1; color: var(--text-primary); }
-.loop-age { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
-.loop-actions { display: flex; gap: var(--space-xs); opacity: 0; transition: opacity 150ms; }
-.loop-item:hover .loop-actions { opacity: 1; }
+.loop-actions { display: flex; gap: var(--space-md); flex-wrap: wrap; }
 .level7-loop {
   background: var(--surface-card); border-radius: var(--radius-md);
   padding: var(--space-md); margin-bottom: var(--space-md);
@@ -9224,15 +9231,15 @@ function renderDashboard() {
       const levelClass = l.escalationLevel >= 5 ? 'critical' : l.escalationLevel >= 3 ? 'warning' : '';
       const levelBadge = `L${l.escalationLevel}`;
       return `<div class="loop-item ${levelClass}">
-        <div class="loop-item-main">
+        <div class="loop-item-header">
           <span class="loop-level">${levelBadge}</span>
-          <span class="loop-text">${escapeHtml(l.description)}</span>
-          <span class="loop-age">${ageDays}d</span>
+          <span class="loop-age">${ageDays}d ago</span>
         </div>
+        <div class="loop-text">${escapeHtml(l.description)}</div>
         <div class="loop-actions">
-          <button class="btn-ghost" style="font-size:11px" onclick="resolveLoop('${l.id}','completed')">Done</button>
-          <button class="btn-ghost" style="font-size:11px" onclick="snoozeLoop('${l.id}')">Snooze</button>
-          <button class="btn-ghost" style="font-size:11px;color:var(--text-muted)" onclick="resolveLoop('${l.id}','not_relevant')">Not relevant</button>
+          <button class="btn-primary" style="font-size:11px;padding:var(--space-xs) var(--space-md)" onclick="resolveLoop('${l.id}','completed')">Done</button>
+          <button class="btn-secondary" style="font-size:11px;padding:var(--space-xs) var(--space-md)" onclick="snoozeLoop('${l.id}')">Snooze</button>
+          <button class="btn-secondary" style="font-size:11px;padding:var(--space-xs) var(--space-md)" onclick="resolveLoop('${l.id}','not_relevant')">Not relevant</button>
         </div>
       </div>`;
     }).join('');
@@ -9242,7 +9249,7 @@ function renderDashboard() {
         <div class="dash-section-title" style="margin-bottom:0">OPEN LOOPS <span style="font-weight:400;text-transform:none">${loopStats.openCount}</span></div>
         <span style="font-size:11px;color:var(--text-muted)">Closed this week: ${loopStats.closedThisWeek} · Streak: ${loopStats.streak}w</span>
       </div>
-      <div class="loop-list">${loopItemsHtml}</div>
+      <div class="loop-grid">${loopItemsHtml}</div>
     </div>`;
   }
 
