@@ -9854,7 +9854,8 @@ async function retryReflection() {
   if (!aiContainer) return;
   aiContainer.innerHTML = `<span class="ai-icon">💬</span><div class="loading-dots"><span>·</span><span>·</span><span>·</span></div>`;
   try {
-    const reflection = await callClaude(getSystemPrompt(), buildDailyPrompt(entry), 600);
+    const prompt = buildDailyPrompt(entry) + '\n\n[SYSTEM NOTE: This is a fresh analysis. A previous attempt may have failed. Treat this as the first and only time you are seeing this entry. Do not reference or count how many times this entry has been analyzed.]';
+    const reflection = await callClaude(getSystemPrompt(), prompt, 800);
     entry.aiReflection = reflection;
     saveState();
     aiContainer.innerHTML = `<span class="ai-icon">💬</span><div class="ai-text">${formatCoachingNote(reflection)}</div>`;
@@ -9930,9 +9931,9 @@ async function reanalyzeCoaching(entryId, btn) {
   btn.disabled = true;
   btn.textContent = 'Analyzing...';
   try {
-    const prompt = buildDailyPrompt(entry);
+    const prompt = buildDailyPrompt(entry) + '\n\n[SYSTEM NOTE: This is a fresh analysis. A previous analysis may have had errors or incomplete input. Treat this as the first and only time you are seeing this entry. Do not reference or count how many times this entry has been analyzed. Produce a complete, standalone coaching note.]';
     console.log('Reanalyze coaching prompt for', entry.date, ':', prompt.substring(0, 200));
-    const reflection = await callClaude(getSystemPrompt(), prompt, 600);
+    const reflection = await callClaude(getSystemPrompt(), prompt, 800);
     console.log('Reanalyze coaching response:', reflection);
     entry.aiReflection = reflection;
     saveState();
