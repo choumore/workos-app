@@ -9823,7 +9823,7 @@ async function generateTldr(entry) {
     const result = await callClaude(
       'You compress journal entries into bullet-point TLDRs. For each section, output the section header on its own line, then bullet points below it. Use this exact format:\n\nWork done:\n- bullet 1\n- bullet 2\n\nReflection:\n- bullet 1\n\nWeekly retro:\n- bullet 1\n\nEach bullet: concise verb phrase (3-8 words). Only include sections that were provided. No preamble.',
       sections.join('\n\n'),
-      400
+      800
     );
     const tldr = {};
     let currentKey = null;
