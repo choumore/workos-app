@@ -1602,6 +1602,8 @@ body {
 }
 .loop-item.critical { border-left: 3px solid var(--accent-negative); }
 .loop-item.warning { border-left: 3px solid #b88a2d; }
+.loop-item.repeat-defer { border-left: 3px solid var(--accent-negative); background: color-mix(in srgb, var(--accent-negative) 6%, var(--surface-card)); }
+.loop-defer-badge { font-size: 10px; color: var(--accent-negative); font-weight: 600; }
 .loop-item-header { display: flex; align-items: center; gap: var(--space-sm); }
 .loop-level {
   font-size: 10px; font-weight: 700; color: var(--text-muted);
@@ -3914,10 +3916,7 @@ let state = {
   vectorEvidenceDenied: [],
   weeklyTriageCompletedAt: null,
   customVisibilityTypes: [],
-  openLoops: [],
   coachingState: { activeObservations: [], resolvedObservations: [], lastUpdated: null },
-  loopStreakWeeks: 0,
-  loopStreakBestWeeks: 0,
   monthlyReflections: {},
   quarterlyReflections: {}
 };
@@ -3974,10 +3973,7 @@ function loadState() {
       state.todayAiSuggestions = saved.todayAiSuggestions || null;
       state.weeklyTriageCompletedAt = saved.weeklyTriageCompletedAt || null;
       state.customVisibilityTypes = saved.customVisibilityTypes || [];
-      state.openLoops = saved.openLoops || [];
       state.coachingState = saved.coachingState || { activeObservations: [], resolvedObservations: [], lastUpdated: null };
-      state.loopStreakWeeks = saved.loopStreakWeeks || 0;
-      state.loopStreakBestWeeks = saved.loopStreakBestWeeks || 0;
       state.monthlyReflections = saved.monthlyReflections || {};
       state.quarterlyReflections = saved.quarterlyReflections || {};
 
@@ -4047,108 +4043,105 @@ function saveState() {
   }
   // Score computation runs AFTER save so crashes here never lose data
   try { computeVectorScores(); } catch (e) { console.warn('Score computation error:', e); }
-  try { updateOpenLoopEscalation(); } catch (e) { console.warn('Loop escalation error:', e); }
   try { buildCompressedSnapshot(); } catch (e) { console.warn('Snapshot error:', e); }
   debouncedSyncPush();
 }
 
 /* ========================================
-   Open Loops Engine
+   Open Loops Engine (Computed from Todos)
    ======================================== */
 function getEscalationSpeed() {
-  // gentle=14d, moderate=7d, aggressive=3d per level
   const intensity = state.settings.companionIntensity || 'moderate';
   return { gentle: 14, moderate: 7, aggressive: 3 }[intensity] || 7;
 }
 
-function updateOpenLoopEscalation() {
-  if (!state.openLoops || state.openLoops.length === 0) return;
+function getComputedOpenLoops() {
   const now = Date.now();
   const daysPerLevel = getEscalationSpeed();
+  const loops = [];
+  const seen = new Set();
 
-  for (const loop of state.openLoops) {
-    if (loop.status !== 'open') continue;
-
-    // Auto-resolve: check if linked todo was completed
-    if (loop.sourceId) {
-      const todo = state.todos.find(t => t.id === loop.sourceId);
-      if (todo && todo.status === 'done') {
-        loop.status = 'resolved';
-        loop.resolvedAt = todo.completedAt || new Date().toISOString();
-        loop.resolution = 'completed';
-        continue;
-      }
-    }
-
-    // Auto-resolve: check if journal mentions completion
-    const recentEntries = (state.entries || []).filter(e => e.date >= (loop.lastCheckedDate || '2000-01-01'));
-    for (const e of recentEntries) {
-      const text = ((e.workDone || '') + ' ' + (e.reflection || '')).toLowerCase();
-      const loopWords = loop.description.toLowerCase().split(/\s+/).filter(w => w.length > 4);
-      const matchCount = loopWords.filter(w => text.includes(w)).length;
-      if (matchCount >= 3 && loopWords.length > 0 && matchCount / loopWords.length > 0.5) {
-        loop.status = 'resolved';
-        loop.resolvedAt = new Date().toISOString();
-        loop.resolution = 'detected-in-journal';
-        break;
-      }
-    }
-    loop.lastCheckedDate = todayStr();
-    if (loop.status !== 'open') continue;
-
-    // Escalate based on age
-    const age = now - new Date(loop.createdAt || 0).getTime();
-    const ageDays = age / 86400000;
-    const newLevel = Math.min(7, Math.floor(ageDays / daysPerLevel) + 1);
-    if (newLevel > loop.escalationLevel) {
-      loop.escalationLevel = newLevel;
-    }
+  // Source A: Stale backlog (>10 days in backlog/later)
+  for (const t of (state.todos || [])) {
+    if (t.status !== 'open') continue;
+    if (t.priority !== 'backlog' && t.priority !== 'later') continue;
+    const ageDays = Math.floor((now - new Date(t.createdAt || 0).getTime()) / 86400000);
+    if (ageDays <= 10) continue;
+    seen.add(t.id);
+    loops.push({
+      todoId: t.id,
+      description: t.text,
+      ageDays,
+      escalationLevel: Math.min(7, Math.floor(ageDays / daysPerLevel) + 1),
+      deferCount: t.deferCount || 0,
+      isRepeatDefer: false
+    });
   }
+
+  // Source B: Repeatedly deferred (deferCount >= 1)
+  for (const t of (state.todos || [])) {
+    if (t.status !== 'open') continue;
+    if ((t.deferCount || 0) < 1) continue;
+    if (seen.has(t.id)) continue;
+    const ageDays = Math.floor((now - new Date(t.createdAt || 0).getTime()) / 86400000);
+    loops.push({
+      todoId: t.id,
+      description: t.text,
+      ageDays,
+      escalationLevel: Math.min(5, t.deferCount),
+      deferCount: t.deferCount,
+      isRepeatDefer: true
+    });
+  }
+
+  return loops.sort((a, b) => b.escalationLevel - a.escalationLevel);
 }
 
-function resolveLoop(loopId, resolution) {
-  const loop = state.openLoops.find(l => l.id === loopId);
-  if (!loop) return;
-  loop.status = resolution === 'not_relevant' ? 'resolved' : resolution === 'chose_not_to_act' ? 'chose_not_to_act' : 'resolved';
-  loop.resolvedAt = new Date().toISOString();
-  loop.resolution = resolution;
+function resolveLoop(todoId) {
+  const todo = state.todos.find(t => t.id === todoId);
+  if (!todo) return;
+  todo.status = 'done';
+  todo.completedAt = new Date().toISOString();
+  todo.deferCount = 0;
   saveState();
   renderDashboard();
-  showToast(resolution === 'chose_not_to_act' ? 'Recorded — will surface in quarterly reflection' : 'Loop closed');
+  showToast('Marked done');
 }
 
-function snoozeLoop(loopId) {
-  const loop = state.openLoops.find(l => l.id === loopId);
-  if (!loop) return;
-  // Reset escalation timer by bumping createdAt forward
-  loop.createdAt = new Date().toISOString();
-  loop.escalationLevel = Math.max(1, loop.escalationLevel - 1);
+function loopMoveToday(todoId) {
+  const todo = state.todos.find(t => t.id === todoId);
+  if (!todo) return;
+  todo.priority = 'today';
+  todo.triagedAt = new Date().toISOString();
   saveState();
   renderDashboard();
-  showToast('Snoozed — will re-escalate');
+  showToast('Moved to today');
+}
+
+function loopMoveWeek(todoId) {
+  const todo = state.todos.find(t => t.id === todoId);
+  if (!todo) return;
+  todo.priority = 'this-week';
+  todo.triagedAt = new Date().toISOString();
+  saveState();
+  renderDashboard();
+  showToast('Moved to this week');
 }
 
 function getOpenLoopStats() {
-  const open = (state.openLoops || []).filter(l => l.status === 'open');
-  const thisWeek = (state.openLoops || []).filter(l => l.resolvedAt && l.resolvedAt >= getWeekMonday(todayStr()));
-  const closedThisWeek = thisWeek.filter(l => l.status === 'resolved').length;
-  const openedThisWeek = open.filter(l => l.createdAt >= getWeekMonday(todayStr())).length;
+  const loops = getComputedOpenLoops();
   return {
-    openCount: open.length,
-    closedThisWeek,
-    openedThisWeek,
-    streak: state.loopStreakWeeks || 0,
-    bestStreak: state.loopStreakBestWeeks || 0,
-    critical: open.filter(l => l.escalationLevel >= 5).length
+    openCount: loops.length,
+    critical: loops.filter(l => l.escalationLevel >= 5).length
   };
 }
 
 function hasLevel7Loops() {
-  return (state.openLoops || []).some(l => l.status === 'open' && l.escalationLevel >= 7);
+  return getComputedOpenLoops().some(l => l.escalationLevel >= 7);
 }
 
 function showLevel7Gate(onContinue) {
-  const criticalLoops = (state.openLoops || []).filter(l => l.status === 'open' && l.escalationLevel >= 7);
+  const criticalLoops = getComputedOpenLoops().filter(l => l.escalationLevel >= 7);
   if (criticalLoops.length === 0) { onContinue(); return; }
 
   const backdrop = document.createElement('div');
@@ -4156,13 +4149,11 @@ function showLevel7Gate(onContinue) {
   backdrop.id = 'level7Gate';
 
   const loopsHtml = criticalLoops.map((l, i) => {
-    const ageDays = Math.floor((Date.now() - new Date(l.createdAt || 0).getTime()) / 86400000);
-    return `<div class="level7-loop" id="level7loop${i}">
-      <div style="font-weight:500;margin-bottom:4px">${escapeHtml(l.description)} <span style="color:var(--text-muted);font-weight:400">(${ageDays} days)</span></div>
+    return `<div class="level7-loop" id="level7loop${i}" data-todo-id="${l.todoId}">
+      <div style="font-weight:500;margin-bottom:4px">${escapeHtml(l.description)} <span style="color:var(--text-muted);font-weight:400">(${l.ageDays} days)</span></div>
       <div style="display:flex;gap:var(--space-sm);margin-top:var(--space-sm)">
         <label style="font-size:12px;cursor:pointer"><input type="radio" name="loop7-${i}" value="today" required> I'll do this today</label>
-        <label style="font-size:12px;cursor:pointer"><input type="radio" name="loop7-${i}" value="not_relevant"> No longer relevant</label>
-        <label style="font-size:12px;cursor:pointer"><input type="radio" name="loop7-${i}" value="chose_not_to_act"> I'm choosing not to act</label>
+        <label style="font-size:12px;cursor:pointer"><input type="radio" name="loop7-${i}" value="dismiss"> Not relevant</label>
       </div>
     </div>`;
   }).join('');
@@ -4225,28 +4216,26 @@ function updateCoachingState(reflection, entryDate) {
 }
 
 function processLevel7Gate(count) {
-  // Check all loops have a selection
   for (let i = 0; i < count; i++) {
     const selected = document.querySelector(`input[name="loop7-${i}"]:checked`);
     if (!selected) { showToast('Acknowledge each item to continue'); return; }
   }
 
-  const criticalLoops = (state.openLoops || []).filter(l => l.status === 'open' && l.escalationLevel >= 7);
+  const criticalLoops = getComputedOpenLoops().filter(l => l.escalationLevel >= 7);
   for (let i = 0; i < count; i++) {
     const selected = document.querySelector(`input[name="loop7-${i}"]:checked`);
     if (!selected || !criticalLoops[i]) continue;
-    const loop = criticalLoops[i];
     const action = selected.value;
+    const todoId = criticalLoops[i].todoId;
+    const todo = state.todos.find(t => t.id === todoId);
+    if (!todo) continue;
     if (action === 'today') {
-      // Reset escalation, move linked todo to today
-      loop.createdAt = new Date().toISOString();
-      loop.escalationLevel = 1;
-      if (loop.sourceId) {
-        const todo = state.todos.find(t => t.id === loop.sourceId);
-        if (todo) todo.priority = 'today';
-      }
+      todo.priority = 'today';
+      todo.triagedAt = new Date().toISOString();
     } else {
-      resolveLoop(loop.id, action);
+      // dismiss
+      todo.status = 'dismissed';
+      todo.completedAt = new Date().toISOString();
     }
   }
   saveState();
@@ -4764,30 +4753,8 @@ function runMigrations() {
   }
 
   if (v < 4) {
-    // Phase 2: Open loops + stateful coaching
-    if (!state.openLoops) state.openLoops = [];
+    // Phase 2: Stateful coaching (openLoops seeding removed — now computed from todos)
     if (!state.coachingState) state.coachingState = { activeObservations: [], resolvedObservations: [], lastUpdated: null };
-    // Seed loops from unresolved meeting-sourced todos older than 3 days
-    const threeDaysAgo = Date.now() - 3 * 86400000;
-    for (const t of (state.todos || [])) {
-      if (t.status !== 'open' || !t.meetingId) continue;
-      if (new Date(t.createdAt || 0).getTime() > threeDaysAgo) continue;
-      const exists = state.openLoops.some(l => l.sourceId === t.id);
-      if (exists) continue;
-      state.openLoops.push({
-        id: 'loop-' + t.id,
-        description: t.text,
-        source: 'meeting',
-        sourceId: t.id,
-        sourceTitle: t.meetingTitle || '',
-        createdAt: t.createdAt,
-        escalationLevel: 1,
-        timesShown: 0,
-        status: 'open',
-        resolvedAt: null,
-        resolution: null
-      });
-    }
     state.dataVersion = 4;
     changed = true;
   }
@@ -4808,6 +4775,31 @@ function runMigrations() {
       if (t.recurrence === undefined) t.recurrence = null;
     }
     state.dataVersion = 6;
+    changed = true;
+  }
+
+  if (v < 7) {
+    // Backfill deferCount on all todos
+    for (const t of (state.todos || [])) {
+      if (t.deferCount === undefined) t.deferCount = 0;
+    }
+    // Transfer resolved/dismissed state from old openLoops to source todos
+    for (const loop of (state.openLoops || [])) {
+      if (loop.status === 'resolved' || loop.status === 'chose_not_to_act') {
+        if (loop.sourceId) {
+          const todo = state.todos.find(t => t.id === loop.sourceId);
+          if (todo && todo.status === 'open') {
+            todo.status = loop.resolution === 'not_relevant' ? 'dismissed' : 'done';
+            todo.completedAt = loop.resolvedAt || new Date().toISOString();
+          }
+        }
+      }
+    }
+    // Delete legacy open loop data
+    delete state.openLoops;
+    delete state.loopStreakWeeks;
+    delete state.loopStreakBestWeeks;
+    state.dataVersion = 7;
     changed = true;
   }
 
@@ -4872,10 +4864,7 @@ async function syncPush() {
       })),
       dataVersion: state.dataVersion || 1,
       vectors: state.vectors || [],
-      openLoops: state.openLoops || [],
       coachingState: state.coachingState || {},
-      loopStreakWeeks: state.loopStreakWeeks || 0,
-      loopStreakBestWeeks: state.loopStreakBestWeeks || 0,
       monthlyReflections: state.monthlyReflections || {},
       quarterlyReflections: state.quarterlyReflections || {},
       customVisibilityTypes: state.customVisibilityTypes || []
@@ -4977,12 +4966,6 @@ async function syncPull() {
       state.vectors = remote.vectors;
     }
     state.dataVersion = Math.max(state.dataVersion || 1, remote.dataVersion || 1);
-    // Open loops: merge by ID
-    if (remote.openLoops) {
-      const localById = new Map((state.openLoops || []).map(l => [l.id, l]));
-      for (const rl of remote.openLoops) { localById.set(rl.id, rl); }
-      state.openLoops = [...localById.values()];
-    }
     // Coaching state: latest wins
     if (remote.coachingState && remote.coachingState.lastUpdated > (state.coachingState?.lastUpdated || '')) {
       state.coachingState = remote.coachingState;
@@ -5627,7 +5610,8 @@ function parseActionItemsToTodos(meeting) {
       createdAt: new Date().toISOString(),
       completedAt: null,
       addedToIntention: null,
-      addedToPlan: null
+      addedToPlan: null,
+      deferCount: 0
     });
   }
 }
@@ -6338,6 +6322,9 @@ function renderTodoItem(todo) {
 function setTodoPriority(id, priority) {
   const todo = state.todos.find(t => t.id === id);
   if (!todo) return;
+  if (todo.priority === 'today' && priority !== 'today' && todo.status === 'open') {
+    todo.deferCount = (todo.deferCount || 0) + 1;
+  }
   todo.priority = priority;
   todo.triagedAt = new Date().toISOString();
   saveState();
@@ -6355,6 +6342,7 @@ function toggleTodo(id) {
   } else {
     todo.status = 'done';
     todo.completedAt = new Date().toISOString();
+    todo.deferCount = 0;
     const todayEntry = getEntryForDate(todayStr());
     if (todayEntry && todayEntry.workDone && !todayEntry.workDone.includes(todo.text)) {
       todayEntry.workDone += '\n✓ ' + todo.text;
@@ -6454,7 +6442,8 @@ function createFollowUp(parentId) {
     source: 'follow-up', parentId,
     scheduledFor,
     createdAt: new Date().toISOString(),
-    completedAt: null, triagedAt: null
+    completedAt: null, triagedAt: null,
+    deferCount: 0
   });
   saveState();
 
@@ -6513,7 +6502,8 @@ function spawnRecurringInstance(todo) {
     createdAt: new Date().toISOString(),
     completedAt: null,
     triagedAt: null,
-    starred: false
+    starred: false,
+    deferCount: 0
   };
   state.todos.push(newTodo);
   return newTodo;
@@ -6668,7 +6658,8 @@ function addManualTodo() {
     addedToIntention: null,
     addedToPlan: null,
     recurrence: newTodoRecurrence || null,
-    scheduledFor: newTodoRecurrence ? getNextRecurrenceDate(newTodoRecurrence) : null
+    scheduledFor: newTodoRecurrence ? getNextRecurrenceDate(newTodoRecurrence) : null,
+    deferCount: 0
   });
   newTodoRecurrence = null;
   saveState();
@@ -6869,9 +6860,9 @@ function buildDailyPrompt(entry) {
   }
 
   let loopContext = '';
-  const openLoops = (state.openLoops || []).filter(l => l.status === 'open');
-  if (openLoops.length > 0) {
-    loopContext = `\n<open_loops>\n${openLoops.slice(0, 5).map(l => `- "${l.description}" (${l.escalationLevel >= 5 ? 'CRITICAL' : 'open'}, ${Math.floor((Date.now() - new Date(l.createdAt).getTime()) / 86400000)}d)`).join('\n')}\n</open_loops>\n\n`;
+  const computedLoops = getComputedOpenLoops();
+  if (computedLoops.length > 0) {
+    loopContext = `\n<open_loops>\n${computedLoops.slice(0, 5).map(l => `- "${l.description}" (${l.escalationLevel >= 5 ? 'CRITICAL' : 'open'}, ${l.ageDays}d${l.isRepeatDefer ? ', deferred ' + l.deferCount + 'x' : ''})`).join('\n')}\n</open_loops>\n\n`;
   }
 
   // Mood/energy trends
@@ -8185,10 +8176,11 @@ function getReflectionData(periodKey, type) {
     return { name: v.name, tier: sc.tier, total: sc.total };
   });
 
-  // Loop performance
-  const loopsOpened = (state.openLoops || []).filter(l => l.createdAt >= startDate && l.createdAt <= endDate + 'T23:59:59').length;
-  const loopsClosed = (state.openLoops || []).filter(l => l.resolvedAt && l.resolvedAt >= startDate && l.resolvedAt <= endDate + 'T23:59:59' && l.status === 'resolved').length;
-  const choseNotToAct = (state.openLoops || []).filter(l => l.status === 'chose_not_to_act' && l.resolvedAt >= startDate && l.resolvedAt <= endDate + 'T23:59:59');
+  // Loop performance (computed from todos)
+  const currentLoops = getComputedOpenLoops();
+  const loopsOpened = currentLoops.length;
+  const loopsClosed = 0;
+  const choseNotToAct = [];
 
   // Key evidence
   const wins = (state.wins || []).filter(w => w.status === 'confirmed' && w.date >= startDate && w.date <= endDate);
@@ -8915,7 +8907,8 @@ function triageUndo() {
       status: 'open',
       priority: 'inbox',
       source: 'manual',
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      deferCount: 0
     });
     triageCounts.deleted--;
   } else {
@@ -8954,7 +8947,8 @@ function addCoachingTodo(btn, date) {
     id, text: text.trim(), status: 'open', priority: 'inbox',
     source: 'coaching', sourceTitle: 'Coaching ' + date,
     createdAt: new Date().toISOString(), completedAt: null,
-    scheduledFor: null, parentId: null, triagedAt: null
+    scheduledFor: null, parentId: null, triagedAt: null,
+    deferCount: 0
   });
   saveState();
   btn.textContent = '✓ Added';
@@ -8968,7 +8962,8 @@ function addVisibilityTodo(text, sourceTitle) {
     id, text, status: 'open', priority: 'inbox',
     source: 'visibility', sourceTitle: sourceTitle || 'Visibility opportunity',
     createdAt: new Date().toISOString(), completedAt: null,
-    scheduledFor: null, parentId: null, triagedAt: null
+    scheduledFor: null, parentId: null, triagedAt: null,
+    deferCount: 0
   });
   saveState();
   showToast('Added to inbox');
@@ -8976,7 +8971,12 @@ function addVisibilityTodo(text, sourceTitle) {
 
 function moveTodoPriority(todoId, newPriority) {
   const t = state.todos.find(t => t.id === todoId);
-  if (t) { t.priority = newPriority; t.triagedAt = new Date().toISOString(); saveState(); }
+  if (t) {
+    if (t.priority === 'today' && newPriority !== 'today' && t.status === 'open') {
+      t.deferCount = (t.deferCount || 0) + 1;
+    }
+    t.priority = newPriority; t.triagedAt = new Date().toISOString(); saveState();
+  }
 }
 
 function confirmTodayFocus() {
@@ -9015,7 +9015,8 @@ function addFocusItem() {
   state.todos.push({
     id, text: text.trim(), status: 'open', priority: 'today',
     source: 'manual', createdAt: new Date().toISOString(),
-    completedAt: null, scheduledFor: null, parentId: null, triagedAt: new Date().toISOString()
+    completedAt: null, scheduledFor: null, parentId: null, triagedAt: new Date().toISOString(),
+    deferCount: 0
   });
   saveState();
   renderDashboard();
@@ -9221,25 +9222,25 @@ function renderDashboard() {
   // Dim sections below focus if not confirmed
   const dimClass = !focusConfirmed ? ' style="opacity:0.4;pointer-events:none"' : '';
 
-  // Open loops section
-  const loopStats = getOpenLoopStats();
-  const openLoops = (state.openLoops || []).filter(l => l.status === 'open').sort((a, b) => b.escalationLevel - a.escalationLevel);
+  // Open loops section (computed from todos)
+  const openLoops = getComputedOpenLoops();
   let loopsHtml = '';
   if (openLoops.length > 0) {
     const loopItemsHtml = openLoops.map(l => {
-      const ageDays = Math.floor((Date.now() - new Date(l.createdAt || 0).getTime()) / 86400000);
-      const levelClass = l.escalationLevel >= 5 ? 'critical' : l.escalationLevel >= 3 ? 'warning' : '';
+      const levelClass = l.isRepeatDefer ? 'repeat-defer' : l.escalationLevel >= 5 ? 'critical' : l.escalationLevel >= 3 ? 'warning' : '';
       const levelBadge = `L${l.escalationLevel}`;
+      const deferBadge = l.isRepeatDefer ? `<span class="loop-defer-badge">deferred ${l.deferCount}x</span>` : '';
       return `<div class="loop-item ${levelClass}">
         <div class="loop-item-header">
           <span class="loop-level">${levelBadge}</span>
-          <span class="loop-age">${ageDays}d ago</span>
+          ${deferBadge}
+          <span class="loop-age">${l.ageDays}d ago</span>
         </div>
         <div class="loop-text">${escapeHtml(l.description)}</div>
         <div class="loop-actions">
-          <button class="btn-secondary btn-accent" style="font-size:11px;white-space:nowrap" onclick="resolveLoop('${l.id}','completed')">Done</button>
-          <button class="btn-secondary" style="font-size:11px;white-space:nowrap" onclick="snoozeLoop('${l.id}')">Snooze</button>
-          <button class="btn-ghost" style="font-size:11px;white-space:nowrap;color:var(--text-muted)" onclick="resolveLoop('${l.id}','not_relevant')">Not relevant</button>
+          <button class="btn-secondary btn-accent" style="font-size:11px;white-space:nowrap" onclick="resolveLoop('${l.todoId}')">Done</button>
+          <button class="btn-secondary" style="font-size:11px;white-space:nowrap" onclick="loopMoveToday('${l.todoId}')">&rarr; Today</button>
+          <button class="btn-secondary" style="font-size:11px;white-space:nowrap" onclick="loopMoveWeek('${l.todoId}')">&rarr; This Week</button>
         </div>
       </div>`;
     }).join('');
@@ -9247,7 +9248,6 @@ function renderDashboard() {
     loopsHtml = `<div class="dash-section">
       <div style="display:flex;justify-content:space-between;align-items:baseline">
         <div class="dash-section-title" style="margin-bottom:0">OPEN LOOPS <span style="font-weight:400;text-transform:none">${openLoops.length}</span></div>
-        <span style="font-size:11px;color:var(--text-muted)">Closed this week: ${loopStats.closedThisWeek} · Streak: ${loopStats.streak}w</span>
       </div>
       <div class="loop-grid">${loopItemsHtml}</div>
     </div>`;
