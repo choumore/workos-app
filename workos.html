@@ -9237,9 +9237,9 @@ function renderDashboard() {
         </div>
         <div class="loop-text">${escapeHtml(l.description)}</div>
         <div class="loop-actions">
-          <button class="btn-primary" style="font-size:11px;padding:2px 10px;white-space:nowrap" onclick="resolveLoop('${l.id}','completed')">Done</button>
-          <button class="btn-primary" style="font-size:11px;padding:2px 10px;white-space:nowrap" onclick="snoozeLoop('${l.id}')">Snooze</button>
-          <button class="btn-ghost" style="font-size:11px;padding:2px 10px;white-space:nowrap;color:var(--text-muted)" onclick="resolveLoop('${l.id}','not_relevant')">Not relevant</button>
+          <button class="btn-secondary btn-accent" style="font-size:11px;white-space:nowrap" onclick="resolveLoop('${l.id}','completed')">Done</button>
+          <button class="btn-secondary" style="font-size:11px;white-space:nowrap" onclick="snoozeLoop('${l.id}')">Snooze</button>
+          <button class="btn-ghost" style="font-size:11px;white-space:nowrap;color:var(--text-muted)" onclick="resolveLoop('${l.id}','not_relevant')">Not relevant</button>
         </div>
       </div>`;
     }).join('');
