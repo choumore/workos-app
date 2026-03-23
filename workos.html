@@ -9226,9 +9226,7 @@ function renderDashboard() {
   const openLoops = (state.openLoops || []).filter(l => l.status === 'open').sort((a, b) => b.escalationLevel - a.escalationLevel);
   let loopsHtml = '';
   if (openLoops.length > 0) {
-    const loopsToShow = openLoops.slice(0, 7);
-    const hiddenCount = openLoops.length - loopsToShow.length;
-    const loopItemsHtml = loopsToShow.map(l => {
+    const loopItemsHtml = openLoops.map(l => {
       const ageDays = Math.floor((Date.now() - new Date(l.createdAt || 0).getTime()) / 86400000);
       const levelClass = l.escalationLevel >= 5 ? 'critical' : l.escalationLevel >= 3 ? 'warning' : '';
       const levelBadge = `L${l.escalationLevel}`;
@@ -9248,7 +9246,7 @@ function renderDashboard() {
 
     loopsHtml = `<div class="dash-section">
       <div style="display:flex;justify-content:space-between;align-items:baseline">
-        <div class="dash-section-title" style="margin-bottom:0">OPEN LOOPS <span style="font-weight:400;text-transform:none">${loopsToShow.length}${hiddenCount > 0 ? ' of ' + openLoops.length : ''}</span></div>
+        <div class="dash-section-title" style="margin-bottom:0">OPEN LOOPS <span style="font-weight:400;text-transform:none">${openLoops.length}</span></div>
         <span style="font-size:11px;color:var(--text-muted)">Closed this week: ${loopStats.closedThisWeek} · Streak: ${loopStats.streak}w</span>
       </div>
       <div class="loop-grid">${loopItemsHtml}</div>
