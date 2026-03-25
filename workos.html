@@ -539,6 +539,10 @@ body {
   color: var(--text-secondary);
   margin-top: var(--space-xs);
 }
+.brief-generated-at {
+  font-size: 11px;
+  color: var(--text-muted);
+}
 .brief-back {
   margin-bottom: var(--space-xl);
 }
@@ -560,10 +564,13 @@ body {
   margin-bottom: var(--space-3xl);
 }
 .brief-section .card {
-  font-size: 15px;
+  font-size: 13px;
   line-height: 1.6;
   white-space: pre-wrap;
 }
+.brief-section .card p { margin: var(--space-lg) 0 var(--space-xs) 0; }
+.brief-section .card p:first-child { margin-top: 0; }
+.brief-section .card ul { margin-bottom: var(--space-sm); }
 
 /* ========================================
    Nudge Card
@@ -1600,9 +1607,9 @@ body {
   background: var(--surface-card); border-radius: var(--radius-sm);
   font-size: 13px;
 }
-.loop-item.critical { border-left: 3px solid var(--accent-negative); }
-.loop-item.warning { border-left: 3px solid #b88a2d; }
-.loop-item.repeat-defer { border-left: 3px solid var(--accent-negative); background: color-mix(in srgb, var(--accent-negative) 6%, var(--surface-card)); }
+.loop-item.critical { }
+.loop-item.warning { }
+.loop-item.repeat-defer { }
 .loop-defer-badge { font-size: 10px; color: var(--accent-negative); font-weight: 600; }
 .loop-item-header { display: flex; align-items: center; gap: var(--space-sm); }
 .loop-level {
@@ -1660,6 +1667,53 @@ body {
 }
 .focus-inbox-item:hover { background: color-mix(in srgb, var(--accent-primary) 5%, transparent); border-radius: var(--radius-sm); }
 .focus-item input[type="checkbox"] { flex-shrink: 0; }
+/* Pull-forward section in daily focus triage */
+.focus-pull-forward {
+  margin-top: var(--space-md);
+  border-top: 1px solid var(--border-default);
+  padding-top: var(--space-sm);
+}
+.focus-pull-toggle {
+  background: none;
+  border: none;
+  font: 12px var(--font-family);
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: var(--space-xs) 0;
+}
+.focus-pull-toggle:hover { color: var(--text-secondary); }
+.focus-pull-group-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: var(--space-sm) var(--space-sm) var(--space-xs);
+}
+.focus-pull-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-sm);
+  font-size: 13px;
+}
+.focus-pull-item:hover { background: color-mix(in srgb, var(--accent-primary) 5%, transparent); border-radius: var(--radius-sm); }
+.focus-pull-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); }
+.focus-pull-btn {
+  flex-shrink: 0;
+  background: var(--surface-ai);
+  border: none;
+  font: 11px var(--font-family);
+  font-weight: 500;
+  color: var(--accent-interactive);
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  transition: background var(--duration-fast);
+}
+.focus-pull-btn:hover { background: var(--accent-200); }
 
 /* Follow-up prompt */
 .follow-up-prompt {
@@ -1682,7 +1736,7 @@ body {
 .follow-up-create { margin-left: auto; font-size: 12px; padding: 3px 12px; }
 
 /* Weekly triage */
-.triage-overlay { max-width: 600px; }
+.triage-overlay { max-width: 100%; }
 .triage-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: var(--space-xl); }
 .triage-title { font-size: 18px; font-weight: 600; }
 .triage-list { display: flex; flex-direction: column; gap: var(--space-sm); }
@@ -1703,6 +1757,91 @@ body {
 .triage-btn.delete { color: var(--accent-negative); }
 .triage-btn.delete:hover { border-color: var(--accent-negative); }
 .triage-batch { display: flex; gap: var(--space-sm); margin-top: var(--space-md); }
+/* Card-based week triage */
+.week-triage-card {
+  background: var(--surface-card);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  text-align: center;
+  animation: fadeIn 0.15s ease;
+}
+.week-triage-card-parent {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-bottom: var(--space-xs);
+}
+.week-triage-card-parent::before { content: '↳ subtask of '; }
+.week-triage-card-text {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.5;
+  margin-bottom: var(--space-md);
+  word-break: break-word;
+}
+.week-triage-card-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: var(--space-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+}
+.week-triage-card-actions {
+  display: flex;
+  gap: var(--space-sm);
+  justify-content: center;
+  margin-bottom: var(--space-md);
+}
+.week-triage-action {
+  font: 13px var(--font-family);
+  font-weight: 500;
+  padding: var(--space-sm) var(--space-lg);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  background: none;
+  color: var(--text-secondary);
+  transition: all var(--duration-fast);
+}
+.week-triage-action:hover { border-color: var(--text-muted); color: var(--text-primary); }
+.week-triage-action.keep { border-color: var(--accent-interactive); color: var(--accent-interactive); background: var(--surface-ai); }
+.week-triage-action.keep:hover { background: var(--accent-200); }
+.week-triage-action.promote { border-color: #155724; color: #155724; background: #d4edda; }
+.week-triage-action.promote:hover { background: #c3e6cb; }
+.week-triage-action.defer { color: var(--text-muted); }
+.week-triage-card-star { margin-top: var(--space-xs); }
+.week-triage-progress {
+  height: 3px;
+  background: var(--border-default);
+  border-radius: 2px;
+  margin-top: var(--space-lg);
+  overflow: hidden;
+}
+.week-triage-progress-bar {
+  height: 100%;
+  background: var(--accent-interactive);
+  transition: width 0.3s ease;
+  border-radius: 2px;
+}
+.week-triage-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-lg) 0;
+}
+.week-triage-summary-row {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.week-triage-summary-count {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-right: var(--space-xs);
+}
 
 /* ========================================
    Log Tab — Journal Styles
@@ -2649,6 +2788,34 @@ body {
   margin: auto 0;
   opacity: 0.2;
 }
+.visib-rhythm-monogram {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  margin: auto 0;
+  opacity: 0.6;
+  letter-spacing: 0.02em;
+}
+.visib-rhythm-card.today .visib-rhythm-monogram { opacity: 0.85; }
+.visib-rhythm-card.filled .visib-rhythm-monogram { opacity: 1; background: rgba(255,255,255,0.3) !important; }
+.visib-pending-section {
+  border-left: 3px solid var(--accent-interactive);
+  padding-left: var(--space-md);
+  background: var(--surface-card);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding: var(--space-md) var(--space-lg);
+}
+.visib-pending-item {
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid var(--border-default);
+}
+.visib-pending-item:last-child { border-bottom: none; }
 .visib-rhythm-sublabel {
   font-size: 13px;
   font-weight: 600;
@@ -2924,6 +3091,124 @@ body {
 .meeting-card-section-body p:last-child {
   margin-bottom: 0;
 }
+.meeting-compact-row {
+  background: var(--surface-card);
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-lg);
+  margin-bottom: var(--space-xs);
+  cursor: pointer;
+  transition: background var(--duration-fast);
+}
+.meeting-compact-row:hover { background: var(--surface-card-hover, color-mix(in srgb, var(--surface-card) 92%, var(--text-primary))); }
+.meeting-compact-row-primary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+.meeting-compact-type {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.meeting-compact-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.meeting-compact-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.meeting-compact-chevron {
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: transform var(--duration-fast);
+}
+.meeting-compact-secondary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-top: 2px;
+  padding-left: calc(8px + var(--space-sm) + 1px);
+}
+.meeting-compact-oneliner {
+  font-size: 13px;
+  color: var(--text-secondary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.meeting-compact-date {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.meeting-week-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin: var(--space-3xl) 0 var(--space-md);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.meeting-week-header:first-child { margin-top: 0; }
+.meeting-week-header::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.meeting-filter-bar {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+  margin-bottom: var(--space-lg);
+  flex-wrap: wrap;
+}
+.meeting-filter-search {
+  width: 100%;
+  font: 13px var(--font-family);
+  padding: var(--space-xs) var(--space-md);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  outline: none;
+}
+.meeting-filter-search:focus { border-color: var(--accent-interactive); }
+.meeting-filter-search::placeholder { color: var(--text-muted); }
+.meeting-type-chip {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  cursor: pointer;
+  transition: opacity var(--duration-fast);
+  white-space: nowrap;
+}
+.meeting-type-chip:hover { opacity: 0.85; }
+.meeting-type-chip.active { border-color: currentColor; }
+.meeting-type-chip.dimmed { opacity: 0.4; }
 .visib-audience-tag {
   font-size: 11px;
   font-weight: 500;
@@ -3377,6 +3662,7 @@ body {
   .visib-rhythm-strip::-webkit-scrollbar { display: none; }
   .visib-rhythm-card { padding: var(--space-sm) var(--space-xs); }
   .visib-rhythm-icon { width: 40px; height: 40px; }
+  .visib-rhythm-monogram { width: 34px; height: 34px; font-size: 12px; }
   .visib-rhythm-sublabel { font-size: 10px; }
   .visib-type-grid {
     grid-template-columns: 1fr;
@@ -3543,6 +3829,28 @@ body {
   text-align: center;
   padding: var(--space-3xl) var(--space-xl);
 }
+.todo-search {
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  margin-top: var(--space-sm);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  font: 13px var(--font-family);
+  color: var(--text-primary);
+  outline: none;
+  box-sizing: border-box;
+}
+.todo-search:focus { border-color: var(--accent-interactive); }
+.todo-search::placeholder { color: var(--text-muted); }
+.todo-search-group-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: var(--space-md) 0 var(--space-xs);
+}
 .todo-add-item {
   margin-bottom: var(--space-md);
 }
@@ -3574,8 +3882,8 @@ body {
   padding: var(--space-lg);
   margin-bottom: var(--space-sm);
 }
-.todo-item.done { opacity: 0.55; }
 .todo-item.done .todo-text { text-decoration: line-through; }
+.todo-item.todo-parent { border: 2px solid var(--border-default); }
 .todo-item-main {
   display: flex;
   gap: var(--space-md);
@@ -3584,7 +3892,7 @@ body {
   min-width: 0;
 }
 .todo-item-main input[type="checkbox"] {
-  margin-top: 3px;
+  margin-top: 4px;
   flex-shrink: 0;
   cursor: pointer;
 }
@@ -3602,6 +3910,7 @@ body {
 .todo-meta {
   display: flex;
   flex-wrap: wrap;
+  align-items: baseline;
   gap: 2px var(--space-sm);
   margin-top: 4px;
   font-size: 12px;
@@ -3616,9 +3925,8 @@ body {
 .todo-source.clickable:hover { text-decoration: underline; }
 .todo-age { color: var(--text-muted); }
 .todo-date { color: var(--text-muted); }
-.todo-added-indicator {
-  color: var(--accent-interactive);
-  font-weight: 500;
+.todo-item.added-to-plan {
+  background: color-mix(in srgb, var(--accent-interactive) 16%, var(--surface-card));
 }
 .todo-age-filter {
   display: flex;
@@ -3648,35 +3956,6 @@ body {
   border-color: var(--accent-interactive);
 }
 .todo-age-btn.active + .todo-age-btn { border-left-color: var(--accent-interactive); }
-.todo-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0;
-  flex-shrink: 0;
-  align-self: stretch;
-  width: 140px;
-}
-.todo-priority-btn {
-  background: none;
-  border: 1px solid var(--border-default);
-  font: 11px var(--font-family);
-  font-weight: 500;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 0;
-  transition: all var(--duration-fast);
-  white-space: nowrap;
-}
-.todo-priority-btn:nth-child(1) { border-radius: 4px 0 0 0; }
-.todo-priority-btn:nth-child(2) { border-radius: 0 4px 0 0; border-left: none; }
-.todo-priority-btn:nth-child(3) { border-radius: 0 0 0 4px; border-top: none; }
-.todo-priority-btn:nth-child(4) { border-radius: 0 0 4px 0; border-left: none; border-top: none; }
-.todo-priority-btn:hover {
-  color: var(--text-primary);
-  border-color: var(--accent-interactive);
-  background: var(--accent-50, rgba(0,0,0,0.02));
-}
 .todo-dismiss-btn {
   position: absolute;
   top: var(--space-xs);
@@ -3695,6 +3974,113 @@ body {
   background: var(--border-default);
 }
 .todo-dismiss-btn:hover { color: var(--accent-negative); }
+.todo-restore-btn {
+  position: absolute;
+  top: var(--space-sm);
+  right: var(--space-sm);
+  background: var(--surface-ai);
+  border: none;
+  font: 11px var(--font-family);
+  font-weight: 500;
+  color: var(--accent-interactive);
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  transition: background var(--duration-fast);
+}
+.todo-restore-btn:hover { background: var(--accent-200); }
+.todo-dismiss-confirm {
+  position: absolute;
+  top: var(--space-xs);
+  right: var(--space-xs);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: 11px;
+  animation: fadeIn 0.1s ease;
+}
+.todo-dismiss-confirm-label {
+  color: var(--accent-negative);
+  font-weight: 600;
+}
+.todo-dismiss-confirm-yes,
+.todo-dismiss-confirm-no {
+  background: none;
+  border: 1px solid var(--border-default);
+  font: 11px var(--font-family);
+  font-weight: 500;
+  cursor: pointer;
+  padding: 1px 8px;
+  border-radius: var(--radius-sm);
+}
+.todo-dismiss-confirm-yes {
+  color: var(--accent-negative);
+  border-color: var(--accent-negative);
+}
+.todo-dismiss-confirm-yes:hover { background: var(--accent-negative); color: white; }
+.todo-dismiss-confirm-no { color: var(--text-muted); }
+.todo-dismiss-confirm-no:hover { color: var(--text-primary); border-color: var(--text-muted); }
+/* Deadline pull-forward confirmation modal */
+.deadline-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.15s ease;
+}
+.deadline-confirm-modal {
+  background: var(--surface-card);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  max-width: 420px;
+  width: 90%;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+}
+.deadline-confirm-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-sm);
+}
+.deadline-confirm-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: var(--space-md);
+}
+.deadline-confirm-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-lg);
+  max-height: 180px;
+  overflow-y: auto;
+}
+.deadline-confirm-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-sm);
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--bg-base);
+  border-radius: var(--radius-sm);
+}
+.deadline-confirm-bucket {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.deadline-confirm-actions {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
 .todo-star {
   background: none;
   border: none;
@@ -3730,20 +4116,21 @@ body {
 
 /* Recurring to-dos */
 .todo-recurrence-btn {
-  background: none;
+  background: var(--surface-ai);
   border: none;
   font: 11px var(--font-family);
-  color: var(--text-muted);
+  font-weight: 500;
+  color: var(--accent-interactive);
   cursor: pointer;
-  padding: 2px 6px;
+  padding: 2px 8px;
   border-radius: var(--radius-sm);
-  transition: color var(--duration-fast);
+  transition: background var(--duration-fast), color var(--duration-fast);
 }
-.todo-recurrence-btn:hover { color: var(--accent-interactive); }
+.todo-recurrence-btn:hover { background: var(--accent-200); }
 .todo-recurrence-menu {
   position: absolute;
   z-index: 100;
-  background: var(--bg-card);
+  background: var(--surface-card);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
@@ -3764,6 +4151,30 @@ body {
 }
 .todo-recurrence-menu button:hover { background: var(--bg-hover); }
 .todo-recurrence-menu button.selected { color: var(--accent-interactive); font-weight: 600; }
+.todo-reschedule-menu {
+  position: absolute;
+  z-index: 100;
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  padding: var(--space-xs) 0;
+  min-width: 120px;
+  animation: fadeIn 0.15s ease;
+}
+.todo-reschedule-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  font: 13px var(--font-family);
+  color: var(--text-primary);
+  padding: var(--space-sm) var(--space-md);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.todo-reschedule-menu button:hover { background: var(--bg-hover); }
 .todo-recurrence-badge {
   font-size: 11px;
   color: var(--accent-interactive);
@@ -3784,6 +4195,129 @@ body {
 }
 .todo-add-recurrence:hover { border-color: var(--accent-interactive); color: var(--accent-interactive); }
 .todo-add-recurrence.active { border-style: solid; border-color: var(--accent-interactive); color: var(--accent-interactive); }
+
+/* Nest-under-parent picker */
+.nest-picker {
+  position: absolute;
+  z-index: 100;
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  max-height: 280px;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.15s ease;
+}
+.nest-picker-search {
+  font: 13px var(--font-family);
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid var(--border-default);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  outline: none;
+  box-sizing: border-box;
+}
+.nest-picker-list {
+  overflow-y: auto;
+  flex: 1;
+}
+.nest-picker-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  font: 13px var(--font-family);
+  color: var(--text-primary);
+  padding: var(--space-sm) var(--space-md);
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nest-picker-item:hover { background: var(--bg-hover); }
+.nest-picker-empty {
+  padding: var(--space-md);
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+.nest-picker-create {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--border-default);
+  font: 13px var(--font-family);
+  color: var(--accent-interactive);
+  padding: var(--space-sm) var(--space-md);
+  cursor: pointer;
+}
+.nest-picker-create:hover { background: var(--bg-hover); }
+.nest-picker-create-input {
+  font: 13px var(--font-family);
+  width: 100%;
+  border: none;
+  border-top: 1px solid var(--border-default);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  outline: none;
+  box-sizing: border-box;
+}
+
+/* Subtask rendering */
+.todo-subtasks {
+  margin-left: var(--space-2xl);
+  border-left: 2px solid var(--border-default);
+  padding-left: var(--space-sm);
+  margin-bottom: var(--space-lg);
+}
+.todo-subtasks .todo-item {
+  padding: var(--space-sm) var(--space-md);
+  margin-bottom: 2px;
+  background: transparent;
+}
+.todo-subtask-progress {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: var(--space-xs);
+}
+.todo-subtask-inline {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: 3px 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-primary);
+}
+.todo-subtask-inline input[type="checkbox"] {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+.todo-subtask-inline.done { opacity: 0.55; }
+.todo-subtask-inline input[type="checkbox"]:checked { accent-color: var(--accent-positive); }
+.todo-subtask-inline .strikethrough { text-decoration: line-through; }
+.todo-due-label {
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  margin-left: var(--space-sm);
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+  vertical-align: text-bottom;
+  text-transform: uppercase;
+}
+.todo-due-today { background: #d4edda; color: #155724; }
+.todo-due-tomorrow { background: #fff3cd; color: #856404; }
+.todo-due-this-week { background: #cce5ff; color: #004085; }
+.todo-due-backlog { background: #e2e3e5; color: #383d41; }
 
 /* Inline todo editing */
 .todo-item:not(.done) .todo-text { cursor: pointer; }
@@ -3891,7 +4425,7 @@ body {
    State
    ======================================== */
 let state = {
-  settings: { name: '', role: '', baseUrl: '', projectId: '', apiKey: '', model: 'sonnet', slackWebhook: '', promotionNotes: '', ghToken: '', ghGistId: '', googleClientId: '', meetingsGistId: '', features: { contributions: true, visibility: true, meetings: true, todos: true } },
+  settings: { name: '', role: '', baseUrl: '', projectId: '', apiKey: '', model: 'sonnet', slackWebhook: '', promotionNotes: '', insightsProfile: '', ghToken: '', ghGistId: '', googleClientId: '', meetingsGistId: '', features: { contributions: true, visibility: true, meetings: true, todos: true } },
   entries: [],
   wins: [],
   weeklyBriefs: [],
@@ -3915,7 +4449,10 @@ let state = {
   todayAiSuggestions: null,
   vectorEvidenceDenied: [],
   weeklyTriageCompletedAt: null,
+  weeklyPlanHistory: [],
   customVisibilityTypes: [],
+  pendingVisibility: [],
+  dismissedVisibilityKeys: [],
   coachingState: { activeObservations: [], resolvedObservations: [], lastUpdated: null },
   monthlyReflections: {},
   quarterlyReflections: {}
@@ -3926,7 +4463,7 @@ let logForDate = null; // if set, log entry for this date instead of today
 let logSubView = 'entry'; // 'entry' | 'history'
 let editingEntryId = null;
 let briefsView = 'list'; // 'list' | 'loading' | 'detail'
-let briefsSubView = 'weekly'; // 'weekly' | 'meeting-prep' | 'wins'
+let briefsSubView = 'weekly'; // 'weekly' | 'meeting-prep' | 'wins' | 'reflections'
 let currentBriefId = null;
 let meetingPrepView = 'list'; // 'list' | 'form' | 'loading' | 'detail'
 let currentMeetingPrepId = null;
@@ -3937,9 +4474,12 @@ let pendingFormData = null;
 let settingsSubTab = 'profile';
 let googleToken = null; // In-memory only — not persisted for security
 let meetingsSubTab = 'entries'; // 'entries' | 'insights'
+let meetingsTypeFilter = null; // null = all, or a MEETING_TYPES key
+let meetingsSearchQuery = '';
 let meetingsInsightsPeriod = 'week'; // 'today' | 'week' | 'month' | 'quarter' | 'year' | 'all'
 let todosFilter = 'inbox'; // 'inbox' | 'today' | 'tomorrow' | 'this-week' | 'backlog' | 'done'
 let todosAgeFilter = 'all'; // 'all' | '1d' | '1w' | '2w' | '1m'
+let todosSearchQuery = '';
 let newTodoRecurrence = null;
 
 function loadState() {
@@ -3972,7 +4512,10 @@ function loadState() {
       state.lastDayPromoted = saved.lastDayPromoted || null;
       state.todayAiSuggestions = saved.todayAiSuggestions || null;
       state.weeklyTriageCompletedAt = saved.weeklyTriageCompletedAt || null;
+      state.weeklyPlanHistory = saved.weeklyPlanHistory || [];
       state.customVisibilityTypes = saved.customVisibilityTypes || [];
+      state.pendingVisibility = saved.pendingVisibility || [];
+      state.dismissedVisibilityKeys = saved.dismissedVisibilityKeys || [];
       state.coachingState = saved.coachingState || { activeObservations: [], resolvedObservations: [], lastUpdated: null };
       state.monthlyReflections = saved.monthlyReflections || {};
       state.quarterlyReflections = saved.quarterlyReflections || {};
@@ -4013,10 +4556,15 @@ function saveState() {
     const toSave = {
       ...state,
       meetings: (state.meetings || []).map(m => {
-        // Only strip transcript if meeting is backed up in gist (has Tactiq link)
-        if (m.link && m.link.includes('tactiq')) {
+        // Strip transcript once insights have been extracted (no longer needed for storage)
+        // Also strip if meeting is backed up in gist (has Tactiq link)
+        if (m.insights || (m.link && m.link.includes('tactiq'))) {
           const { transcript, ...rest } = m;
           return rest;
+        }
+        // For unprocessed meetings, truncate transcript to 3000 chars to stay within limits
+        if (m.transcript && m.transcript.length > 3000) {
+          return { ...m, transcript: m.transcript.substring(0, 3000) + '\n[truncated for storage — full text in memory this session]' };
         }
         return m;
       }),
@@ -4053,6 +4601,22 @@ function saveState() {
 function getEscalationSpeed() {
   const intensity = state.settings.companionIntensity || 'moderate';
   return { gentle: 14, moderate: 7, aggressive: 3 }[intensity] || 7;
+}
+
+function getObservationEscalationLevel(obs) {
+  if (!obs || !obs.firstSurfaced) return 1;
+  const ageDays = Math.floor((Date.now() - new Date(obs.firstSurfaced).getTime()) / 86400000);
+  const daysPerLevel = getEscalationSpeed();
+  return Math.min(7, Math.max(1, Math.floor(ageDays / daysPerLevel) + 1));
+}
+
+function getEscalatedObservations() {
+  const cs = state.coachingState || {};
+  const active = (cs.activeObservations || []).filter(o => o.status === 'active');
+  return active.map(o => ({
+    ...o,
+    escalationLevel: getObservationEscalationLevel(o)
+  })).sort((a, b) => b.escalationLevel - a.escalationLevel);
 }
 
 function getComputedOpenLoops() {
@@ -4103,6 +4667,7 @@ function resolveLoop(todoId) {
   todo.status = 'done';
   todo.completedAt = new Date().toISOString();
   todo.deferCount = 0;
+  syncObservationResolutions(todoId);
   saveState();
   renderDashboard();
   showToast('Marked done');
@@ -4215,6 +4780,35 @@ function updateCoachingState(reflection, entryDate) {
   cs.lastUpdated = new Date().toISOString();
 }
 
+function processObservationEscalations() {
+  const cs = state.coachingState;
+  if (!cs || !cs.activeObservations) return;
+  const escalated = cs.activeObservations.filter(o => o.status === 'active' && getObservationEscalationLevel(o) >= 4 && !o.linkedTodoId);
+  for (const obs of escalated) {
+    const id = 'todo_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+    state.todos.push({
+      id, text: obs.topic, status: 'open', priority: 'inbox',
+      source: 'coaching', sourceTitle: 'Escalated observation',
+      observationId: obs.id,
+      createdAt: new Date().toISOString(), completedAt: null,
+      scheduledFor: null, parentId: null, triagedAt: null,
+      deferCount: 0
+    });
+    obs.linkedTodoId = id;
+  }
+}
+
+function syncObservationResolutions(todoId) {
+  const cs = state.coachingState;
+  if (!cs || !cs.activeObservations) return;
+  const obs = cs.activeObservations.find(o => o.linkedTodoId === todoId);
+  if (!obs) return;
+  obs.status = 'resolved';
+  if (!cs.resolvedObservations) cs.resolvedObservations = [];
+  cs.resolvedObservations.push({ ...obs, resolvedAt: new Date().toISOString() });
+  cs.activeObservations = cs.activeObservations.filter(o => o.id !== obs.id);
+}
+
 function processLevel7Gate(count) {
   for (let i = 0; i < count; i++) {
     const selected = document.querySelector(`input[name="loop7-${i}"]:checked`);
@@ -4236,6 +4830,8 @@ function processLevel7Gate(count) {
       // dismiss
       todo.status = 'dismissed';
       todo.completedAt = new Date().toISOString();
+      todo.dismissedViaGate = true;
+      syncObservationResolutions(todoId);
     }
   }
   saveState();
@@ -4433,8 +5029,25 @@ function computeVectorScores() {
       items.push({ type: 'contribution', text: c.vectorExcerpt || c.content?.substring(0, 300) || c.category, reason: c.vectorReason || '', date: c.date, quality: 'self-reported' });
     }
 
-    const total = selfScore + externalScore;
-    if (total > 0) console.log(`Vector "${vec.name}": self=${selfScore.toFixed(1)} external=${externalScore.toFixed(1)} total=${total.toFixed(1)} items:`, items.map(i => i.type + ':' + (i.text||'').substring(0,60)));
+    // Escalation penalty: L5+ observations matching this vector degrade score
+    let penaltyTotal = 0;
+    let penaltyCount = 0;
+    const escalatedObs = getEscalatedObservations().filter(o => o.escalationLevel >= 5);
+    const penaltyMap = { 5: 2, 6: 3, 7: 5 };
+    for (const obs of escalatedObs) {
+      const obsWords = obs.topic.toLowerCase().split(/\s+/).filter(w => w.length > 4);
+      const nameWords = name.split(/\s+/).filter(w => w.length > 3);
+      const overlap = obsWords.filter(w => nameWords.some(nw => w.includes(nw) || nw.includes(w))).length;
+      if (overlap >= 1) {
+        const pts = penaltyMap[obs.escalationLevel] || 0;
+        penaltyTotal += pts;
+        penaltyCount++;
+        items.push({ type: 'penalty', text: `L${obs.escalationLevel} escalation: ${obs.topic}`, date: obs.firstSurfaced, quality: 'system' });
+      }
+    }
+
+    const total = selfScore + externalScore - penaltyTotal;
+    if (total > 0 || penaltyTotal > 0) console.log(`Vector "${vec.name}": self=${selfScore.toFixed(1)} external=${externalScore.toFixed(1)} penalty=-${penaltyTotal} total=${total.toFixed(1)} items:`, items.map(i => i.type + ':' + (i.text||'').substring(0,60)));
     let tier;
     if (total >= 15) tier = 'Strong';
     else if (total >= 8) tier = 'Building';
@@ -4461,6 +5074,7 @@ function computeVectorScores() {
       briefCount: items.filter(i => i.type === 'brief').length,
       todoCount: items.filter(i => i.type === 'todo').length,
       contributionCount: items.filter(i => i.type === 'contribution').length,
+      penaltyCount,
       topItems: items,
       computedAt: now
     };
@@ -4803,6 +5417,55 @@ function runMigrations() {
     changed = true;
   }
 
+  if (v < 8) {
+    // Remove deadlines from parent tasks — deadlines live at subtask level
+    const parentIds = new Set((state.todos || []).filter(t => t.parentId).map(t => t.parentId));
+    for (const t of (state.todos || [])) {
+      if (parentIds.has(t.id) && t.status === 'open') {
+        t.priority = 'inbox';
+      }
+    }
+    state.dataVersion = 8;
+    changed = true;
+  }
+
+  if (v < 9) {
+    // Backfill linkedTodoId on existing observations by matching coaching-sourced todos
+    const cs = state.coachingState || {};
+    const obs = cs.activeObservations || [];
+    const coachingTodos = (state.todos || []).filter(t => t.source === 'coaching');
+    for (const o of obs) {
+      if (o.linkedTodoId) continue;
+      // Match by observationId on todo first
+      let match = coachingTodos.find(t => t.observationId === o.id);
+      if (!match) {
+        // Fallback: match by text prefix overlap
+        const oPrefix = o.topic.toLowerCase().substring(0, 40);
+        match = coachingTodos.find(t => t.text.toLowerCase().substring(0, 40) === oPrefix);
+      }
+      if (match) {
+        o.linkedTodoId = match.id;
+        match.observationId = o.id;
+      }
+    }
+    state.dataVersion = 9;
+    changed = true;
+  }
+
+  if (state.dataVersion < 10) {
+    state.pendingVisibility = state.pendingVisibility || [];
+    state.dismissedVisibilityKeys = state.dismissedVisibilityKeys || [];
+    if (!state.settings.visibilityRole) {
+      state.settings.visibilityRole = state.visibilityActivities.length > 0 ? 'designer' : null;
+    }
+    // Add draftable flag to existing custom types
+    for (const ct of (state.customVisibilityTypes || [])) {
+      if (ct.draftable === undefined) ct.draftable = true;
+    }
+    state.dataVersion = 10;
+    changed = true;
+  }
+
   if (changed) saveState();
 }
 
@@ -4834,7 +5497,8 @@ async function syncPush() {
         promotionNotes: state.settings.promotionNotes || '',
         meetingSystemPrompt: state.settings.meetingSystemPrompt || '',
         meetingTypeSignals: state.settings.meetingTypeSignals || {},
-        meetingTypePrompts: state.settings.meetingTypePrompts || {}
+        meetingTypePrompts: state.settings.meetingTypePrompts || {},
+        visibilityRole: state.settings.visibilityRole || null
       },
       entries: state.entries,
       wins: state.wins,
@@ -4867,7 +5531,9 @@ async function syncPush() {
       coachingState: state.coachingState || {},
       monthlyReflections: state.monthlyReflections || {},
       quarterlyReflections: state.quarterlyReflections || {},
-      customVisibilityTypes: state.customVisibilityTypes || []
+      customVisibilityTypes: state.customVisibilityTypes || [],
+      pendingVisibility: state.pendingVisibility || [],
+      dismissedVisibilityKeys: state.dismissedVisibilityKeys || []
     };
     const content = JSON.stringify(syncState, null, 2);
     const headers = {
@@ -4973,6 +5639,19 @@ async function syncPull() {
     // Reflections: merge by key, remote wins
     if (remote.monthlyReflections) state.monthlyReflections = { ...state.monthlyReflections, ...remote.monthlyReflections };
     if (remote.quarterlyReflections) state.quarterlyReflections = { ...state.quarterlyReflections, ...remote.quarterlyReflections };
+    // Merge pendingVisibility by ID
+    if (remote.pendingVisibility) {
+      const localPendingById = new Map((state.pendingVisibility || []).map(p => [p.id, p]));
+      for (const rp of remote.pendingVisibility) {
+        localPendingById.set(rp.id, rp);
+      }
+      state.pendingVisibility = [...localPendingById.values()];
+    }
+    // Merge dismissedVisibilityKeys: union
+    state.dismissedVisibilityKeys = [...new Set([
+      ...(state.dismissedVisibilityKeys || []),
+      ...(remote.dismissedVisibilityKeys || [])
+    ])];
     // Merge deleted meeting IDs from both local and remote
     const remoteDeleted = remote.deletedMeetingIds || [];
     const localDeleted = state.deletedMeetingIds || [];
@@ -5390,6 +6069,7 @@ async function fetchMeetings() {
           meeting.actionItems = parsed.actionItems || '';
           meeting.insights = parsed.insights || {};
           parseActionItemsToTodos(meeting);
+          detectVisibilityFromMeeting(meeting);
         } catch (e) {
           console.warn('Intelligence extraction failed for meeting:', meeting.id, e);
           // Fallback: try simple summary
@@ -5431,6 +6111,7 @@ async function fetchMeetings() {
           meeting.actionItems = parsed.actionItems || '';
           meeting.insights = parsed.insights || {};
           parseActionItemsToTodos(meeting);
+          detectVisibilityFromMeeting(meeting);
         } catch (e) {
           console.warn('Extraction failed for pre-typed meeting:', meeting.id, e);
         }
@@ -5480,6 +6161,7 @@ async function reprocessMeeting(meetingId, overrideType) {
     meeting.actionItems = parsed.actionItems || meeting.actionItems || '';
     meeting.insights = parsed.insights || {};
     parseActionItemsToTodos(meeting);
+    detectVisibilityFromMeeting(meeting);
 
     if (statusEl) { statusEl.className = 'api-status valid'; statusEl.textContent = 'Re-analysis complete'; }
     showToast('Meeting re-analyzed as ' + typeLabel);
@@ -5565,6 +6247,7 @@ async function reanalyzeMeeting(meetingId, btn) {
     meeting.actionItems = parsed.actionItems || '';
     meeting.insights = parsed.insights || {};
     parseActionItemsToTodos(meeting);
+    detectVisibilityFromMeeting(meeting);
     saveState();
     renderMeetings();
     showToast('Meeting re-analyzed');
@@ -5780,7 +6463,64 @@ function executeImport() {
   renderMeetings();
 }
 
-function renderMeetingCard(m) {
+function renderMeetingCompactRow(m) {
+  const typeInfo = MEETING_TYPES[m.type] || MEETING_TYPES['other'];
+  const dateStr = m.date ? new Date(m.date).toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' }) : '';
+  const dur = meetingDuration(m);
+  const durLabel = dur ? Math.round(dur / 60) + ' min' : '';
+
+  // One-liner: career relevance > first line of summary > "Not yet analyzed"
+  let oneLiner = '';
+  if (m.insights && m.insights.careerRelevance) {
+    oneLiner = m.insights.careerRelevance.replace(/\n/g, ' ').replace(/<[^>]*>/g, '').replace(/^[-•*]\s*/, '').substring(0, 120);
+  } else if (m.summary) {
+    oneLiner = m.summary.replace(/\n/g, ' ').replace(/<[^>]*>/g, '').replace(/^[-•*]\s*/, '').substring(0, 120);
+  } else {
+    oneLiner = '<span style="color:var(--text-muted);font-style:italic">Not yet analyzed</span>';
+  }
+
+  return `<div class="meeting-compact-row" id="meeting-compact-${escapeHtml(m.id)}" data-meeting-id="${escapeHtml(m.id)}" onclick="toggleMeetingExpand('${escapeHtml(m.id)}')">
+    <div class="meeting-compact-row-primary">
+      <span class="meeting-compact-type" style="color:${typeInfo.color.text};background:${typeInfo.color.bg}">${escapeHtml(typeInfo.label)}</span>
+      <span class="meeting-compact-title">${escapeHtml(m.title || 'Untitled')}</span>
+      ${durLabel ? `<span class="meeting-compact-meta">${durLabel}</span>` : ''}
+      <span class="meeting-compact-chevron" id="chevron-${escapeHtml(m.id)}">▸</span>
+    </div>
+    ${oneLiner ? `<div class="meeting-compact-secondary">
+      <span class="meeting-compact-oneliner">${oneLiner.includes('<span') ? oneLiner : escapeHtml(oneLiner)}</span>
+      ${dateStr ? `<span class="meeting-compact-date">${dateStr}</span>` : ''}
+    </div>` : ''}
+  </div>`;
+}
+
+function toggleMeetingExpand(meetingId) {
+  const expanded = document.getElementById('meeting-expanded-' + meetingId);
+  const compact = document.getElementById('meeting-compact-' + meetingId);
+
+  if (expanded) {
+    // Collapse: remove expanded, show compact
+    expanded.remove();
+    if (compact) compact.style.display = '';
+  } else {
+    // Expand: hide compact, insert expanded card after it
+    if (compact) compact.style.display = 'none';
+    const m = state.meetings.find(mt => mt.id === meetingId);
+    if (!m) return;
+    const wrapper = document.createElement('div');
+    wrapper.id = 'meeting-expanded-' + meetingId;
+    wrapper.innerHTML = renderMeetingCard(m, true);
+    if (compact) compact.after(wrapper);
+  }
+}
+
+function collapseMeetingCard(meetingId) {
+  const expanded = document.getElementById('meeting-expanded-' + meetingId);
+  const compact = document.getElementById('meeting-compact-' + meetingId);
+  if (expanded) expanded.remove();
+  if (compact) compact.style.display = '';
+}
+
+function renderMeetingCard(m, collapsible) {
   const typeInfo = MEETING_TYPES[m.type] || MEETING_TYPES['other'];
   const typeOptions = Object.entries(MEETING_TYPES).map(([k, v]) =>
     `<option value="${k}" ${k === (m.type || 'other') ? 'selected' : ''}>${escapeHtml(v.label)}</option>`
@@ -5835,7 +6575,7 @@ function renderMeetingCard(m) {
           ${typeOptions}
         </select>
       </div>
-      ${metaHtml ? `<div class="meeting-card-header-right">${metaHtml}</div>` : ''}
+      <div class="meeting-card-header-right">${metaHtml}${collapsible ? `${metaHtml ? ' &middot; ' : ''}<span class="meeting-compact-chevron" style="cursor:pointer" onclick="event.stopPropagation();collapseMeetingCard('${escapeHtml(m.id)}')">▾</span>` : ''}</div>
     </div>
     <div class="meeting-card-title-row">
       <span class="meeting-card-title${(m.title || '') === 'Meeting Transcription' ? ' meeting-title-placeholder' : ''}" style="cursor:pointer" title="Click to edit title" onclick="editMeetingTitle('${escapeHtml(m.id)}', this)">${escapeHtml(m.title || 'Untitled')}${(m.title || '') === 'Meeting Transcription' ? ' <span style="font-size:11px;font-weight:400;color:var(--text-muted)">— click to rename</span>' : ''}</span>
@@ -6006,7 +6746,8 @@ function getAccumulatedPlanItems() {
   for (let i = 0; i < weekDates.length; i++) {
     const dateStr = weekDates[i];
     if (dateStr >= today) break;
-    const rhythm = typeof WEEKLY_RHYTHM !== 'undefined' ? WEEKLY_RHYTHM[i] : null;
+    const weeklyRhythm = getWeeklyRhythm();
+    const rhythm = weeklyRhythm[i] || null;
     if (!rhythm) continue;
     const hasActivity = state.visibilityActivities.some(a => a.date === dateStr);
     if (!hasActivity) {
@@ -6161,6 +6902,11 @@ function showToast(message, duration = 3000, undoCallback = null, actionLabel = 
 /* ========================================
    To-Dos Tab
    ======================================== */
+function todoDueTag(priority) {
+  const labels = { today: 'Due Today', tomorrow: 'Due Tomorrow', 'this-week': 'Due This Week', backlog: 'Due Backlog' };
+  return labels[priority] ? `<span class="todo-due-label todo-due-${priority}">${labels[priority]}</span>` : '';
+}
+
 function todoAge(createdAt) {
   const ms = Date.now() - new Date(createdAt).getTime();
   const mins = Math.floor(ms / 60000);
@@ -6184,7 +6930,8 @@ function getTodoCounts() {
     tomorrow: open.filter(t => t.priority === 'tomorrow').length,
     'this-week': open.filter(t => t.priority === 'this-week').length,
     backlog: open.filter(t => t.priority === 'backlog' || t.priority === 'later').length,
-    done: todos.filter(t => t.status === 'done').length
+    done: todos.filter(t => t.status === 'done').length,
+    deleted: todos.filter(t => t.status === 'dismissed').length
   };
 }
 
@@ -6198,18 +6945,32 @@ function renderTodos() {
     { key: 'tomorrow', label: 'Tomorrow' },
     { key: 'this-week', label: 'This Week' },
     { key: 'backlog', label: 'Backlog' },
-    { key: 'done', label: 'Done' }
+    { key: 'done', label: 'Done' },
+    { key: 'deleted', label: 'Deleted' }
   ];
 
+  // Search mode: filter across all buckets
+  const isSearching = todosSearchQuery.trim().length > 0;
   let items;
-  if (todosFilter === 'done') {
+  if (isSearching) {
+    const q = todosSearchQuery.trim().toLowerCase();
+    items = (state.todos || []).filter(t => t.text && t.text.toLowerCase().includes(q))
+      .sort((a, b) => {
+        const pOrder = { today: 0, tomorrow: 1, 'this-week': 2, inbox: 3, backlog: 4, later: 5 };
+        const statusOrder = a.status === 'done' ? 1 : 0;
+        const statusOrderB = b.status === 'done' ? 1 : 0;
+        return statusOrder - statusOrderB || (pOrder[a.priority] ?? 9) - (pOrder[b.priority] ?? 9);
+      });
+  } else if (todosFilter === 'deleted') {
+    items = (state.todos || []).filter(t => t.status === 'dismissed').sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || ''));
+  } else if (todosFilter === 'done') {
     items = (state.todos || []).filter(t => t.status === 'done').sort((a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0) || (b.completedAt || '').localeCompare(a.completedAt || ''));
   } else {
     items = (state.todos || []).filter(t => t.status === 'open' && (t.priority === todosFilter || (todosFilter === 'backlog' && t.priority === 'later'))).sort((a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0) || (a.createdAt || '').localeCompare(b.createdAt || ''));
   }
 
-  // Apply age filter
-  if (todosAgeFilter !== 'all' && items.length > 0) {
+  // Apply age filter (not during search)
+  if (!isSearching && todosAgeFilter !== 'all' && items.length > 0) {
     const now = Date.now();
     const cutoffs = { '1d': 86400000, '1w': 604800000, '2w': 1209600000, '1m': 2592000000 };
     const cutoff = cutoffs[todosAgeFilter];
@@ -6231,14 +6992,29 @@ function renderTodos() {
     today: 'No items for today. Move items here from Inbox.',
     'this-week': 'No items for this week.',
     later: 'No items in the backlog.',
-    done: 'No completed items yet.'
+    done: 'No completed items yet.',
+    deleted: 'No deleted items.'
   };
 
   let listHtml;
-  if (!items.length) {
+  if (isSearching) {
+    if (!items.length) {
+      listHtml = `<div class="todo-empty">No todos matching "${escapeHtml(todosSearchQuery.trim())}"</div>`;
+    } else {
+      const bucketLabels = { inbox: 'Inbox', today: 'Today', tomorrow: 'Tomorrow', 'this-week': 'This Week', backlog: 'Backlog', later: 'Backlog' };
+      const bucketOrder = ['today', 'tomorrow', 'this-week', 'inbox', 'backlog'];
+      const grouped = {};
+      items.forEach(t => {
+        const bucket = t.status === 'done' ? 'done' : (t.priority === 'later' ? 'backlog' : t.priority);
+        (grouped[bucket] = grouped[bucket] || []).push(t);
+      });
+      listHtml = [...bucketOrder, 'done']
+        .filter(b => grouped[b]?.length)
+        .map(b => `<div class="todo-search-group-label">${b === 'done' ? 'Done' : bucketLabels[b] || b}</div>` + grouped[b].map(t => renderTodoItem(t)).join(''))
+        .join('');
+    }
+  } else if (!items.length) {
     listHtml = `<div class="todo-empty">${emptyMessages[todosFilter]}</div>`;
-  } else if (todosFilter === 'inbox') {
-    listHtml = items.map(t => renderTodoItem(t)).join('');
   } else {
     listHtml = items.map(t => renderTodoItem(t)).join('');
   }
@@ -6246,9 +7022,10 @@ function renderTodos() {
   panel.innerHTML = `
     <div style="margin-bottom:var(--space-xl)">
       <div class="sub-nav" style="margin-bottom:0">${filterHtml}</div>
+      <input type="text" class="todo-search" id="todoSearchInput" placeholder="Search all todos..." value="${escapeHtml(todosSearchQuery)}" oninput="todosSearchQuery=this.value;const _c=this.selectionStart;renderTodos();const _s=document.getElementById('todoSearchInput');_s.focus();_s.setSelectionRange(_c,_c)" onkeydown="if(event.key==='Escape'){todosSearchQuery='';renderTodos()}">
       ${triageBtnHtml ? `<div style="margin-top:var(--space-md)">${triageBtnHtml}</div>` : ''}
     </div>
-    ${todosFilter !== 'done' ? `<div class="todo-add-item" style="display:flex;gap:var(--space-sm);align-items:center">
+    ${todosFilter !== 'done' && todosFilter !== 'deleted' ? `<div class="todo-add-item" style="display:flex;gap:var(--space-sm);align-items:center">
       <input type="text" id="addManualTodoInput" style="flex:1" placeholder="Add a to-do..." onkeydown="if(event.key==='Enter'){addManualTodo();event.preventDefault()}">
       <button class="todo-add-recurrence${newTodoRecurrence ? ' active' : ''}" onclick="toggleNewTodoRecurrenceMenu(this)">${recurrenceLabel(newTodoRecurrence)}</button>
     </div>` : ''}
@@ -6262,7 +7039,12 @@ function renderTodoItem(todo) {
   const meeting = isManual ? null : state.meetings.find(m => m.id === todo.meetingId);
   const meetingDeleted = !meeting && todo.meetingId;
   let sourceLabel, sourceClick, sourceClass;
-  if (todo.source === 'recurring') {
+  if (todo.source === 'subtask') {
+    const parent = state.todos.find(t => t.id === todo.parentId);
+    sourceLabel = parent ? '<span style="font-weight:400;color:var(--text-muted)">Subtask of</span> <span style="font-weight:600;color:var(--accent-600)">' + escapeHtml(parent.text) + '</span>' : 'Subtask';
+    sourceClick = '';
+    sourceClass = 'todo-source';
+  } else if (todo.source === 'recurring') {
     sourceLabel = 'Recurring';
     sourceClick = '';
     sourceClass = 'todo-source';
@@ -6278,57 +7060,189 @@ function renderTodoItem(todo) {
     sourceClass = meeting ? 'todo-source clickable' : 'todo-source';
   }
 
-  // No priority buttons for inbox items — use triage flow instead
-  let priorityBtns = '';
-  if (!isDone && todo.priority !== 'inbox') {
-    const allPriorities = ['today', 'tomorrow', 'this-week', 'backlog'];
-    const labels = { inbox: 'Inbox', today: 'Today', tomorrow: 'Tomorrow', 'this-week': 'This Week', backlog: 'Backlog', later: 'Backlog' };
-    const available = allPriorities.filter(p => p !== todo.priority);
-    const gridItems = [...available.slice(0, 3), 'inbox'].slice(0, 4);
-    priorityBtns = gridItems.map(p =>
-      `<button class="todo-priority-btn" onclick="setTodoPriority('${todo.id}','${p}')">${labels[p] || p}</button>`
-    ).join('');
-  }
+  const isDismissed = todo.status === 'dismissed';
 
-  const addedIndicators = [];
-  if (todo.addedToIntention) addedIndicators.push('Added to intention');
-  if (todo.addedToPlan) addedIndicators.push('Added to plan');
-  const addedHtml = addedIndicators.length ? `<span class="todo-added-indicator">${addedIndicators.join(' · ')}</span>` : '';
+  // Reschedule button — context-aware destinations per bucket
+  const rescheduleBtn = (!isDone && !isDismissed && todo.priority !== 'inbox')
+    ? `<button class="todo-recurrence-btn" onclick="showRescheduleMenu('${todo.id}', this)">Reschedule</button>`
+    : '';
 
-  const recurrenceMeta = todo.recurrence
+  const dueHtml = todoDueTag(todo.priority);
+
+  const isAddedToPlan = !!(todo.addedToIntention || todo.addedToPlan);
+
+  const recurrenceMeta = isDismissed ? '' : (todo.recurrence
     ? `<span class="todo-recurrence-badge" onclick="toggleTodoRecurrenceMenu('${todo.id}', this)" title="Change recurrence">🔄 ${recurrenceLabel(todo.recurrence)}</span>`
-    : (!isDone ? `<button class="todo-recurrence-btn" onclick="toggleTodoRecurrenceMenu('${todo.id}', this)">+ repeat</button>` : '');
+    : (!isDone ? `<button class="todo-recurrence-btn" onclick="toggleTodoRecurrenceMenu('${todo.id}', this)">Set recurring</button>` : ''));
 
-  return `<div class="todo-item${isDone ? ' done' : ''}${todo.starred ? ' starred' : ''}" data-todo-id="${todo.id}">
+  // Subtask buttons
+  const subtasks = (state.todos || []).filter(t => t.parentId === todo.id && t.status !== 'dismissed');
+  const isNotSubtask = todo.source !== 'subtask' && !todo.parentId;
+  const canNest = !isDismissed && isNotSubtask && subtasks.length === 0;
+  const nestBtn = canNest ? `<button class="todo-recurrence-btn" onclick="showNestPicker('${todo.id}', this)">↳ Nest</button>` : '';
+  const addSubtaskBtn = (!isDone && !isDismissed && isNotSubtask) ? `<button class="todo-recurrence-btn" onclick="showInlineSubtaskInput('${todo.id}')">+ Subtask</button>` : '';
+
+  // Subtask progress indicator (clickable to expand)
+  const allSubtasks = (state.todos || []).filter(t => t.parentId === todo.id);
+  const subtaskProgress = subtasks.length > 0
+    ? (() => { const done = allSubtasks.filter(s => s.status === 'done').length; return `<span class="todo-subtask-progress" style="cursor:pointer" onclick="toggleParentSubtasks('${todo.id}')">${done}/${allSubtasks.length} subtasks ▸</span>`; })()
+    : '';
+
+  // Inline subtask list (hidden by default, toggled by clicking progress)
+  const subtaskListHtml = allSubtasks.length > 0
+    ? `<div class="todo-subtasks hidden" id="subtasks-${todo.id}">${[...allSubtasks].sort((a, b) => {
+        const doneOrder = (b.status === 'done' ? 1 : 0) - (a.status === 'done' ? 1 : 0);
+        if (doneOrder !== 0) return doneOrder;
+        const pOrder = { today: 0, tomorrow: 1, 'this-week': 2, inbox: 3, backlog: 4, later: 5 };
+        return (pOrder[a.priority] ?? 9) - (pOrder[b.priority] ?? 9);
+      }).map(s => {
+        const sDone = s.status === 'done';
+        return `<div class="todo-subtask-inline${sDone ? ' done' : ''}">
+          <input type="checkbox" ${sDone ? 'checked' : ''} onchange="toggleTodo('${s.id}')">
+          <span class="${sDone ? 'strikethrough' : ''}">${escapeHtml(s.text)} ${todoDueTag(s.priority)}</span>
+        </div>`;
+      }).join('')}</div>`
+    : '';
+
+  const isParent = subtasks.length > 0;
+  return `<div class="todo-item${isDone ? ' done' : ''}${todo.starred ? ' starred' : ''}${isAddedToPlan ? ' added-to-plan' : ''}${isParent ? ' todo-parent' : ''}" data-todo-id="${todo.id}">
     <div class="todo-item-main">
-      <input type="checkbox" ${isDone ? 'checked' : ''} onchange="toggleTodo('${todo.id}')">
-      <button class="todo-star${todo.starred ? ' starred' : ''}" onclick="toggleTodoStar('${todo.id}')" title="${todo.starred ? 'Unstar' : 'Star'}">${todo.starred ? '★' : '☆'}</button>
+      ${isDismissed ? '' : `<input type="checkbox" ${isDone ? 'checked' : ''} onchange="toggleTodo('${todo.id}')">`}
+      ${isDismissed ? '' : `<button class="todo-star${todo.starred ? ' starred' : ''}" onclick="toggleTodoStar('${todo.id}')" title="${todo.starred ? 'Unstar' : 'Star'}">${todo.starred ? '★' : '☆'}</button>`}
       <div class="todo-item-content">
-        <div class="todo-text" ondblclick="startEditTodo('${todo.id}')">${escapeHtml(todo.text)}</div>
+        <div class="todo-text" onclick="startEditTodo('${todo.id}')">${escapeHtml(todo.text)} ${dueHtml}</div>
         <div class="todo-meta">
           <span class="${sourceClass}" ${sourceClick}>${sourceLabel}</span>
           ${!isManual && todo.meetingDate ? `<span class="todo-date">${(todo.meetingDate || '').substring(0, 10)}</span>` : ''}
           <span class="todo-age">${todoAge(todo.createdAt)}</span>
           ${recurrenceMeta}
-          ${addedHtml}
+          ${rescheduleBtn}
+          ${addSubtaskBtn}
+          ${nestBtn}
+          ${subtaskProgress}
+          ${isDismissed ? `<button class="btn-secondary btn-accent" style="font-size:11px;padding:6px 14px;margin-left:auto;flex-shrink:0" onclick="restoreTodo('${todo.id}')">Restore</button>` : ''}
         </div>
       </div>
     </div>
-    ${priorityBtns ? `<div class="todo-actions">${priorityBtns}</div>` : ''}
-    ${isDone ? '' : `<button class="todo-dismiss-btn" onclick="dismissTodo('${todo.id}')" title="Dismiss">&times;</button>`}
-  </div>`;
+    ${isDismissed ? '' : (isDone ? '' : `<button class="todo-dismiss-btn" onclick="confirmDismissTodo('${todo.id}', this)" title="Dismiss">&times;</button>`)}
+  </div>${subtaskListHtml}`;
 }
+
+const priorityOrder = { today: 0, tomorrow: 1, 'this-week': 2, inbox: 3, backlog: 4, later: 5 };
 
 function setTodoPriority(id, priority) {
   const todo = state.todos.find(t => t.id === id);
   if (!todo) return;
+
+  // Check if this is a parent with subtasks that have later deadlines
+  const subtasks = (state.todos || []).filter(t => t.parentId === id && t.status === 'open');
+  const newOrder = priorityOrder[priority] ?? 9;
+  const laterSubtasks = subtasks.filter(t => (priorityOrder[t.priority] ?? 9) > newOrder);
+
+  if (laterSubtasks.length > 0) {
+    showDeadlinePullConfirm(todo, priority, laterSubtasks);
+    return;
+  }
+
+  applyTodoPriority(todo, priority);
+}
+
+function applyTodoPriority(todo, priority, pullSubtasks) {
   if (todo.priority === 'today' && priority !== 'today' && todo.status === 'open') {
     todo.deferCount = (todo.deferCount || 0) + 1;
   }
   todo.priority = priority;
   todo.triagedAt = new Date().toISOString();
+  if (pullSubtasks) {
+    pullSubtasks.forEach(s => {
+      s.priority = priority;
+      s.triagedAt = new Date().toISOString();
+    });
+  }
   saveState();
   renderTodos();
+}
+
+function showDeadlinePullConfirm(parentTodo, newPriority, laterSubtasks) {
+  // Remove any existing modal
+  document.querySelector('.deadline-confirm-overlay')?.remove();
+
+  const labels = { today: 'Today', tomorrow: 'Tomorrow', 'this-week': 'This Week', backlog: 'Backlog', later: 'Backlog' };
+  const subtaskList = laterSubtasks.map(s =>
+    `<div class="deadline-confirm-item"><span>${escapeHtml(s.text.length > 50 ? s.text.substring(0, 50) + '…' : s.text)}</span><span class="deadline-confirm-bucket">${labels[s.priority] || s.priority}</span></div>`
+  ).join('');
+
+  const overlay = document.createElement('div');
+  overlay.className = 'deadline-confirm-overlay';
+  overlay.innerHTML = `<div class="deadline-confirm-modal">
+    <div class="deadline-confirm-title">Move subtasks to ${labels[newPriority]}?</div>
+    <div class="deadline-confirm-desc">Rescheduling "<strong>${escapeHtml(parentTodo.text.length > 40 ? parentTodo.text.substring(0, 40) + '…' : parentTodo.text)}</strong>" to <strong>${labels[newPriority]}</strong>. These subtasks have later deadlines:</div>
+    <div class="deadline-confirm-list">${subtaskList}</div>
+    <div class="deadline-confirm-actions">
+      <button class="btn-secondary btn-accent" id="deadlineConfirmPull">Move all to ${labels[newPriority]}</button>
+      <button class="btn-secondary" id="deadlineConfirmSkip">Keep subtask deadlines</button>
+      <button class="btn-ghost" id="deadlineConfirmCancel">Cancel</button>
+    </div>
+  </div>`;
+
+  document.body.appendChild(overlay);
+
+  overlay.querySelector('#deadlineConfirmPull').addEventListener('click', () => {
+    overlay.remove();
+    applyTodoPriority(parentTodo, newPriority, laterSubtasks);
+  });
+  overlay.querySelector('#deadlineConfirmSkip').addEventListener('click', () => {
+    overlay.remove();
+    applyTodoPriority(parentTodo, newPriority);
+  });
+  overlay.querySelector('#deadlineConfirmCancel').addEventListener('click', () => {
+    overlay.remove();
+  });
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+}
+
+function showRescheduleMenu(todoId, btn) {
+  const existing = document.querySelector('.todo-reschedule-menu');
+  if (existing) { existing.remove(); return; }
+
+  const todo = state.todos.find(t => t.id === todoId);
+  if (!todo) return;
+
+  const allOptions = ['today', 'tomorrow', 'this-week', 'backlog'];
+  const labels = { today: 'Today', tomorrow: 'Tomorrow', 'this-week': 'This Week', backlog: 'Backlog' };
+  const options = allOptions.filter(p => p !== todo.priority);
+
+  const menu = document.createElement('div');
+  menu.className = 'todo-reschedule-menu';
+  menu.innerHTML = options.map(p =>
+    `<button onclick="setTodoPriority('${todoId}','${p}');document.querySelector('.todo-reschedule-menu')?.remove()">${labels[p]}</button>`
+  ).join('');
+
+  btn.style.position = 'relative';
+  menu.style.position = 'absolute';
+  menu.style.top = '100%';
+  menu.style.left = '0';
+  menu.style.marginTop = '4px';
+  btn.appendChild(menu);
+
+  // Clamp within viewport
+  requestAnimationFrame(() => {
+    const rect = menu.getBoundingClientRect();
+    if (rect.right > window.innerWidth) {
+      menu.style.left = 'auto';
+      menu.style.right = '0';
+    }
+  });
+
+  const dismiss = (e) => {
+    if (!menu.contains(e.target) && e.target !== btn) {
+      menu.remove();
+      document.removeEventListener('click', dismiss);
+    }
+  };
+  setTimeout(() => document.addEventListener('click', dismiss), 0);
 }
 
 function toggleTodo(id) {
@@ -6451,19 +7365,47 @@ function createFollowUp(parentId) {
   showToast('Follow-up created' + (scheduledFor ? ' — scheduled for ' + scheduledFor : ''));
 }
 
+function confirmDismissTodo(id, btn) {
+  const confirmEl = document.createElement('span');
+  confirmEl.className = 'todo-dismiss-confirm';
+  const label = document.createElement('span');
+  label.className = 'todo-dismiss-confirm-label';
+  label.textContent = 'Delete?';
+  const yesBtn = document.createElement('button');
+  yesBtn.className = 'todo-dismiss-confirm-yes';
+  yesBtn.textContent = 'Yes';
+  yesBtn.addEventListener('click', (e) => { e.stopPropagation(); dismissTodo(id); });
+  const noBtn = document.createElement('button');
+  noBtn.className = 'todo-dismiss-confirm-no';
+  noBtn.textContent = 'No';
+  noBtn.addEventListener('click', (e) => { e.stopPropagation(); renderTodos(); });
+  confirmEl.appendChild(label);
+  confirmEl.appendChild(yesBtn);
+  confirmEl.appendChild(noBtn);
+  btn.replaceWith(confirmEl);
+}
+
 function dismissTodo(id) {
   const todo = state.todos.find(t => t.id === id);
   if (!todo) return;
+  todo.previousPriority = todo.priority;
   todo.status = 'dismissed';
   todo.completedAt = new Date().toISOString();
   saveState();
   renderTodos();
-  showToast('To-do dismissed', 5000, () => {
-    todo.status = 'open';
-    todo.completedAt = null;
-    saveState();
-    renderTodos();
-  });
+  showToast('To-do deleted');
+}
+
+function restoreTodo(id) {
+  const todo = state.todos.find(t => t.id === id);
+  if (!todo) return;
+  todo.status = 'open';
+  todo.priority = todo.previousPriority || 'inbox';
+  todo.completedAt = null;
+  delete todo.previousPriority;
+  saveState();
+  renderTodos();
+  showToast('To-do restored to ' + ({ today: 'Today', tomorrow: 'Tomorrow', 'this-week': 'This Week', backlog: 'Backlog', inbox: 'Inbox' }[todo.priority] || 'Inbox'));
 }
 
 /* ---- Recurring To-Dos ---- */
@@ -6607,6 +7549,229 @@ function toggleTodoRecurrenceMenu(todoId, btn) {
   setTimeout(() => document.addEventListener('click', dismiss), 0);
 }
 
+/* ---- Nest Under Parent ---- */
+function showNestPicker(todoId, btn) {
+  // Remove any existing picker
+  const existing = document.querySelector('.nest-picker');
+  if (existing) { existing.remove(); return; }
+
+  const todo = state.todos.find(t => t.id === todoId);
+  if (!todo) return;
+
+  // Eligible parents: open, top-level, not this todo, not already a subtask itself
+  const eligible = (state.todos || []).filter(t =>
+    t.id !== todoId && t.status === 'open' && t.source !== 'subtask' && !t.parentId
+  ).sort((a, b) => {
+    const pOrder = { today: 0, tomorrow: 1, 'this-week': 2, inbox: 3, backlog: 4, later: 5 };
+    const pa = pOrder[a.priority] ?? 9, pb = pOrder[b.priority] ?? 9;
+    return pa - pb || (b.createdAt || '').localeCompare(a.createdAt || '');
+  });
+
+  const picker = document.createElement('div');
+  picker.className = 'nest-picker';
+  picker.style.position = 'absolute';
+  picker.style.top = '100%';
+  picker.style.left = '0';
+  picker.style.marginTop = '4px';
+
+  const searchInput = document.createElement('input');
+  searchInput.className = 'nest-picker-search';
+  searchInput.placeholder = 'Search todos...';
+  searchInput.addEventListener('keydown', (ev) => ev.stopPropagation());
+  searchInput.addEventListener('keyup', (ev) => ev.stopPropagation());
+  picker.appendChild(searchInput);
+
+  const listDiv = document.createElement('div');
+  listDiv.className = 'nest-picker-list';
+  picker.appendChild(listDiv);
+
+  function renderList(filter) {
+    const filtered = filter
+      ? eligible.filter(t => t.text.toLowerCase().includes(filter.toLowerCase()))
+      : eligible;
+    if (filtered.length === 0) {
+      listDiv.innerHTML = '<div class="nest-picker-empty">No matching todos</div>';
+    } else {
+      listDiv.innerHTML = filtered.map(t => {
+        const label = t.text.length > 40 ? t.text.substring(0, 40) + '…' : t.text;
+        return `<button class="nest-picker-item" data-parent-id="${t.id}">${escapeHtml(label)}</button>`;
+      }).join('');
+      listDiv.querySelectorAll('.nest-picker-item').forEach(b => {
+        b.addEventListener('click', () => {
+          nestUnderParent(todoId, b.dataset.parentId);
+          picker.remove();
+          document.removeEventListener('click', dismiss);
+        });
+      });
+    }
+  }
+  renderList('');
+
+  searchInput.addEventListener('input', () => renderList(searchInput.value));
+
+  // "+ Create new parent..." button
+  const createBtn = document.createElement('button');
+  createBtn.className = 'nest-picker-create';
+  createBtn.textContent = '+ Create new parent...';
+  createBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const createInput = document.createElement('input');
+    createInput.className = 'nest-picker-create-input';
+    createInput.placeholder = 'New parent name...';
+    createBtn.replaceWith(createInput);
+    createInput.focus();
+    createInput.addEventListener('keyup', (ev) => ev.stopPropagation());
+    createInput.addEventListener('keydown', (ev) => {
+      ev.stopPropagation();
+      if (ev.key === 'Enter') {
+        const text = createInput.value.trim();
+        if (text) {
+          createParentAndNest(todoId, text);
+          picker.remove();
+          document.removeEventListener('click', dismiss);
+        }
+      } else if (ev.key === 'Escape') {
+        picker.remove();
+        document.removeEventListener('click', dismiss);
+      }
+    });
+  });
+  picker.appendChild(createBtn);
+
+  // Position and append to body (outside button to avoid Space key re-triggering onclick)
+  document.body.appendChild(picker);
+  const btnRect = btn.getBoundingClientRect();
+  picker.style.position = 'fixed';
+  picker.style.top = (btnRect.bottom + 4) + 'px';
+  picker.style.left = btnRect.left + 'px';
+  // Clamp picker within viewport
+  requestAnimationFrame(() => {
+    const rect = picker.getBoundingClientRect();
+    if (rect.right > window.innerWidth) {
+      picker.style.left = Math.max(0, window.innerWidth - rect.width) + 'px';
+    }
+    if (rect.bottom > window.innerHeight) {
+      picker.style.top = (btnRect.top - rect.height - 4) + 'px';
+    }
+  });
+  searchInput.focus();
+
+  // Click-outside dismiss
+  const dismiss = (e) => {
+    if (!picker.contains(e.target) && e.target !== btn) {
+      picker.remove();
+      document.removeEventListener('click', dismiss);
+    }
+  };
+  setTimeout(() => document.addEventListener('click', dismiss), 0);
+}
+
+function nestUnderParent(todoId, parentId) {
+  const todo = state.todos.find(t => t.id === todoId);
+  const parent = state.todos.find(t => t.id === parentId);
+  if (!todo || !parent) return;
+  todo.source = 'subtask';
+  todo.parentId = parentId;
+  // Subtasks keep their own deadline — do not override todo.priority
+  saveState();
+  renderTodos();
+  showToast('Nested under "' + parent.text.substring(0, 30) + '"');
+}
+
+function createParentAndNest(todoId, parentText) {
+  const todo = state.todos.find(t => t.id === todoId);
+  if (!todo) return;
+  const newParent = {
+    id: 'todo_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+    text: parentText,
+    meetingId: null, meetingTitle: null, meetingDate: null,
+    status: 'open',
+    priority: todo.priority || 'inbox',
+    source: 'manual',
+    createdAt: new Date().toISOString(),
+    completedAt: null,
+    triagedAt: null,
+    deferCount: 0
+  };
+  state.todos.push(newParent);
+  nestUnderParent(todoId, newParent.id);
+}
+
+function showInlineSubtaskInput(parentId) {
+  // If input already exists for this parent, focus it
+  const existingInput = document.querySelector(`[data-subtask-input="${parentId}"]`);
+  if (existingInput) { existingInput.focus(); return; }
+
+  const parentEl = document.querySelector(`[data-todo-id="${parentId}"]`);
+  if (!parentEl) return;
+
+  // Find or create the subtasks container after the parent item
+  let subtasksDiv = parentEl.nextElementSibling;
+  if (!subtasksDiv || !subtasksDiv.classList.contains('todo-subtasks')) {
+    subtasksDiv = document.createElement('div');
+    subtasksDiv.className = 'todo-subtasks';
+    parentEl.after(subtasksDiv);
+  }
+
+  const inputRow = document.createElement('div');
+  inputRow.style.cssText = 'display:flex;gap:var(--space-sm);align-items:center;padding:var(--space-sm) var(--space-md)';
+  inputRow.innerHTML = `<input data-subtask-input="${parentId}" class="form-input" style="flex:1;font-size:13px;padding:4px 8px" placeholder="Add subtask...">`;
+  subtasksDiv.appendChild(inputRow);
+
+  const input = inputRow.querySelector('input');
+  input.focus();
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const text = input.value.trim();
+      if (!text) return;
+      addSubtask(parentId, text);
+      input.value = '';
+      input.focus();
+    } else if (e.key === 'Escape') {
+      inputRow.remove();
+      if (!subtasksDiv.children.length) subtasksDiv.remove();
+    }
+  });
+  input.addEventListener('blur', () => {
+    if (!input.value.trim()) {
+      setTimeout(() => { inputRow.remove(); if (!subtasksDiv.children.length) subtasksDiv.remove(); }, 150);
+    }
+  });
+}
+
+function addSubtask(parentId, text) {
+  const parent = state.todos.find(t => t.id === parentId);
+  if (!parent) return;
+  state.todos.push({
+    id: 'todo_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+    text,
+    meetingId: null, meetingTitle: null, meetingDate: null,
+    status: 'open',
+    priority: parent.priority,
+    source: 'subtask',
+    parentId,
+    createdAt: new Date().toISOString(),
+    completedAt: null,
+    triagedAt: null,
+    deferCount: 0
+  });
+  saveState();
+  renderTodos();
+}
+
+function toggleParentSubtasks(parentId) {
+  const el = document.getElementById('subtasks-' + parentId);
+  if (!el) return;
+  el.classList.toggle('hidden');
+  const parentItem = document.querySelector(`[data-todo-id="${parentId}"]`);
+  if (parentItem) {
+    const indicator = parentItem.querySelector('.todo-subtask-progress');
+    if (indicator) {
+      indicator.textContent = indicator.textContent.replace(/[▸▾]$/, el.classList.contains('hidden') ? '▸' : '▾');
+    }
+  }
+}
+
 /* ---- Inline Todo Editing ---- */
 function startEditTodo(id) {
   const todo = state.todos.find(t => t.id === id);
@@ -6690,7 +7855,7 @@ function renderTabNav() {
     { id: 'briefs', label: 'Briefs' },
     f.todos !== false ? { id: 'todos', label: 'To-Dos' } : null,
     f.meetings !== false ? { id: 'meetings', label: 'Meetings' } : null,
-    f.visibility !== false ? { id: 'visibility', label: 'Visibility' } : null,
+    f.visibility !== false ? { id: 'visibility', label: 'Visibility' + ((state.pendingVisibility || []).length > 0 ? ` (${state.pendingVisibility.length})` : '') } : null,
     f.contributions !== false ? { id: 'contributions', label: 'Contributions' } : null,
     { id: 'settings', label: '⚙', style: 'font-size:24px;line-height:1', title: 'Settings' }
   ].filter(Boolean);
@@ -6739,7 +7904,12 @@ document.getElementById('tabNav').addEventListener('click', (e) => {
 /* ========================================
    API Integration
    ======================================== */
-const BASE_SYSTEM_PROMPT = `You are a career coach embedded in a personal work journal. Your user is a Senior Product Designer working toward promotion.
+const BASE_SYSTEM_PROMPT = `You are a career coach embedded in a personal work journal. The user's name is Mo — a Senior Product Designer working toward promotion. When generating shareable drafts (weekly plans, Slack posts, briefs), write in first person ("I", "my") as Mo — never refer to Mo in the third person. For coaching notes, analysis, and reflections, address Mo as "you".
+
+Formatting rules for all output:
+- Use **bold** for important text and section headers
+- Use bullet points to keep content clear and concise
+- Never use em-dashes (—). Use commas, periods, or semicolons instead
 
 Your role:
 - Surface patterns and connections the user hasn't noticed
@@ -6764,7 +7934,12 @@ Nothing else. No preamble, no sign-off.`;
 
 function getSystemPrompt() {
   const allStakeholders = (state.meetingPreps || []).flatMap(p => p.stakeholders || []);
-  if (allStakeholders.length === 0) return BASE_SYSTEM_PROMPT;
+  if (allStakeholders.length === 0) {
+    if (state.settings.insightsProfile) {
+      return BASE_SYSTEM_PROMPT + `\n\nUser's personality profile (Insights Discovery):\n${state.settings.insightsProfile}`;
+    }
+    return BASE_SYSTEM_PROMPT;
+  }
   const seen = new Set();
   const unique = allStakeholders.filter(s => {
     const key = s.name.trim().toLowerCase();
@@ -6773,7 +7948,11 @@ function getSystemPrompt() {
     return true;
   });
   const peopleContext = unique.map(s => `- ${s.name}: ${s.role}`).join('\n');
-  return BASE_SYSTEM_PROMPT + `\n\nKey people in the user's work life:\n${peopleContext}`;
+  let prompt = BASE_SYSTEM_PROMPT + `\n\nKey people in the user's work life:\n${peopleContext}`;
+  if (state.settings.insightsProfile) {
+    prompt += `\n\nUser's personality profile (Insights Discovery):\n${state.settings.insightsProfile}`;
+  }
+  return prompt;
 }
 
 const SYSTEM_PROMPT = BASE_SYSTEM_PROMPT; // legacy reference
@@ -6841,12 +8020,24 @@ function buildDailyPrompt(entry) {
   if (entry.isFriday && entry.weeklyRetro) entryText += `\nWeekly retro: ${entry.weeklyRetro}`;
   if (entry.planTomorrow) entryText += `\nTomorrow's plan: ${entry.planTomorrow}`;
 
-  // Coaching state context
+  // Coaching state context — escalation-aware
   let coachingContext = '';
-  const cs = state.coachingState || {};
-  const activeObs = (cs.activeObservations || []).filter(o => o.status === 'active');
-  if (activeObs.length > 0) {
-    coachingContext += `\n<active_coaching_observations>\nThese are observations you have previously surfaced that remain unresolved:\n${activeObs.map(o => `- "${o.topic}" (surfaced ${o.timesShown}x, first on ${o.firstSurfaced})`).join('\n')}\nDo NOT repeat these unless the entry provides new evidence. Escalate if the pattern is worsening.\n</active_coaching_observations>\n\n`;
+  const escalatedObs = getEscalatedObservations();
+  if (escalatedObs.length > 0) {
+    const toneMap = {
+      1: 'Observe and suggest gently — only mention if the entry provides new evidence.',
+      2: 'Summarize evidence directly and ask a pointed question — only mention if new evidence.',
+      3: 'Flag the pattern explicitly. Name consequences if it continues.',
+      4: 'CRITICAL — a todo has been auto-created for this. Reinforce urgency.',
+      5: 'This is degrading their promotion case. Be blunt. Connect to specific vectors being harmed.',
+      6: 'Will surface in stakeholder meetings. Maximum urgency. Connect to specific vectors being harmed.',
+      7: 'Forced acknowledgment required. Do not soften. Connect to specific vectors being harmed.'
+    };
+    const obsLines = escalatedObs.map(o => {
+      const tone = toneMap[o.escalationLevel] || toneMap[1];
+      return `- [L${o.escalationLevel}] "${o.topic}" (surfaced ${o.timesShown}x, first on ${o.firstSurfaced}${o.linkedTodoId ? ', todo created' : ''})\n  Tone: ${tone}`;
+    }).join('\n');
+    coachingContext += `\n<active_coaching_observations>\nThese are observations you have previously surfaced, with escalation levels indicating urgency:\n${obsLines}\n\nRouting rules:\n- L1-2: Only mention if this entry provides new evidence for the observation.\n- L3+: Actively raise even without new evidence — this pattern needs attention.\n- L5+: Connect to specific promotion vectors being harmed and name the consequences.\n</active_coaching_observations>\n\n`;
   }
 
   // Vector + loop context
@@ -6912,18 +8103,32 @@ function buildWeeklyPrompt(weekEntries) {
     return t;
   }).join('\n---\n');
 
-  return `Here is context about this person's promotion goals:\n<promotion_context>\n${promo}\n</promotion_context>\n\n${prevText}${intentionText ? `This week's intention set by the user:\n<weekly_intention>\n${weekIntention}\n</weekly_intention>\n\n` : ''}Here are all entries from this week:\n<week_entries>\n${entriesText}\n</week_entries>\n\nProduce a weekly brief in this exact format:\n\n## PATTERNS\n3-4 observations about this week. Focus on non-obvious connections, recurring themes, energy trends, and shifts from last week. Each observation should be 1-2 sentences. Name specific days and details — never be vague.\n\n## VECTORS\nMap this week's work against the promotion context above. For each relevant promotion area mentioned in the context:\n- What evidence from this week supports growth in this area?\n- What's missing or declining?\n- If no promotion context was provided, instead note 2-3 areas where this week's work demonstrated senior-level behavior, and 1 area that stayed at the current level.\n\n## WINS\nIdentify 2-4 potential wins from this week. A win is NOT a task completed — it's an outcome that had impact beyond the immediate work.\n\nFor each win, output in this exact format:\nWIN: [one-sentence description of the achievement]\nIMPACT: [what changed, improved, or was unblocked because of this]\nVECTOR: [which promotion vector this maps to — use ONLY one of these exact names: ${(state.vectors || []).map(v => v.name).join(', ') || 'general'}]\n\nRules for wins:\n- Frame as impact, not activity ("Unblocked the checkout team's redesign" not "Reviewed checkout designs")\n- If nothing this week rises to "win" level, say so honestly — do not inflate routine work\n- It is better to surface 1 real win than 4 weak ones\n\n## 1:1 PREP\nWrite 3-4 talking points for the user's next 1:1 with their manager, ranked by career importance (most important first). Each should be 2-3 sentences with specific evidence from this week's entries.\n\nInclude:\n- At least one point about a promotion-relevant area where the user demonstrated growth (with specific example)\n- At least one point about a challenge, blocker, or area where the user needs support\n- If a win was detected, frame one point around making that win visible\n\nDo NOT include:\n- Generic items ("I'd like to discuss my career growth")\n- Status updates the manager already knows\n- Anything without specific evidence from this week`;
+  // Vector status context
+  const vectorStatusCtx = (state.vectors || []).map(v => {
+    const sc = state.vectorScoreCache[v.id] || { tier: 'No evidence', total: 0 };
+    return `${v.name}: ${sc.tier} (score ${sc.total})`;
+  }).join('\n');
+
+  // Open loops context
+  const openLoops = getComputedOpenLoops();
+  const openLoopsCtx = openLoops.length > 0
+    ? openLoops.slice(0, 10).map(l => `- ${l.description} (L${l.escalationLevel}, ${l.ageDays}d old)`).join('\n')
+    : 'No open loops.';
+
+  return `Here is context about this person's promotion goals:\n<promotion_context>\n${promo}\n</promotion_context>\n\n${prevText}${intentionText ? `This week's intention set by the user:\n<weekly_intention>\n${weekIntention}\n</weekly_intention>\n\n` : ''}<vector_status>\n${vectorStatusCtx}\n</vector_status>\n\n<open_loops>\n${openLoopsCtx}\n</open_loops>\n\nHere are all entries from this week:\n<week_entries>\n${entriesText}\n</week_entries>\n\nProduce a weekly brief in this exact format:\n\n## PATTERNS\n3-4 observations about this week. Focus on non-obvious connections, recurring themes, energy trends, and shifts from last week. Each observation should be 1-2 sentences. Name specific days and details — never be vague.\n\n## VECTORS\nMap this week's work against the promotion context above. For each relevant promotion area mentioned in the context:\n- What evidence from this week supports growth in this area?\n- What's missing or declining?\n- If no promotion context was provided, instead note 2-3 areas where this week's work demonstrated senior-level behavior, and 1 area that stayed at the current level.\n\n## WINS\nIdentify 2-4 potential wins from this week. A win is NOT a task completed — it's an outcome that had impact beyond the immediate work.\n\nFor each win, output in this exact format:\nWIN: [one-sentence description of the achievement]\nIMPACT: [what changed, improved, or was unblocked because of this]\nVECTOR: [which promotion vector this maps to — use ONLY one of these exact names: ${(state.vectors || []).map(v => v.name).join(', ') || 'general'}]\n\nRules for wins:\n- Frame as impact, not activity ("Unblocked the checkout team's redesign" not "Reviewed checkout designs")\n- If nothing this week rises to "win" level, say so honestly — do not inflate routine work\n- It is better to surface 1 real win than 4 weak ones\n\n## 1:1 PREP\nWrite 3-4 talking points for the user's next 1:1 with their manager, ranked by career importance (most important first). Each should be 2-3 sentences with specific evidence from this week's entries.\n\nInclude:\n- At least one point about a promotion-relevant area where the user demonstrated growth (with specific example)\n- At least one point about a challenge, blocker, or area where the user needs support\n- If a win was detected, frame one point around making that win visible\n\nDo NOT include:\n- Generic items ("I'd like to discuss my career growth")\n- Status updates the manager already knows\n- Anything without specific evidence from this week\n\n## VECTOR PROGRESS\nFor each vector in <vector_status>, describe what evidence was added this week (from the entries) and whether it moved the needle. Flag any vectors that are Thin or No evidence, or that seem to be declining based on this week's work.\n\n## OPEN LOOPS\nUsing the <open_loops> data, list any loops that are relevant to this week's work. Flag any at L4+ as urgent. If loops were resolved this week, note them. If no loops exist, say so briefly.`;
 }
 
 function parseWeeklyBrief(text) {
-  const sections = { patterns: '', vectorCheckIn: '', winsRaw: '', oneOnOnePrep: '' };
+  const sections = { patterns: '', vectorCheckIn: '', winsRaw: '', oneOnOnePrep: '', vectorProgress: '', openLoopsSummary: '' };
   const parts = text.split(/^## /m).filter(Boolean);
 
   for (const part of parts) {
     const firstLine = part.split('\n')[0].trim().toUpperCase();
     const content = part.split('\n').slice(1).join('\n').trim();
     if (firstLine.includes('PATTERN')) sections.patterns = content;
-    else if (firstLine.includes('VECTOR')) sections.vectorCheckIn = content;
+    else if (firstLine === 'VECTORS' || firstLine === 'VECTOR CHECK-IN') sections.vectorCheckIn = content;
+    else if (firstLine.includes('VECTOR PROGRESS')) sections.vectorProgress = content;
+    else if (firstLine.includes('OPEN LOOP')) sections.openLoopsSummary = content;
     else if (firstLine.includes('WIN')) sections.winsRaw = content;
     else if (firstLine.includes('1:1') || firstLine.includes('PREP')) sections.oneOnOnePrep = content;
   }
@@ -7077,6 +8282,17 @@ ${prevText}
     `[${s.meetingDate}] ${s.meetingTitle}\nReflection: ${s.reflection}\nSynthesis: ${s.synthesis}\nAction Items: ${s.actionItems}`
   ).join('\n---\n');
   return `<post_meeting_syntheses>\n${synthText}\n</post_meeting_syntheses>\n\n`;
+})()}${(() => {
+  const escalated = getEscalatedObservations().filter(o => o.escalationLevel >= 6);
+  if (escalated.length === 0) return '';
+  const stakeholderNames = record.stakeholders.map(s => s.name.toLowerCase());
+  const matched = escalated.filter(o => {
+    if (o.escalationLevel >= 7) return true; // L7 always included
+    return stakeholderNames.some(sn => o.topic.toLowerCase().includes(sn));
+  });
+  if (matched.length === 0) return '';
+  const lines = matched.map(o => `- [L${o.escalationLevel}] "${o.topic}" (first surfaced: ${o.firstSurfaced}, shown ${o.timesShown}x)`).join('\n');
+  return `<escalation_red_flags>\nCRITICAL: The following coaching observations have escalated to red-flag level. These represent unresolved patterns that are actively harming the user's career trajectory.\n${lines}\n\nYou MUST weave these into PATTERN FLAGS and SUGGESTED FRAMING. Do not soften the language — the user needs to hear this directly.\n</escalation_red_flags>\n\n`;
 })()}Tone guidance: ${(Array.isArray(record.meetingTone) ? record.meetingTone : [record.meetingTone || 'strategic']).map(t => toneGuide[t]).filter(Boolean).join(' ')}
 
 Generate a meeting prep brief with these exact sections:
@@ -7919,7 +9135,7 @@ function getPlanLabelCta(items) {
 function getTodayVisibilityTask() {
   const dow = new Date(todayStr() + 'T12:00:00').getDay(); // 0=Sun..6=Sat
   if (dow < 1 || dow > 5) return null;
-  const rhythm = WEEKLY_RHYTHM[dow - 1];
+  const rhythm = getWeeklyRhythm()[dow - 1];
   if (!rhythm) return null;
   // Check if already logged today
   const alreadyDone = state.visibilityActivities.some(a => a.date === todayStr());
@@ -8170,22 +9386,84 @@ function getReflectionData(periodKey, type) {
   entries.forEach(e => { if (e.mood) moodCounts[e.mood] = (moodCounts[e.mood] || 0) + 1; });
   const topMood = Object.entries(moodCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '?';
 
-  // Vector comparison
+  // Vector comparison — current snapshot
   const vectorData = (state.vectors || []).map(v => {
     const sc = state.vectorScoreCache[v.id] || { tier: 'No evidence', total: 0 };
-    return { name: v.name, tier: sc.tier, total: sc.total };
+    return { id: v.id, name: v.name, tier: sc.tier, total: sc.total };
   });
 
-  // Loop performance (computed from todos)
-  const currentLoops = getComputedOpenLoops();
-  const loopsOpened = currentLoops.length;
-  const loopsClosed = 0;
-  const choseNotToAct = [];
+  // Loop performance (computed from todos in the period)
+  const allTodos = state.todos || [];
+  const loopsOpened = allTodos.filter(t => t.createdAt && t.createdAt.substring(0, 10) >= startDate && t.createdAt.substring(0, 10) <= endDate).length;
+  const loopsClosed = allTodos.filter(t => t.status === 'done' && t.completedAt && t.completedAt.substring(0, 10) >= startDate && t.completedAt.substring(0, 10) <= endDate).length;
+  const choseNotToAct = allTodos.filter(t => t.status === 'dismissed' && t.dismissedViaGate && t.completedAt && t.completedAt.substring(0, 10) >= startDate && t.completedAt.substring(0, 10) <= endDate);
+
+  // Escalation data
+  const cs = state.coachingState || {};
+  const activeObs = (cs.activeObservations || []).filter(o => o.status === 'active');
+  const resolvedObs = cs.resolvedObservations || [];
+  const escalatedActive = activeObs.map(o => ({ ...o, escalationLevel: getObservationEscalationLevel(o) })).filter(o => o.escalationLevel >= 3).sort((a, b) => b.escalationLevel - a.escalationLevel);
+  const obsReachedL4 = activeObs.filter(o => getObservationEscalationLevel(o) >= 4).length + resolvedObs.filter(o => o.firstSurfaced >= startDate && o.firstSurfaced <= endDate).length;
+  const obsResolved = resolvedObs.filter(o => o.resolvedAt && o.resolvedAt.substring(0, 10) >= startDate && o.resolvedAt.substring(0, 10) <= endDate).length;
+
+  // Top coaching observations by escalation level
+  const topCoachingObs = activeObs.map(o => ({ ...o, escalationLevel: getObservationEscalationLevel(o) })).sort((a, b) => b.escalationLevel - a.escalationLevel).slice(0, 3);
+
+  // Previous period comparison
+  let previousData = null;
+  const prevStore = type === 'quarterly' ? state.quarterlyReflections : state.monthlyReflections;
+  const prevKeys = Object.keys(prevStore).filter(k => k < periodKey).sort();
+  if (prevKeys.length > 0) {
+    const prevRef = prevStore[prevKeys[prevKeys.length - 1]];
+    if (prevRef && prevRef.dataSnapshot) {
+      previousData = prevRef.dataSnapshot;
+    }
+  }
+  // Previous period synthesis and priority
+  let previousSynthesis = null;
+  let previousPriority = null;
+  if (prevKeys.length > 0) {
+    const prevRef = prevStore[prevKeys[prevKeys.length - 1]];
+    if (prevRef) {
+      previousSynthesis = prevRef.synthesis || null;
+      previousPriority = prevRef.responses?.priority || null;
+    }
+  }
+
+  // Weekly energy averages across the period
+  const weeklyEnergy = [];
+  if (entries.length > 0) {
+    const weekMap = {};
+    entries.forEach(e => {
+      const wk = getWeekMonday(e.date);
+      if (!weekMap[wk]) weekMap[wk] = [];
+      weekMap[wk].push(e.energy || 0);
+    });
+    Object.keys(weekMap).sort().forEach(wk => {
+      const vals = weekMap[wk];
+      weeklyEnergy.push({ week: wk, avg: (vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(1) });
+    });
+  }
+
+  // Meeting count (meetings with insights in the period)
+  const meetingCount = (state.meetings || []).filter(m => {
+    const md = meetingDateStr(m);
+    return md >= startDate && md <= endDate && (m.transcript || m.insights);
+  }).length;
+
+  // Brief count (weekly briefs generated in the period)
+  const briefCount = (state.weeklyBriefs || []).filter(b => b.weekOf >= startDate && b.weekOf <= endDate).length;
 
   // Key evidence
   const wins = (state.wins || []).filter(w => w.status === 'confirmed' && w.date >= startDate && w.date <= endDate);
 
-  return { startDate, endDate, entries, energyAvg, topMood, vectorData, loopsOpened, loopsClosed, choseNotToAct, wins };
+  return {
+    startDate, endDate, entries, energyAvg, topMood, vectorData,
+    loopsOpened, loopsClosed, choseNotToAct, wins,
+    escalatedActive, obsReachedL4, obsResolved, topCoachingObs,
+    previousData, previousSynthesis, previousPriority,
+    weeklyEnergy, meetingCount, briefCount
+  };
 }
 
 function renderReflectionFlow(panel) {
@@ -8197,10 +9475,74 @@ function renderReflectionFlow(panel) {
   const totalSteps = reflectionType === 'quarterly' ? 3 : 3;
 
   if (reflectionStep === 1) {
-    // Step 1: Data presentation
-    const vectorRows = data.vectorData.map(v =>
-      `<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:14px"><span>${escapeHtml(v.name)}</span><span class="dash-tier-${v.tier.toLowerCase().replace(/\s/g, '-')}" style="font-weight:500">${v.tier}</span></div>`
-    ).join('');
+    // Step 1: Data presentation — enriched
+    const vectorRows = data.vectorData.map(v => {
+      let delta = '';
+      if (data.previousData && data.previousData.vectorData) {
+        const prev = data.previousData.vectorData.find(pv => pv.name === v.name);
+        if (prev && prev.tier !== v.tier) {
+          const tierOrder = ['No evidence', 'Thin', 'Developing', 'Solid', 'Strong'];
+          const prevIdx = tierOrder.indexOf(prev.tier);
+          const curIdx = tierOrder.indexOf(v.tier);
+          const arrow = curIdx > prevIdx ? '↑' : '↓';
+          const color = curIdx > prevIdx ? 'var(--accent-positive)' : 'var(--accent-negative)';
+          delta = ` <span style="font-size:12px;color:${color}">${arrow} was ${prev.tier}</span>`;
+        }
+      }
+      return `<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:14px"><span>${escapeHtml(v.name)}</span><span><span class="dash-tier-${v.tier.toLowerCase().replace(/\s/g, '-')}" style="font-weight:500">${v.tier}</span>${delta}</span></div>`;
+    }).join('');
+
+    // Open loop performance card
+    const loopNet = data.loopsClosed - data.loopsOpened;
+    const loopNetColor = loopNet >= 0 ? 'var(--accent-positive)' : 'var(--accent-negative)';
+    const loopNetLabel = loopNet >= 0 ? `+${loopNet}` : `${loopNet}`;
+    let loopDelta = '';
+    if (data.previousData && data.previousData.loopsOpened !== undefined) {
+      const prevNet = (data.previousData.loopsClosed || 0) - (data.previousData.loopsOpened || 0);
+      const diff = loopNet - prevNet;
+      if (diff !== 0) loopDelta = ` <span style="font-size:12px;color:var(--text-muted)">(vs ${prevNet >= 0 ? '+' : ''}${prevNet} last period)</span>`;
+    }
+
+    // Escalation status
+    let escalationHtml = '';
+    if (data.escalatedActive.length > 0) {
+      const obsRows = data.escalatedActive.map(o =>
+        `<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px"><span>${escapeHtml(o.pattern || o.text || 'Pattern')}</span><span style="font-weight:600;color:${o.escalationLevel >= 5 ? 'var(--accent-negative)' : 'var(--accent-warning)'}">L${o.escalationLevel}</span></div>`
+      ).join('');
+      escalationHtml = `
+        <div class="dash-section-title">ESCALATION STATUS</div>
+        <div style="background:var(--surface-card);border-radius:var(--radius-md);padding:var(--space-lg);margin-bottom:var(--space-xl)">
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:var(--space-sm)">${data.obsReachedL4} reached L4+ · ${data.obsResolved} resolved this period</div>
+          ${obsRows}
+        </div>`;
+    }
+
+    // Coaching highlights
+    let coachingHtml = '';
+    if (data.topCoachingObs.length > 0) {
+      const obsRows = data.topCoachingObs.map(o => {
+        const firstDate = o.firstSurfaced ? new Date(o.firstSurfaced).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '?';
+        return `<div style="font-size:13px;padding:4px 0"><span style="font-weight:500">L${o.escalationLevel}</span> — ${escapeHtml(o.pattern || o.text || 'Pattern')} <span style="color:var(--text-muted);font-size:12px">(first surfaced ${firstDate})</span></div>`;
+      }).join('');
+      coachingHtml = `
+        <div class="dash-section-title">COACHING HIGHLIGHTS</div>
+        <div style="background:var(--surface-card);border-radius:var(--radius-md);padding:var(--space-lg);margin-bottom:var(--space-xl)">${obsRows}</div>`;
+    }
+
+    // Energy trend
+    let energyTrendHtml = '';
+    if (data.weeklyEnergy.length > 1) {
+      const maxE = 10;
+      const barWidth = Math.floor(100 / data.weeklyEnergy.length);
+      const bars = data.weeklyEnergy.map(w => {
+        const pct = (parseFloat(w.avg) / maxE * 100).toFixed(0);
+        const weekLabel = new Date(w.week + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        return `<div style="flex:1;text-align:center"><div style="height:60px;display:flex;align-items:flex-end;justify-content:center"><div style="width:20px;height:${pct}%;background:var(--accent-interactive);border-radius:3px 3px 0 0;min-height:4px"></div></div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">${w.avg}</div><div style="font-size:10px;color:var(--text-muted)">${weekLabel}</div></div>`;
+      }).join('');
+      energyTrendHtml = `
+        <div class="dash-section-title">ENERGY TREND</div>
+        <div style="display:flex;gap:4px;margin-bottom:var(--space-xl);background:var(--surface-card);border-radius:var(--radius-md);padding:var(--space-lg)">${bars}</div>`;
+    }
 
     const winsHtml = data.wins.length > 0
       ? data.wins.map(w => `<div style="font-size:13px;padding:2px 0">· ${escapeHtml(w.description)}</div>`).join('')
@@ -8209,9 +9551,12 @@ function renderReflectionFlow(panel) {
     let choseNotHtml = '';
     if (reflectionType === 'quarterly' && data.choseNotToAct.length > 0) {
       choseNotHtml = `
-        <div style="margin-top:var(--space-xl)">
-          <div class="dash-section-title">THINGS YOU CHOSE NOT TO ACT ON</div>
-          ${data.choseNotToAct.map(l => `<div style="font-size:13px;padding:4px 0;color:var(--accent-negative)">· ${escapeHtml(l.description)}</div>`).join('')}
+        <div class="dash-section-title">THINGS YOU CHOSE NOT TO ACT ON</div>
+        <div style="background:var(--surface-card);border-radius:var(--radius-md);padding:var(--space-lg);margin-bottom:var(--space-xl)">
+          ${data.choseNotToAct.map(l => {
+            const date = l.completedAt ? new Date(l.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+            return `<div style="font-size:13px;padding:4px 0;color:var(--accent-negative)">· ${escapeHtml(l.text || l.description || '')} ${date ? '<span style="color:var(--text-muted);font-size:12px">(' + date + ')</span>' : ''}</div>`;
+          }).join('')}
         </div>`;
     }
 
@@ -8227,10 +9572,21 @@ function renderReflectionFlow(panel) {
         <div style="background:var(--surface-card);border-radius:var(--radius-md);padding:var(--space-lg);margin-bottom:var(--space-xl)">${vectorRows}</div>
 
         <div class="dash-section-title">LOOP PERFORMANCE</div>
-        <div style="font-size:14px;margin-bottom:var(--space-xl)">Opened: ${data.loopsOpened} · Closed: ${data.loopsClosed}${data.choseNotToAct.length > 0 ? ' · Chose not to act: ' + data.choseNotToAct.length : ''}</div>
+        <div style="background:var(--surface-card);border-radius:var(--radius-md);padding:var(--space-lg);margin-bottom:var(--space-xl)">
+          <div style="display:flex;gap:var(--space-xl);font-size:14px">
+            <div><span style="color:var(--text-muted)">Opened</span> <span style="font-weight:600">${data.loopsOpened}</span></div>
+            <div><span style="color:var(--text-muted)">Closed</span> <span style="font-weight:600">${data.loopsClosed}</span></div>
+            <div><span style="color:var(--text-muted)">Dismissed</span> <span style="font-weight:600">${data.choseNotToAct.length}</span></div>
+            <div><span style="color:var(--text-muted)">Net</span> <span style="font-weight:600;color:${loopNetColor}">${loopNetLabel}</span>${loopDelta}</div>
+          </div>
+        </div>
+
+        ${escalationHtml}
+        ${coachingHtml}
+        ${energyTrendHtml}
 
         <div class="dash-section-title">ENERGY & MOOD</div>
-        <div style="font-size:14px;margin-bottom:var(--space-xl)">Avg energy: ${data.energyAvg}/10 · ${data.entries.length} entries · Most common mood: ${topMood}</div>
+        <div style="font-size:14px;margin-bottom:var(--space-xl)">Avg energy: ${data.energyAvg}/10 · ${data.entries.length} entries · ${data.meetingCount} meetings · ${data.briefCount} briefs · Most common mood: ${data.topMood}</div>
 
         <div class="dash-section-title">KEY EVIDENCE</div>
         <div style="margin-bottom:var(--space-xl)">${winsHtml}</div>
@@ -8244,10 +9600,39 @@ function renderReflectionFlow(panel) {
     return true;
 
   } else if (reflectionStep === 2) {
-    // Step 2: Structured reflection
+    // Step 2: Structured reflection — data-informed
+    // Hints for "what are you avoiding" question
+    let avoidingHints = '';
+    if (data.escalatedActive.length > 0) {
+      const hintItems = data.escalatedActive.slice(0, 3).map(o => escapeHtml(o.pattern || o.text || '')).join(', ');
+      avoidingHints = `<div style="font-size:12px;color:var(--text-muted);margin-top:var(--space-xs)">Escalated patterns: ${hintItems}</div>`;
+    }
+
+    // Hints for "priority" question
+    let priorityHints = '';
+    const weakestVec = data.vectorData.reduce((w, v) => {
+      const tierOrder = ['No evidence', 'Thin', 'Developing', 'Solid', 'Strong'];
+      return tierOrder.indexOf(v.tier) < tierOrder.indexOf(w.tier) ? v : w;
+    }, data.vectorData[0] || { name: '?', tier: 'Strong' });
+    const longestObs = data.topCoachingObs[0];
+    let priorityHintParts = [];
+    if (weakestVec && weakestVec.tier !== 'Strong') priorityHintParts.push(`Your weakest vector is ${escapeHtml(weakestVec.name)} (${weakestVec.tier})`);
+    if (longestObs) priorityHintParts.push(`Your longest unresolved pattern is "${escapeHtml(longestObs.pattern || longestObs.text || '?')}" (L${longestObs.escalationLevel})`);
+    if (priorityHintParts.length > 0) {
+      priorityHints = `<div style="font-size:12px;color:var(--text-muted);margin-top:var(--space-xs)">${priorityHintParts.join('. ')}.</div>`;
+    }
+
+    // Chose not to act hint for quarterly
+    let choseNotHint = '';
+    if (reflectionType === 'quarterly' && data.choseNotToAct.length > 0) {
+      const items = data.choseNotToAct.map(t => `<div style="font-size:12px;color:var(--text-muted);padding:1px 0">· ${escapeHtml(t.text || t.description || '')}</div>`).join('');
+      choseNotHint = `<div style="margin-top:var(--space-xs)">${items}</div>`;
+    }
+
     const extraQuestions = reflectionType === 'quarterly' ? `
       <div class="form-group">
         <label class="form-label">Looking at items you chose not to act on — would you make the same choices today?</label>
+        ${choseNotHint}
         <textarea class="form-input" id="reflectChoices" rows="3" placeholder="Were those the right calls?"></textarea>
       </div>
       <div class="form-group">
@@ -8268,6 +9653,7 @@ function renderReflectionFlow(panel) {
         </div>
         <div class="form-group">
           <label class="form-label">What didn't work? What are you avoiding?</label>
+          ${avoidingHints}
           <textarea class="form-input" id="reflectDidnt" rows="3" placeholder="Be honest about what's not working."></textarea>
         </div>
         <div class="form-group">
@@ -8276,6 +9662,7 @@ function renderReflectionFlow(panel) {
         </div>
         <div class="form-group">
           <label class="form-label">What's your one priority for next ${reflectionType === 'quarterly' ? 'quarter' : 'month'}?</label>
+          ${priorityHints}
           <textarea class="form-input" id="reflectPriority" rows="2" placeholder="One thing to focus on."></textarea>
         </div>
         ${extraQuestions}
@@ -8338,8 +9725,13 @@ function submitReflectionResponses() {
       energyAvg: data.energyAvg,
       loopsOpened: data.loopsOpened,
       loopsClosed: data.loopsClosed,
+      choseNotToActCount: data.choseNotToAct.length,
       entryCount: data.entries.length,
-      winCount: data.wins.length
+      winCount: data.wins.length,
+      escalatedActiveCount: data.escalatedActive.length,
+      obsResolved: data.obsResolved,
+      meetingCount: data.meetingCount,
+      briefCount: data.briefCount
     },
     completedAt: new Date().toISOString(),
     synthesis: null
@@ -8366,18 +9758,59 @@ async function generateReflectionSynthesis(periodKey, type, responses, data) {
     ? new Date(data.startDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
     : periodKey;
 
-  const vectorSummary = data.vectorData.map(v => `${v.name}: ${v.tier}`).join('\n');
+  const vectorSummary = data.vectorData.map(v => {
+    let line = `${v.name}: ${v.tier} (score ${v.total})`;
+    if (data.previousData && data.previousData.vectorData) {
+      const prev = data.previousData.vectorData.find(pv => pv.name === v.name);
+      if (prev) line += ` — was ${prev.tier} last period`;
+    }
+    return line;
+  }).join('\n');
   const winsList = data.wins.map(w => '- ' + w.description).join('\n') || 'None';
 
-  let prompt = `This is a ${type} reflection for ${periodLabel}.
+  // Escalated observations
+  const escalationSummary = data.escalatedActive.length > 0
+    ? data.escalatedActive.map(o => `- L${o.escalationLevel}: ${o.pattern || o.text || 'Pattern'} (since ${o.firstSurfaced ? o.firstSurfaced.substring(0, 10) : '?'})`).join('\n')
+    : 'None active above L3';
 
-VECTOR STATUS:
+  // Coaching observations
+  const coachingSummary = data.topCoachingObs.length > 0
+    ? data.topCoachingObs.map(o => `- L${o.escalationLevel}: ${o.pattern || o.text || ''} (shown ${o.timesShown || 0} times)`).join('\n')
+    : 'No active coaching observations';
+
+  // Chose not to act
+  const choseNotSummary = data.choseNotToAct.length > 0
+    ? data.choseNotToAct.map(t => `- ${t.text || t.description || ''} (dismissed ${t.completedAt ? t.completedAt.substring(0, 10) : '?'})`).join('\n')
+    : '';
+
+  // Previous period context
+  let prevContext = '';
+  if (data.previousSynthesis) {
+    prevContext += `\nPREVIOUS PERIOD SYNTHESIS:\n${data.previousSynthesis.substring(0, 800)}\n`;
+  }
+  if (data.previousPriority) {
+    prevContext += `\nPREVIOUS PERIOD'S STATED PRIORITY: ${data.previousPriority}\n`;
+  }
+
+  let prompt = `This is a ${type} reflection for ${periodLabel}. Write in the first person as if you are this person's career coach speaking directly to them.
+
+VECTOR STATUS (with previous period comparison):
 ${vectorSummary}
 
-LOOP PERFORMANCE: Opened ${data.loopsOpened}, Closed ${data.loopsClosed}
+LOOP PERFORMANCE: Opened ${data.loopsOpened}, Closed ${data.loopsClosed}, Dismissed ${data.choseNotToAct.length}
+Net: ${data.loopsClosed - data.loopsOpened >= 0 ? '+' : ''}${data.loopsClosed - data.loopsOpened}
 ENERGY: ${data.energyAvg}/10 avg over ${data.entries.length} entries
+MEETINGS WITH INSIGHTS: ${data.meetingCount}
+WEEKLY BRIEFS: ${data.briefCount}
 WINS: ${winsList}
 
+ESCALATED OBSERVATIONS (patterns at L3+, i.e. things the user has been avoiding):
+${escalationSummary}
+
+COACHING OBSERVATIONS (top patterns by severity):
+${coachingSummary}
+${choseNotSummary ? '\nITEMS USER CHOSE NOT TO ACT ON (Level 7 gate dismissals):\n' + choseNotSummary : ''}
+${prevContext}
 USER'S REFLECTION:
 What worked: ${responses.worked}
 What didn't: ${responses.didnt}
@@ -8386,13 +9819,25 @@ Priority for next period: ${responses.priority}
 ${responses.choices ? 'On things they chose not to act on: ' + responses.choices : ''}
 ${responses.hole ? 'Biggest promotion gap: ' + responses.hole : ''}
 
-Generate a ${type} synthesis (~300 words) with:
-1. TRAJECTORY — how are things trending? What moved, what stalled?
-2. WHAT CHANGED — the most significant shift this period
-3. RECOMMENDATION — one specific, actionable focus for next ${type === 'quarterly' ? 'quarter' : 'month'}, grounded in the data`;
+Generate a ${type} synthesis (~400 words) with these 5 sections. Be direct, specific, and honest — cite data:
+
+## TRAJECTORY
+For each vector, note whether it's trending up/down/flat with specific evidence. Don't sugarcoat stalled vectors.
+
+## ACCOUNTABILITY
+${data.previousPriority ? 'Did they follow through on their stated priority of "' + data.previousPriority + '"? Be honest about whether they delivered.' : 'No previous priority on record. Acknowledge this is a fresh start.'}
+
+## ESCALATION STATUS
+${data.escalatedActive.length > 0 ? 'Address the observations that have been festering. What is at stake if these remain unaddressed?' : 'No active escalations — acknowledge this positively.'}
+
+## WHAT CHANGED
+The most significant shift this period — positive or negative.
+
+## RECOMMENDATION
+One specific, actionable focus for next ${type === 'quarterly' ? 'quarter' : 'month'}, connected to the weakest vector or most urgent observation.`;
 
   try {
-    const text = await callClaude(getSystemPrompt(), prompt, 1500);
+    const text = await callClaude(getSystemPrompt(), prompt, 2000);
     const store = type === 'quarterly' ? state.quarterlyReflections : state.monthlyReflections;
     store[periodKey].synthesis = text;
     saveState();
@@ -8407,6 +9852,9 @@ Generate a ${type} synthesis (~300 words) with:
 }
 
 let weeklyTriageStep = 0; // 0 = not active, 1 = inbox, 2 = this-week, 3 = share
+let weekTriageQueue = [];
+let weekTriageIdx = 0;
+let weekTriageCounts = { kept: 0, promoted: 0, deferred: 0 };
 
 function isWeeklyTriageNeeded() {
   const today = todayStr();
@@ -8429,7 +9877,7 @@ function renderWeeklyTriage(panel) {
         ? `<button class="btn-secondary" style="font-size:11px;padding:var(--space-xs) var(--space-md);color:var(--accent-interactive)" onclick="event.stopPropagation();toggleTodoRecurrenceMenu('${t.id}', this)">🔄 ${recurrenceLabel(t.recurrence)}</button>`
         : `<button class="btn-secondary" style="font-size:11px;padding:var(--space-xs) var(--space-md);color:var(--text-primary)" onclick="event.stopPropagation();toggleTodoRecurrenceMenu('${t.id}', this)">🔄 Set Recurring</button>`;
       return `<div class="triage-item" id="triage-${t.id}">
-        <div class="triage-item-text">${escapeHtml(t.text)}</div>
+        <div class="triage-item-text">${escapeHtml(t.text)} ${todoDueTag(t.priority)}</div>
         <div class="triage-item-meta">${sourceLabel ? 'from: ' + escapeHtml(sourceLabel) + ' · ' : ''}${age}d ago</div>
         <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap;margin-top:var(--space-sm)">
           <button class="btn-secondary" style="font-size:11px;padding:var(--space-xs) var(--space-md);color:#d4a017" onclick="event.stopPropagation();toggleTodoStar('${t.id}');renderDashboard()">${t.starred ? '★ Starred' : '☆ Star'}</button>
@@ -8456,25 +9904,69 @@ function renderWeeklyTriage(panel) {
     return true;
 
   } else if (weeklyTriageStep === 2) {
-    // Step 2: This week review
-    const weekItemsHtml = weekItems.map((t, i) =>
-      `<div class="triage-item">
-        <span class="focus-drag">⠿</span>
-        <span class="triage-item-text" style="flex:1">${escapeHtml(t.text)}</span>
-        <button class="triage-btn" onclick="moveTodoPriority('${t.id}','today');renderDashboard()">→ Today</button>
-      </div>`
-    ).join('') || '<div style="color:var(--text-muted);font-size:13px;padding:var(--space-md)">No items for this week yet.</div>';
+    // Step 2: Card-based this-week review
+    if (weekTriageQueue.length === 0) {
+      weekTriageQueue = weekItems.map(t => t.id);
+      weekTriageIdx = 0;
+      weekTriageCounts = { kept: 0, promoted: 0, deferred: 0 };
+    }
+
+    if (weekTriageIdx >= weekTriageQueue.length) {
+      // Summary screen
+      panel.innerHTML = `
+        <div class="triage-overlay">
+          <div class="triage-header">
+            <div class="triage-title">Weekly Triage</div>
+            <div style="font-size:12px;color:var(--text-muted)">Step 2/3</div>
+          </div>
+          <div class="dash-section-title">THIS WEEK — DONE</div>
+          <div class="week-triage-summary">
+            <div class="week-triage-summary-row"><span class="week-triage-summary-count">${weekTriageCounts.kept}</span> kept this week</div>
+            <div class="week-triage-summary-row"><span class="week-triage-summary-count">${weekTriageCounts.promoted}</span> promoted to today</div>
+            <div class="week-triage-summary-row"><span class="week-triage-summary-count">${weekTriageCounts.deferred}</span> deferred to backlog</div>
+          </div>
+          <div style="text-align:right;margin-top:var(--space-lg)"><button class="btn-secondary btn-accent" onclick="weekTriageQueue=[];weeklyTriageStep=3;renderDashboard()">Next: Share Weekly Plan</button></div>
+        </div>`;
+      return true;
+    }
+
+    const currentId = weekTriageQueue[weekTriageIdx];
+    const current = state.todos.find(t => t.id === currentId);
+    if (!current) { weekTriageIdx++; renderDashboard(); return true; }
+
+    const age = Math.floor((Date.now() - new Date(current.createdAt || 0).getTime()) / 86400000);
+    const sourceLabel = current.sourceTitle || (current.source === 'recurring' ? 'Recurring' : current.source || '');
 
     panel.innerHTML = `
       <div class="triage-overlay">
         <div class="triage-header">
           <div class="triage-title">Weekly Triage</div>
-          <div style="font-size:12px;color:var(--text-muted)">Step 2/3</div>
+          <div style="font-size:12px;color:var(--text-muted)">Step 2/3 · ${weekTriageIdx + 1} of ${weekTriageQueue.length}</div>
         </div>
-        <div class="dash-section-title">THIS WEEK'S PRIORITIES <span style="text-transform:none;font-weight:400">${weekItems.length} item${weekItems.length !== 1 ? 's' : ''}</span></div>
-        <div style="font-size:12px;color:var(--text-muted);margin-bottom:var(--space-sm)">Reorder by importance. Promote to Today as needed.</div>
-        <div class="triage-list">${weekItemsHtml}</div>
-        <div style="text-align:right;margin-top:var(--space-lg)"><button class="btn-secondary btn-accent" onclick="weeklyTriageStep=3;renderDashboard()">Next: Share Weekly Plan</button></div>
+        <div class="week-triage-card">
+          ${current.parentId ? (() => { const p = state.todos.find(t => t.id === current.parentId); return p ? `<div class="week-triage-card-parent">${escapeHtml(p.text)}</div>` : ''; })() : ''}
+          <div class="week-triage-card-text">${escapeHtml(current.text)}</div>
+          <div class="week-triage-card-meta">
+            ${sourceLabel ? escapeHtml(sourceLabel) + ' · ' : ''}${age}d ago
+            ${current.starred ? ' · ★ Starred' : ''}
+            ${todoDueTag(current.priority)}
+          </div>
+          <div class="week-triage-card-actions">
+            <button class="week-triage-action keep" onclick="weekTriageAction('keep')">Keep this week</button>
+            <button class="week-triage-action promote" onclick="weekTriageAction('today')">→ Today</button>
+            <button class="week-triage-action defer" onclick="weekTriageAction('backlog')">Defer</button>
+          </div>
+          <div class="week-triage-card-star">
+            <button class="btn-ghost" style="font-size:13px" onclick="toggleTodoStar('${current.id}');renderDashboard()">${current.starred ? '★ Unstar' : '☆ Star as high-impact'}</button>
+          </div>
+        </div>
+        <div class="week-triage-progress">
+          <div class="week-triage-progress-bar" style="width:${Math.round((weekTriageIdx / weekTriageQueue.length) * 100)}%"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:var(--space-md)">
+          <button class="btn-ghost" style="font-size:12px" onclick="weekTriageUndo()">← Undo</button>
+          <button class="btn-ghost" style="font-size:12px" onclick="weekTriageQueue=[];weeklyTriageStep=3;renderDashboard()">Skip remaining →</button>
+        </div>
       </div>`;
     return true;
 
@@ -8490,11 +9982,12 @@ function renderWeeklyTriage(panel) {
           <div style="font-size:12px;color:var(--text-muted)">Step 3/3</div>
         </div>
         <div class="dash-section-title">SHARE WEEKLY PLAN</div>
-        <textarea class="form-input" id="weeklyPlanDraft" rows="8" placeholder="Generating plan..." style="font-size:13px;line-height:1.6"></textarea>
+        <div class="weekly-plan-display card" id="weeklyPlanDisplay" style="font-size:13px;line-height:1.6;min-height:80px"></div>
+        <textarea id="weeklyPlanRaw" style="display:none"></textarea>
         <div style="display:flex;justify-content:space-between;margin-top:var(--space-md)">
-          <div><button class="btn-ghost" onclick="generateWeeklyPlanDraft()">Regenerate</button></div>
+          <div><button class="btn-secondary btn-accent" onclick="generateWeeklyPlanDraft()">Regenerate</button></div>
           <div style="display:flex;gap:var(--space-sm)">
-            <button class="btn-secondary" onclick="const t=document.getElementById('weeklyPlanDraft');navigator.clipboard.writeText(t.value);showToast('Copied — paste into Slack')">Copy to clipboard</button>
+            <button class="btn-secondary" onclick="const t=document.getElementById('weeklyPlanRaw');navigator.clipboard.writeText(t.value);showToast('Copied — paste into Slack')">Copy to clipboard</button>
             <button class="btn-secondary btn-accent" onclick="completeWeeklyTriage()">Done — Start my day</button>
           </div>
         </div>
@@ -8529,9 +10022,16 @@ function batchTriageAll(priority) {
   renderDashboard();
 }
 
+function setWeeklyPlanContent(text) {
+  const display = document.getElementById('weeklyPlanDisplay');
+  const raw = document.getElementById('weeklyPlanRaw');
+  if (display) display.innerHTML = formatBulletList(text);
+  if (raw) raw.value = text;
+}
+
 async function generateWeeklyPlanDraft() {
-  const textarea = document.getElementById('weeklyPlanDraft');
-  if (!textarea) return;
+  const display = document.getElementById('weeklyPlanDisplay');
+  if (!display) return;
 
   const todayItems = (state.todos || []).filter(t => t.status === 'open' && t.priority === 'today');
   const weekItems = (state.todos || []).filter(t => t.status === 'open' && t.priority === 'this-week');
@@ -8541,11 +10041,11 @@ async function generateWeeklyPlanDraft() {
   const rolledList = rolledOver.map(t => '- ' + t.text).join('\n');
 
   if (!state.settings.baseUrl) {
-    textarea.value = 'This week I\'m focused on:\n' + itemsList;
+    setWeeklyPlanContent('This week I\'m focused on:\n' + itemsList);
     return;
   }
 
-  textarea.value = 'Generating...';
+  display.innerHTML = '<span style="color:var(--text-muted)">Generating...</span>';
   try {
     const prompt = `Write a concise Slack post (~150 words) sharing my weekly plan with my design team. Task-focused, no promotion/vector language.
 
@@ -8563,17 +10063,72 @@ Key milestones:
 
 ${rolledList ? 'Carrying forward:\n• [rolled items]' : ''}
 
-Keep it casual, specific, and useful for teammates.`;
+Keep it casual, specific, and useful for teammates. Output ONLY the post itself — no preamble, no "Here's a draft:", no commentary before or after.`;
 
     const text = await callClaude(getSystemPrompt(), prompt, 500);
-    textarea.value = text;
+    setWeeklyPlanContent(text);
   } catch (e) {
-    textarea.value = 'This week I\'m focused on:\n' + itemsList;
+    setWeeklyPlanContent('This week I\'m focused on:\n' + itemsList);
   }
+}
+
+let weekTriageLastAction = null; // { todoId, previousPriority, action }
+
+function weekTriageAction(action) {
+  const todoId = weekTriageQueue[weekTriageIdx];
+  const todo = state.todos.find(t => t.id === todoId);
+  if (!todo) { weekTriageIdx++; renderDashboard(); return; }
+
+  weekTriageLastAction = { todoId, previousPriority: todo.priority, action };
+
+  if (action === 'keep') {
+    weekTriageCounts.kept++;
+    // No change to priority — stays in this-week
+  } else if (action === 'today') {
+    weekTriageCounts.promoted++;
+    todo.priority = 'today';
+    todo.triagedAt = new Date().toISOString();
+  } else if (action === 'backlog') {
+    weekTriageCounts.deferred++;
+    todo.priority = 'backlog';
+    todo.triagedAt = new Date().toISOString();
+    todo.deferCount = (todo.deferCount || 0) + 1;
+  }
+  saveState();
+  weekTriageIdx++;
+  renderDashboard();
+}
+
+function weekTriageUndo() {
+  if (!weekTriageLastAction || weekTriageIdx <= 0) return;
+  const { todoId, previousPriority, action } = weekTriageLastAction;
+  const todo = state.todos.find(t => t.id === todoId);
+  if (todo) {
+    todo.priority = previousPriority;
+    if (action === 'backlog') todo.deferCount = Math.max(0, (todo.deferCount || 0) - 1);
+  }
+  if (action === 'keep') weekTriageCounts.kept--;
+  else if (action === 'today') weekTriageCounts.promoted--;
+  else if (action === 'backlog') weekTriageCounts.deferred--;
+  weekTriageIdx--;
+  weekTriageLastAction = null;
+  saveState();
+  renderDashboard();
 }
 
 function completeWeeklyTriage() {
   state.weeklyTriageCompletedAt = new Date().toISOString();
+  // Save weekly plan text for later reference
+  const rawEl = document.getElementById('weeklyPlanRaw');
+  const planText = rawEl ? rawEl.value.trim() : '';
+  if (planText) {
+    const weekMonday = getWeekMonday(todayStr());
+    // Replace if same week, otherwise push new
+    const existing = state.weeklyPlanHistory.findIndex(p => p.week === weekMonday);
+    const entry = { week: weekMonday, text: planText, createdAt: new Date().toISOString() };
+    if (existing >= 0) state.weeklyPlanHistory[existing] = entry;
+    else state.weeklyPlanHistory.push(entry);
+  }
   weeklyTriageStep = 0;
   saveState();
   renderDashboard();
@@ -8756,7 +10311,7 @@ function renderTriageCard() {
   const item = triageQueue[triageIndex];
   const age = Math.floor((Date.now() - new Date(item.createdAt || 0).getTime()) / 86400000);
   const meeting = item.meetingId ? state.meetings.find(m => m.id === item.meetingId) : null;
-  const sourceLabel = meeting ? meeting.title : item.sourceTitle || (item.source === 'recurring' ? 'Recurring' : item.source === 'follow-up' ? 'Follow-up' : item.source === 'coaching' ? 'Coaching' : item.source === 'visibility' ? 'Visibility' : 'Manual');
+  const sourceLabel = meeting ? meeting.title : item.sourceTitle || (item.source === 'recurring' ? 'Recurring' : item.source === 'follow-up' ? 'Follow-up' : item.source === 'subtask' ? 'Subtask' : item.source === 'coaching' ? 'Coaching' : item.source === 'visibility' ? 'Visibility' : 'Manual');
   const recurrenceBtnHtml = item.recurrence
     ? `<button class="btn-secondary" style="color:var(--accent-interactive)" onclick="toggleTriageRecurrenceMenu('${item.id}', this)">🔄 ${recurrenceLabel(item.recurrence)}</button>`
     : `<button class="btn-secondary" style="color:var(--text-primary)" onclick="toggleTriageRecurrenceMenu('${item.id}', this)">🔄 Set Recurring</button>`;
@@ -9036,6 +10591,14 @@ function toggleFocusInbox() {
   ).join('') || '<div style="color:var(--text-muted);font-size:12px;padding:var(--space-sm)">Inbox is empty.</div>';
 }
 
+function togglePullForward() {
+  const list = document.getElementById('focusPullList');
+  const arrow = document.getElementById('pullForwardArrow');
+  if (!list) return;
+  const hidden = list.classList.toggle('hidden');
+  if (arrow) arrow.textContent = hidden ? '▸' : '▾';
+}
+
 function renderDashboard() {
   promoteTomorrowItems();
   checkRecurringTodos();
@@ -9106,7 +10669,7 @@ function renderDashboard() {
           sc.meetingSignalCount ? sc.meetingSignalCount + ' meeting' + (sc.meetingSignalCount !== 1 ? 's' : '') : '',
           sc.journalCount ? sc.journalCount + ' journal' + (sc.journalCount !== 1 ? 's' : '') : '',
           sc.todoCount ? sc.todoCount + ' todo' + (sc.todoCount !== 1 ? 's' : '') : '',
-        ].filter(Boolean).join(' · ') || 'no evidence'} · ${staleness}</div>
+        ].filter(Boolean).join(' · ') || 'no evidence'} · ${staleness}${sc.penaltyCount ? ` · <span style="color:var(--accent-negative)">⚠ ${sc.penaltyCount} escalation penalt${sc.penaltyCount !== 1 ? 'ies' : 'y'}</span>` : ''}</div>
         <div class="dash-vec-detail hidden" id="vecDetail-${vec.id}"></div>
       </div>
       <button class="dash-vec-toggle" onclick="toggleVectorDetail('${vec.id}', this)">▸</button>
@@ -9177,13 +10740,36 @@ function renderDashboard() {
     const focusItemsHtml = focusItems.map((t, i) =>
       `<div class="focus-item" data-todo-id="${t.id}">
         <span class="focus-drag">⠿</span>
-        <span class="focus-text">${escapeHtml(t.text)}</span>
+        <span class="focus-text">${escapeHtml(t.text)} ${todoDueTag(t.priority)}</span>
         <span class="focus-actions">
           <button class="focus-btn" title="Move to tomorrow" onclick="moveTodoPriority('${t.id}','tomorrow');renderDashboard()">━</button>
           <button class="focus-btn" title="Remove to backlog" onclick="moveTodoPriority('${t.id}','backlog');renderDashboard()">×</button>
         </span>
       </div>`
     ).join('');
+
+    // Pull-forward: items from Tomorrow and This Week
+    const tomorrowItems = (state.todos || []).filter(t => t.status === 'open' && t.priority === 'tomorrow');
+    const thisWeekItems = (state.todos || []).filter(t => t.status === 'open' && t.priority === 'this-week');
+    const pullForwardHtml = (tomorrowItems.length > 0 || thisWeekItems.length > 0)
+      ? `<div class="focus-pull-forward" id="focusPullForward">
+          <button class="focus-pull-toggle" onclick="togglePullForward()">
+            Pull forward from upcoming (${tomorrowItems.length + thisWeekItems.length}) <span id="pullForwardArrow">▸</span>
+          </button>
+          <div class="focus-pull-list hidden" id="focusPullList">
+            ${tomorrowItems.length > 0 ? `<div class="focus-pull-group-label">Tomorrow</div>` +
+              tomorrowItems.map(t => `<div class="focus-pull-item">
+                <span class="focus-pull-text">${escapeHtml(t.text)}</span>
+                <button class="focus-pull-btn" onclick="moveTodoPriority('${t.id}','today');renderDashboard()">→ Today</button>
+              </div>`).join('') : ''}
+            ${thisWeekItems.length > 0 ? `<div class="focus-pull-group-label">This Week</div>` +
+              thisWeekItems.map(t => `<div class="focus-pull-item">
+                <span class="focus-pull-text">${escapeHtml(t.text)}</span>
+                <button class="focus-pull-btn" onclick="moveTodoPriority('${t.id}','today');renderDashboard()">→ Today</button>
+              </div>`).join('') : ''}
+          </div>
+        </div>`
+      : '';
 
     focusHtml = `<div class="dash-section dash-focus-blocking">
       <div class="dash-section-title">TODAY'S FOCUS</div>
@@ -9194,6 +10780,7 @@ function renderDashboard() {
         <button class="btn-secondary btn-accent focus-confirm" onclick="confirmTodayFocus()">Confirm Today's Focus</button>
       </div>
       <div class="focus-inbox hidden" id="focusInbox"></div>
+      ${pullForwardHtml}
     </div>`;
   } else {
     // Confirmed state — active tracking
@@ -9205,7 +10792,7 @@ function renderDashboard() {
       const isDone = t.status === 'done';
       return `<div class="focus-item${isDone ? ' done' : ''}">
         <input type="checkbox" ${isDone ? 'checked' : ''} onchange="toggleFocusTodo('${t.id}')">
-        <span class="focus-text${isDone ? ' strikethrough' : ''}">${escapeHtml(t.text)}</span>
+        <span class="focus-text${isDone ? ' strikethrough' : ''}">${escapeHtml(t.text)} ${todoDueTag(t.priority)}</span>
       </div>`;
     }).join('');
 
@@ -9253,9 +10840,21 @@ function renderDashboard() {
     </div>`;
   }
 
+  // Weekly plan card (collapsed by default, current week only)
+  const currentWeekMonday = getWeekMonday(todayStr());
+  const currentWeekPlan = (state.weeklyPlanHistory || []).find(p => p.week === currentWeekMonday);
+  const weeklyPlanHtml = currentWeekPlan ? `<div class="dash-section">
+      <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleWeeklyPlanCard()">
+        <div class="dash-section-title" style="margin-bottom:0">WEEKLY PLAN</div>
+        <span id="weeklyPlanArrow" style="font-size:11px;color:var(--text-muted)">▸</span>
+      </div>
+      <div id="weeklyPlanBody" class="hidden" style="margin-top:var(--space-md);font-size:13px;line-height:1.6">${formatBulletList(currentWeekPlan.text)}</div>
+    </div>` : '';
+
   panel.innerHTML = `
     ${focusHtml}
     <div${dimClass}>
+    ${weeklyPlanHtml}
     ${loopsHtml}
     <div class="dash-section">
       <div style="display:flex;justify-content:space-between;align-items:baseline">
@@ -9272,6 +10871,14 @@ function renderDashboard() {
     ${truthHtml}
     ${weekHtml}
     </div>`;
+}
+
+function toggleWeeklyPlanCard() {
+  const body = document.getElementById('weeklyPlanBody');
+  const arrow = document.getElementById('weeklyPlanArrow');
+  if (!body) return;
+  body.classList.toggle('hidden');
+  if (arrow) arrow.textContent = body.classList.contains('hidden') ? '▸' : '▾';
 }
 
 function toggleVectorDetail(vecId, btn) {
@@ -9667,10 +11274,10 @@ function renderLogTab() {
           const doneCount = allToday.filter(t => t.status === 'done').length;
           const planHtml = allToday.map(t => {
             const isDone = t.status === 'done';
-            return `<div style="display:flex;align-items:center;gap:var(--space-sm);padding:var(--space-xs) 0;font-size:13px">
-              <input type="checkbox" ${isDone ? 'checked' : ''} onchange="const todo=state.todos.find(t=>t.id==='${t.id}');if(todo){todo.status=this.checked?'done':'open';todo.completedAt=this.checked?new Date().toISOString():null;saveState();renderLogTab()}">
+            return `<div style="display:flex;align-items:flex-start;gap:var(--space-sm);padding:var(--space-xs) 0;font-size:13px">
+              <input type="checkbox" style="margin-top:3px;flex-shrink:0" ${isDone ? 'checked' : ''} onchange="const todo=state.todos.find(t=>t.id==='${t.id}');if(todo){todo.status=this.checked?'done':'open';todo.completedAt=this.checked?new Date().toISOString():null;saveState();renderLogTab()}">
               <span style="${isDone ? 'text-decoration:line-through;color:var(--text-muted)' : 'color:var(--text-primary);flex:1'}">${escapeHtml(t.text)}</span>
-              ${!isDone ? `<button class="btn-ghost" style="font-size:11px;flex-shrink:0" onclick="moveTodoPriority('${t.id}','tomorrow');renderLogTab()">→ Tomorrow</button>` : ''}
+              ${!isDone ? `<button class="btn-ghost" style="font-size:11px;flex-shrink:0;margin-top:-1px" onclick="moveTodoPriority('${t.id}','tomorrow');renderLogTab()">→ Tomorrow</button>` : ''}
             </div>`;
           }).join('');
           return `<div class="form-group"><label class="form-label">Today's Plan <span style="font-weight:400;color:var(--text-muted)">${doneCount}/${allToday.length} done</span></label>${planHtml}</div>`;
@@ -9798,6 +11405,7 @@ async function handleSubmit(e) {
       const reflection = await callClaude(getSystemPrompt(), buildDailyPrompt(entry), 600);
       entry.aiReflection = reflection;
       updateCoachingState(reflection, entry.date);
+      processObservationEscalations();
       saveState();
       const aiContainer = document.getElementById('aiReflectionContent');
       if (aiContainer) {
@@ -10391,6 +11999,7 @@ function renderBriefs() {
       <button class="sub-nav-btn${briefsSubView === 'weekly' ? ' active' : ''}" onclick="switchBriefsSubView('weekly')">Weekly</button>
       <button class="sub-nav-btn${briefsSubView === 'meeting-prep' ? ' active' : ''}" onclick="switchBriefsSubView('meeting-prep')">Recurring</button>
       <button class="sub-nav-btn${briefsSubView === 'wins' ? ' active' : ''}" onclick="switchBriefsSubView('wins')">Wins</button>
+      <button class="sub-nav-btn${briefsSubView === 'reflections' ? ' active' : ''}" onclick="switchBriefsSubView('reflections')">Reflections</button>
     </div>
     <div id="briefsContent"></div>
   `;
@@ -10399,6 +12008,7 @@ function renderBriefs() {
   if (briefsSubView === 'weekly') renderWeeklyBriefs(content);
   else if (briefsSubView === 'meeting-prep') renderMeetingPrepList(content);
   else if (briefsSubView === 'wins') renderWinsArchive(content);
+  else if (briefsSubView === 'reflections') renderReflectionHistory(content);
 }
 
 function switchBriefsSubView(view) {
@@ -10553,12 +12163,13 @@ function renderMeetingPrepForm(panel) {
             .map(m => (m.title || '').trim())
             .filter(t => { if (!t || seen.has(t.toLowerCase())) return false; seen.add(t.toLowerCase()); return true; })
             .sort((a, b) => a.localeCompare(b));
-          if (!seen.has(currentVal.toLowerCase()) && currentVal) titles.unshift(currentVal);
+          const listId = 'prepRecurringTitleList';
           const opts = titles.map(t =>
-            `<option value="${escapeHtml(t)}"${t === currentVal ? ' selected' : ''}>${escapeHtml(t)}</option>`
+            `<option value="${escapeHtml(t)}">`
           ).join('');
-          return `<select class="form-input" id="prepRecurringTitle"><option value="">Select a meeting...</option>${opts}</select>`;
+          return `<input class="form-input" id="prepRecurringTitle" list="${listId}" value="${escapeHtml(currentVal)}" placeholder="Type a title or pick from past meetings"><datalist id="${listId}">${opts}</datalist>`;
         })()}
+        <div class="form-hint">Type any name for a new meeting, or select from your calendar history.</div>
       </div>
 
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:var(--space-lg)">
@@ -10800,6 +12411,28 @@ function renderMeetingPrepDetail(panel) {
     </div>`;
   }
 
+  // Escalation red flag banner
+  let redFlagHtml = '';
+  const escalatedForPrep = getEscalatedObservations().filter(o => o.escalationLevel >= 6);
+  if (escalatedForPrep.length > 0) {
+    const stakeholderNames = record.stakeholders.map(s => s.name.toLowerCase());
+    const matched = escalatedForPrep.filter(o => {
+      if (o.escalationLevel >= 7) return true;
+      return stakeholderNames.some(sn => o.topic.toLowerCase().includes(sn));
+    });
+    if (matched.length > 0) {
+      const ageDays = obs => Math.floor((Date.now() - new Date(obs.firstSurfaced).getTime()) / 86400000);
+      const flagItems = matched.map(o =>
+        `<div style="margin-bottom:6px"><strong style="color:var(--accent-negative)">L${o.escalationLevel}</strong> ${escapeHtml(o.topic)} <span style="color:var(--text-muted);font-size:11px">${ageDays(o)}d old · surfaced ${o.timesShown}x</span></div>`
+      ).join('');
+      redFlagHtml = `<div style="background:color-mix(in srgb, var(--accent-negative) 8%, transparent);border:1px solid var(--accent-negative);border-radius:var(--radius-md);padding:var(--space-md) var(--space-lg);margin-bottom:var(--space-xl)">
+        <div style="font-weight:600;color:var(--accent-negative);margin-bottom:var(--space-sm);font-size:13px">Escalated Observations</div>
+        <div style="font-size:13px">${flagItems}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:var(--space-sm)">These unresolved coaching patterns are relevant to this meeting's stakeholders.</div>
+      </div>`;
+    }
+  }
+
   panel.innerHTML = `
     <div style="margin-bottom:var(--space-xl)">
       <button class="btn-ghost" onclick="meetingPrepView='list';currentMeetingPrepId=null;renderBriefs()">← Back to Recurring Meetings</button>
@@ -10814,6 +12447,7 @@ function renderMeetingPrepDetail(panel) {
         <button class="btn-secondary btn-accent" onclick="startGenerateMeetingPrep(${record.id})">Generate Prep</button>
       </div>
     </div>
+    ${redFlagHtml}
     ${latestHtml}
     ${postMeetingHtml}
     ${pastHtml}`;
@@ -10865,14 +12499,15 @@ function renderWinsArchive(container) {
     <div id="winsCards">
     ${wins.map(w => `
       <div class="wins-archive-card" id="win-archive-${w.id}">
-        <div class="wins-archive-date">${formatDateShort(w.date)} ${(w.vectors || (w.vector ? [w.vector] : [])).map(v => `<span class="vector-tag">${escapeHtml(v)}</span>`).join(' ')}</div>
-        <div class="win-description" id="win-desc-${w.id}">${escapeHtml(w.description)}</div>
-        <div class="win-meta-label">Impact</div>
-        <div class="win-meta-value" id="win-impact-${w.id}">${escapeHtml(w.impact)}</div>
-        <div class="wins-archive-card-actions">
-          <button class="btn-ghost" onclick="editWin('${w.id}')">Edit</button>
-          <button class="btn-ghost" style="color:var(--text-muted)" onclick="deleteWin('${w.id}')">Remove</button>
+        <div class="wins-archive-date" style="display:flex;align-items:center;justify-content:space-between">
+          <div>${formatDateShort(w.date)} ${(w.vectors || (w.vector ? [w.vector] : [])).map(v => `<span class="vector-tag">${escapeHtml(v)}</span>`).join(' ')}</div>
+          <div style="display:flex;gap:var(--space-md)">
+            <button class="btn-ghost" onclick="editWin('${w.id}')">Edit</button>
+            <button class="btn-ghost" style="color:var(--text-muted)" onclick="deleteWin('${w.id}')">Remove</button>
+          </div>
         </div>
+        <div class="win-description" id="win-desc-${w.id}">${escapeHtml(w.description)}</div>
+        <div class="win-meta-value" id="win-impact-${w.id}">${escapeHtml(w.impact)}</div>
       </div>
     `).join('')}
     </div>
@@ -10894,16 +12529,13 @@ function editWin(winId) {
   const card = document.getElementById('win-archive-' + winId);
   if (!card) return;
 
-  // Replace card content with edit form
-  const actionsEl = card.querySelector('.wins-archive-card-actions');
-  if (!actionsEl) return;
   const currentVecs = win.vectors || (win.vector ? [win.vector] : []);
   const allVecs = (state.vectors || []).map(v => v.name);
   const vecCheckboxes = allVecs.map(v =>
     `<label style="display:inline-flex;align-items:center;gap:4px;font-size:12px;margin-right:var(--space-md)"><input type="checkbox" class="win-vec-check" value="${escapeHtml(v)}" ${currentVecs.includes(v) ? 'checked' : ''}> ${escapeHtml(v)}</label>`
   ).join('');
 
-  actionsEl.outerHTML = `
+  card.innerHTML = `
     <div class="wins-edit-form" id="win-edit-${winId}">
       <label class="form-label">Description</label>
       <textarea id="edit-desc-${winId}">${escapeHtml(win.description)}</textarea>
@@ -11087,6 +12719,7 @@ function renderBriefDetail(panel) {
     <div class="brief-header">
       <div class="brief-title">Weekly Brief</div>
       <div class="brief-date">${formatWeekRange(brief.weekOf)}</div>
+      ${brief.generatedAt ? `<div class="brief-generated-at">Generated ${new Date(brief.generatedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</div>` : ''}
     </div>
 
     <div class="brief-section">
@@ -11114,7 +12747,7 @@ function renderBriefDetail(panel) {
               <div class="win-meta-label">Impact</div>
               <div class="win-meta-value">${escapeHtml(w.impact)}</div>
               <div class="win-meta-label">Vector</div>
-              <div class="win-meta-value vector">${escapeHtml(w.vector)}</div>
+              <div class="win-meta-value vector">${escapeHtml(ws.vector || w.vector)}</div>
               ${isKept ? '<div class="win-kept-badge">✓ Kept</div>'
                 : isDismissed ? ''
                 : isCurrentWeek ? `
@@ -11135,7 +12768,91 @@ function renderBriefDetail(panel) {
       </div>
       <div class="card" id="prepContent">${formatBriefText(brief.oneOnOnePrep)}</div>
     </div>
+
+    ${brief.vectorProgress ? `<div class="brief-section">
+      <div class="section-header">Vector Progress</div>
+      <div class="card">${formatBriefText(brief.vectorProgress)}</div>
+    </div>` : ''}
+
+    ${brief.openLoopsSummary ? `<div class="brief-section">
+      <div class="section-header">Open Loops</div>
+      <div class="card">${formatBriefText(brief.openLoopsSummary)}</div>
+    </div>` : ''}
+
+    <div class="brief-section" style="text-align:center;padding-top:var(--space-md)">
+      <button class="btn-secondary" onclick="regenerateBrief('${brief.weekOf}')">Regenerate Brief</button>
+    </div>
   `;
+}
+
+function renderReflectionHistory(container) {
+  // Collect all reflections from both monthly and quarterly stores
+  const reflections = [];
+  for (const [key, val] of Object.entries(state.monthlyReflections || {})) {
+    if (val && val.completedAt) {
+      reflections.push({ periodKey: key, type: 'monthly', ...val });
+    }
+  }
+  for (const [key, val] of Object.entries(state.quarterlyReflections || {})) {
+    if (val && val.completedAt) {
+      reflections.push({ periodKey: key, type: 'quarterly', ...val });
+    }
+  }
+  reflections.sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || ''));
+
+  if (reflections.length === 0) {
+    container.innerHTML = `<div style="text-align:center;padding:var(--space-4xl) var(--space-lg);color:var(--text-muted)">
+      <div style="font-size:15px;margin-bottom:var(--space-sm)">No reflections yet</div>
+      <div style="font-size:13px">Monthly reflections appear in the first 5 days of each month. Quarterly reflections appear in the first 7 days of Jan/Apr/Jul/Oct.</div>
+    </div>`;
+    return;
+  }
+
+  const items = reflections.map((r, i) => {
+    const typeLabel = r.type === 'quarterly' ? 'Quarterly' : 'Monthly';
+    const periodLabel = r.type === 'monthly'
+      ? (() => { const [y, m] = r.periodKey.split('-'); return new Date(parseInt(y), parseInt(m) - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }); })()
+      : r.periodKey.replace('-', ' ');
+    const completedDate = new Date(r.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const synthExcerpt = r.synthesis ? r.synthesis.substring(0, 150).replace(/\n/g, ' ') + (r.synthesis.length > 150 ? '...' : '') : 'No synthesis generated.';
+    const snap = r.dataSnapshot || {};
+
+    return `<div class="card" style="margin-bottom:var(--space-md);cursor:pointer" onclick="toggleReflectionDetail(${i})">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <div style="font-weight:600;font-size:14px">${typeLabel}: ${periodLabel}</div>
+        <div style="font-size:12px;color:var(--text-muted)">${completedDate}</div>
+      </div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:var(--space-xs)">${escapeHtml(synthExcerpt)}</div>
+      ${snap.energyAvg ? `<div style="font-size:12px;color:var(--text-muted);margin-top:var(--space-xs)">Energy: ${snap.energyAvg}/10 · ${snap.entryCount || 0} entries · Loops: +${snap.loopsOpened || 0}/-${snap.loopsClosed || 0}</div>` : ''}
+      <div id="reflection-detail-${i}" style="display:none;margin-top:var(--space-lg);border-top:1px solid var(--border);padding-top:var(--space-lg)">
+        ${r.synthesis ? `<div class="dash-section-title">SYNTHESIS</div><div style="font-size:13px;line-height:1.7;margin-bottom:var(--space-lg)">${formatBulletList(r.synthesis)}</div>` : ''}
+        ${r.responses ? `
+          <div class="dash-section-title">YOUR RESPONSES</div>
+          ${r.responses.worked ? `<div style="font-size:13px;margin-bottom:var(--space-sm)"><strong>What worked:</strong> ${escapeHtml(r.responses.worked)}</div>` : ''}
+          ${r.responses.didnt ? `<div style="font-size:13px;margin-bottom:var(--space-sm)"><strong>What didn't work:</strong> ${escapeHtml(r.responses.didnt)}</div>` : ''}
+          ${r.responses.surprise ? `<div style="font-size:13px;margin-bottom:var(--space-sm)"><strong>Surprises:</strong> ${escapeHtml(r.responses.surprise)}</div>` : ''}
+          ${r.responses.priority ? `<div style="font-size:13px;margin-bottom:var(--space-sm)"><strong>Priority:</strong> ${escapeHtml(r.responses.priority)}</div>` : ''}
+          ${r.responses.choices ? `<div style="font-size:13px;margin-bottom:var(--space-sm)"><strong>On choices:</strong> ${escapeHtml(r.responses.choices)}</div>` : ''}
+          ${r.responses.hole ? `<div style="font-size:13px;margin-bottom:var(--space-sm)"><strong>Biggest gap:</strong> ${escapeHtml(r.responses.hole)}</div>` : ''}
+        ` : ''}
+        ${snap.vectorData ? `
+          <div class="dash-section-title" style="margin-top:var(--space-lg)">DATA SNAPSHOT</div>
+          ${snap.vectorData.map(v => `<div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span>${escapeHtml(v.name)}</span><span class="dash-tier-${v.tier.toLowerCase().replace(/\\s/g, '-')}">${v.tier}</span></div>`).join('')}
+        ` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div style="padding:var(--space-lg) 0">
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:var(--space-lg)">${reflections.length} reflection${reflections.length !== 1 ? 's' : ''} saved</div>
+      ${items}
+    </div>`;
+}
+
+function toggleReflectionDetail(idx) {
+  const el = document.getElementById('reflection-detail-' + idx);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
 
 function backToBriefsList() {
@@ -11147,6 +12864,72 @@ function backToBriefsList() {
 function confirmRegenerate() {
   if (confirm('This will replace your existing brief for this week. Continue?')) {
     startGenerateBrief();
+  }
+}
+
+async function regenerateBrief(weekOf) {
+  const weekDates = getWeekDates(weekOf);
+  const weekEntries = state.entries.filter(e => weekDates.includes(e.date)).sort((a, b) => a.date.localeCompare(b.date));
+  if (weekEntries.length === 0) {
+    showToast('No entries found for this week.');
+    return;
+  }
+
+  // Show spinner in the regenerate button area
+  const panel = document.getElementById('panel-briefs');
+  if (panel) {
+    const lastSection = panel.querySelectorAll('.brief-section');
+    const regenSection = lastSection[lastSection.length - 1];
+    if (regenSection) regenSection.innerHTML = '<div style="text-align:center;padding:var(--space-md);display:flex;align-items:center;justify-content:center;gap:var(--space-sm);color:var(--text-muted);font-size:13px"><span class="spinner dark"></span> Regenerating Brief...</div>';
+  }
+
+  try {
+    const systemPrompt = getSystemPrompt() + '\n\nFor this weekly brief, produce a structured response in exactly the format specified below. Do not deviate from the section structure.';
+    const text = await callClaude(systemPrompt, buildWeeklyPrompt(weekEntries), 2000);
+    const parsed = parseWeeklyBrief(text);
+
+    // Remove existing brief for this week
+    state.weeklyBriefs = state.weeklyBriefs.filter(b => b.weekOf !== weekOf);
+    // Remove suggested wins from this week's previous brief
+    state.wins = state.wins.filter(w => !(w.sourceWeek === weekOf && w.status === 'suggested'));
+
+    const brief = {
+      id: Date.now(),
+      weekOf,
+      generatedAt: new Date().toISOString(),
+      patterns: parsed.patterns,
+      vectorCheckIn: parsed.vectorCheckIn,
+      winsDetected: parsed.winsDetected,
+      winsRaw: parsed.winsRaw,
+      oneOnOnePrep: parsed.oneOnOnePrep,
+      vectorProgress: parsed.vectorProgress,
+      openLoopsSummary: parsed.openLoopsSummary,
+      raw: text
+    };
+    state.weeklyBriefs.push(brief);
+
+    parsed.winsDetected.forEach(w => {
+      state.wins.push({
+        id: Date.now() + Math.random(),
+        date: todayStr(),
+        sourceWeek: weekOf,
+        sourceBriefId: brief.id,
+        description: w.description,
+        impact: w.impact,
+        vector: w.vector,
+        status: 'suggested'
+      });
+    });
+
+    saveState();
+    currentBriefId = brief.id;
+    briefsView = 'detail';
+    renderBriefs();
+    showToast('Brief regenerated');
+  } catch (err) {
+    console.error('Regenerate brief error:', err);
+    showToast('Failed to regenerate brief');
+    renderBriefs();
   }
 }
 
@@ -11178,11 +12961,14 @@ async function startGenerateBrief() {
     const brief = {
       id: Date.now(),
       weekOf: monday,
+      generatedAt: new Date().toISOString(),
       patterns: parsed.patterns,
       vectorCheckIn: parsed.vectorCheckIn,
       winsDetected: parsed.winsDetected,
       winsRaw: parsed.winsRaw,
       oneOnOnePrep: parsed.oneOnOnePrep,
+      vectorProgress: parsed.vectorProgress,
+      openLoopsSummary: parsed.openLoopsSummary,
       raw: text
     };
     state.weeklyBriefs.push(brief);
@@ -11744,16 +13530,127 @@ function attachMeetingsInsightsListeners() {
   });
 }
 
+function meetingMatchesSearch(m, q) {
+  if (!q) return true;
+  const lower = q.toLowerCase();
+  if ((m.title || '').toLowerCase().includes(lower)) return true;
+  if ((m.summary || '').toLowerCase().includes(lower)) return true;
+  if ((m.participants || '').toLowerCase().includes(lower)) return true;
+  if (m.insights) {
+    for (const v of Object.values(m.insights)) {
+      if (v && typeof v === 'string' && v.toLowerCase().includes(lower)) return true;
+    }
+  }
+  return false;
+}
+
+function setMeetingsTypeFilter(type) {
+  meetingsTypeFilter = meetingsTypeFilter === type ? null : type;
+  renderMeetings();
+}
+
+let _meetingsSearchTimer = null;
+function onMeetingsSearch(val) {
+  meetingsSearchQuery = val;
+  clearTimeout(_meetingsSearchTimer);
+  _meetingsSearchTimer = setTimeout(() => {
+    renderMeetings();
+    // Restore focus and cursor to search input
+    const input = document.querySelector('.meeting-filter-search');
+    if (input) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
+  }, 250);
+}
+
 function meetingsEntriesHtml() {
-  return `
-    <div class="settings-section">
-      ${state.meetings.length > 0 ?
-        state.meetings.map(m => renderMeetingCard(m)).join('') :
-      `<div style="color:var(--text-muted);text-align:center;padding:var(--space-xl) 0">
-          ${state.settings.meetingsGistId ? 'No meetings yet. Click "Fetch Meetings" to sync from your gist.' : 'Configure a Meetings Gist ID in Settings to start syncing meetings.'}
-        </div>
-      `}
+  if (state.meetings.length === 0) {
+    return `<div style="color:var(--text-muted);text-align:center;padding:var(--space-xl) 0">
+      ${state.settings.meetingsGistId ? 'No meetings yet. Click "Fetch Meetings" to sync from your gist.' : 'Configure a Meetings Gist ID in Settings to start syncing meetings.'}
     </div>`;
+  }
+
+  // Count types present for chips
+  const typeCounts = {};
+  state.meetings.forEach(m => {
+    const t = m.type || 'other';
+    typeCounts[t] = (typeCounts[t] || 0) + 1;
+  });
+
+  // Filter chips — only show types that have meetings
+  const chipTypes = Object.entries(MEETING_TYPES).filter(([k]) => typeCounts[k]);
+  const chipsHtml = chipTypes.map(([k, v]) => {
+    const active = meetingsTypeFilter === k;
+    const dimmed = meetingsTypeFilter && meetingsTypeFilter !== k;
+    return `<span class="meeting-type-chip${active ? ' active' : ''}${dimmed ? ' dimmed' : ''}" style="color:${v.color.text};background:${v.color.bg}" onclick="setMeetingsTypeFilter('${k}')">${escapeHtml(v.label)} (${typeCounts[k]})</span>`;
+  }).join('');
+
+  // Filter bar
+  const filterBar = `<div style="margin-bottom:var(--space-lg)">
+    <input class="meeting-filter-search" type="text" placeholder="Search meetings..." value="${escapeHtml(meetingsSearchQuery)}" oninput="onMeetingsSearch(this.value)">
+    <div class="meeting-filter-bar" style="margin-top:var(--space-sm);margin-bottom:0">${chipsHtml}</div>
+  </div>`;
+
+  // Apply filters
+  let filtered = [...state.meetings];
+  if (meetingsTypeFilter) filtered = filtered.filter(m => (m.type || 'other') === meetingsTypeFilter);
+  if (meetingsSearchQuery) filtered = filtered.filter(m => meetingMatchesSearch(m, meetingsSearchQuery));
+
+  // Sort newest-first
+  filtered.sort((a, b) => {
+    const da = meetingDateStr(a) || '';
+    const db = meetingDateStr(b) || '';
+    return db.localeCompare(da);
+  });
+
+  if (filtered.length === 0) {
+    return `<div class="settings-section">${filterBar}
+      <div style="color:var(--text-muted);text-align:center;padding:var(--space-xl) 0">No meetings match your filters.</div>
+    </div>`;
+  }
+
+  // Group by week
+  const today = todayStr();
+  const thisMonday = getWeekMonday(today);
+  const lastMonday = (() => { const d = new Date(thisMonday + 'T12:00:00'); d.setDate(d.getDate() - 7); return d.toISOString().split('T')[0]; })();
+
+  const groups = [];
+  let currentGroup = null;
+
+  for (const m of filtered) {
+    const md = meetingDateStr(m) || '1970-01-01';
+    const monday = getWeekMonday(md);
+
+    if (!currentGroup || currentGroup.monday !== monday) {
+      let label;
+      if (monday === thisMonday) label = 'This Week';
+      else if (monday === lastMonday) label = 'Last Week';
+      else {
+        const fri = getWeekFriday(monday);
+        const monDate = new Date(monday + 'T12:00:00');
+        const friDate = new Date(fri + 'T12:00:00');
+        label = monDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' – ' + friDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      }
+      currentGroup = { monday, label, meetings: [] };
+      groups.push(currentGroup);
+    }
+    currentGroup.meetings.push(m);
+  }
+
+  // Render groups
+  let html = '';
+
+  for (const group of groups) {
+    html += `<div class="meeting-week-header">${escapeHtml(group.label)} <span style="font-weight:400">(${group.meetings.length})</span></div>`;
+    for (const m of group.meetings) {
+      const md = meetingDateStr(m);
+      if (md === today) {
+        html += renderMeetingCard(m);
+      } else {
+        html += renderMeetingCompactRow(m);
+      }
+    }
+  }
+
+  return `<div class="settings-section">${filterBar}${html}</div>`;
 }
 
 function meetingsSettingsHtml() {
@@ -11991,6 +13888,24 @@ function settingsProfileHtml() {
         <textarea class="form-textarea" style="min-height:calc(10 * 1.5em + 2 * var(--space-sm))" id="settingPromotion" placeholder="Paste your rough notes from your manager conversation here...">${escapeHtml(state.settings.promotionNotes)}</textarea>
         <div class="form-hint">The AI uses these to connect your daily work to your promotion goals.</div>
       </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-title">Insights Discovery Profile</div>
+      <div class="form-hint" style="margin-bottom:var(--space-sm)">Paste your Insights Discovery profile text or .md content. Click Compact to extract key traits for AI context.</div>
+      <div class="form-group">
+        <textarea class="form-textarea" style="min-height:calc(10 * 1.5em + 2 * var(--space-sm))" id="settingInsights" placeholder="Paste your Insights Discovery profile here...">${escapeHtml(state.settings.insightsProfile)}</textarea>
+        <div style="display:flex;align-items:center;gap:var(--space-sm);margin-top:var(--space-xs)">
+          <button class="btn btn-secondary btn-accent" id="compactInsightsBtn" onclick="compactInsightsProfile()">Compact Profile</button>
+          ${state.settings.insightsProfile ? '<span class="form-hint" style="color:var(--accent)">Profile loaded</span>' : ''}
+        </div>
+        <div class="form-hint" style="margin-top:var(--space-xs)">The AI uses your personality profile to personalize coaching, action items, and communication suggestions.</div>
+      </div>
+      ${state.settings.insightsProfile ? `
+      <details style="margin-top:var(--space-md)">
+        <summary style="cursor:pointer;font-size:13px;font-weight:600;color:var(--text-secondary)">Active AI context preview</summary>
+        <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:var(--space-sm) var(--space-md);font-size:13px;line-height:1.5;color:var(--text-secondary);margin-top:var(--space-xs)">${formatBulletList(state.settings.insightsProfile)}</div>
+        <div class="form-hint" style="margin-top:var(--space-xs)">This is the exact text included in every AI call — coaching, weekly briefs, meeting prep, and action items.</div>
+      </details>` : ''}
     </div>`;
 }
 
@@ -12028,6 +13943,16 @@ function settingsFeaturesHtml() {
           <span class="slider"></span>
         </label>
       </div>
+      ${f.visibility ? `<div class="feature-toggle-row" style="padding-left:var(--space-lg)">
+        <div class="feature-toggle-info">
+          <div class="feature-toggle-label">Visibility Role</div>
+          <div class="feature-toggle-desc">Activity types and rhythm for your role</div>
+        </div>
+        <select style="font:13px var(--font-family);padding:4px 8px;border:1px solid var(--border-default);border-radius:var(--radius-sm);background:var(--surface-card);color:var(--text-primary)" onchange="selectVisibilityRole(this.value)">
+          <option value="designer" ${state.settings.visibilityRole === 'designer' ? 'selected' : ''}>Designer</option>
+          <option value="custom" ${state.settings.visibilityRole === 'custom' ? 'selected' : ''}>Custom</option>
+        </select>
+      </div>` : ''}
       <div class="feature-toggle-row">
         <div class="feature-toggle-info">
           <div class="feature-toggle-label">Contributions</div>
@@ -12244,6 +14169,7 @@ function attachSettingsListeners() {
     saveField('settingName', 'name');
     saveField('settingRole', 'role');
     saveField('settingPromotion', 'promotionNotes');
+    saveField('settingInsights', 'insightsProfile');
   }
 
   if (settingsSubTab === 'integrations') {
@@ -12271,6 +14197,58 @@ function attachSettingsListeners() {
 
   if (settingsSubTab === 'meetings') {
     attachMeetingsListeners();
+  }
+}
+
+async function compactInsightsProfile() {
+  const textarea = document.getElementById('settingInsights');
+  const btn = document.getElementById('compactInsightsBtn');
+  if (!textarea || !btn) return;
+
+  const raw = textarea.value.trim();
+  if (!raw) { showToast('Paste your Insights profile first'); return; }
+
+  if (!state.settings.baseUrl) {
+    showToast('Set up AI integration first to compact profile');
+    state.settings.insightsProfile = raw;
+    saveState();
+    return;
+  }
+
+  const origLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Compacting…';
+
+  try {
+    const result = await callClaude(
+      'You extract structured personality summaries from Insights Discovery profiles. Output only the summary, no preamble.',
+      `Extract a compact career-relevant summary (~200 words max) from this Insights Discovery profile. Use bullet points. Include:
+
+- Color energies (lead and supporting with approximate percentages)
+- Top 5 strengths
+- Top 3 blind spots
+- Communication preferences (how they prefer to give/receive info)
+- Decision-making style
+- Stress behavior
+- Collaboration style
+
+Profile text:
+${raw}`,
+      1024
+    );
+
+    textarea.value = result;
+    state.settings.insightsProfile = result;
+    saveState();
+    renderSettings();
+    showToast('Profile compacted');
+  } catch (e) {
+    showToast('Failed to compact profile — saved raw text');
+    state.settings.insightsProfile = raw;
+    saveState();
+  } finally {
+    btn.disabled = false;
+    btn.textContent = origLabel;
   }
 }
 
@@ -13083,29 +15061,182 @@ function deleteContrib() {
 /* ========================================
    Visibility Tab
    ======================================== */
-const BUILTIN_VISIBILITY_TYPES = [
-  { id: 'waywo', label: 'WAYWO Post', vectors: ['Communication', 'Craft'] },
-  { id: 'draftboard', label: 'Draftboard', vectors: ['Craft', 'Collaboration'], subtypes: ['WIP post', 'Feedback given'] },
-  { id: 'crit', label: 'Design Crit', vectors: ['Craft', 'Collaboration'] },
-  { id: 'rationale', label: 'Rationale Doc', vectors: ['Strategy', 'Communication'] },
-  { id: 'hawkins', label: 'Hawkins', vectors: ['Technical Depth', 'Cross-team Influence'] }
-];
+
+// --- Role-based activity templates ---
+const ROLE_TEMPLATES = {
+  designer: {
+    activityTypes: [
+      { id: 'waywo', label: 'WAYWO Post', vectors: ['Communication', 'Craft'], draftable: true },
+      { id: 'draftboard', label: 'Draftboard', vectors: ['Craft', 'Collaboration'], subtypes: ['WIP post', 'Feedback given'], draftable: true },
+      { id: 'crit', label: 'Design Crit', vectors: ['Craft', 'Collaboration'], draftable: false },
+      { id: 'rationale', label: 'Rationale Doc', vectors: ['Strategy', 'Communication'], draftable: false },
+      { id: 'hawkins', label: 'Hawkins', vectors: ['Technical Depth', 'Cross-team Influence'], draftable: true }
+    ],
+    weeklyRhythm: [
+      { day: 'Mon', label: 'Weekly Top 3', type: 'waywo', draftType: 'top3' },
+      { day: 'Tue', label: 'Polish Work', type: 'draftboard', draftType: 'draftboard' },
+      { day: 'Wed', label: 'WAYWO', type: 'waywo', draftType: 'waywo' },
+      { day: 'Thu', label: 'Hawkins', type: 'hawkins', draftType: 'hawkins' },
+      { day: 'Fri', label: 'WIP', type: 'waywo', draftType: 'draftboardWip', monogram: 'DB' }
+    ],
+    stalenessThresholds: { waywo: 14, draftboard: 14, crit: 28, rationale: 28, hawkins: 28 }
+  },
+  custom: {
+    activityTypes: [],
+    weeklyRhythm: [],
+    stalenessThresholds: {}
+  }
+};
+
+// Backward compat aliases
+const BUILTIN_VISIBILITY_TYPES = ROLE_TEMPLATES.designer.activityTypes;
+
+function getBuiltinVisibilityTypes() {
+  const role = state.settings?.visibilityRole || 'designer';
+  return ROLE_TEMPLATES[role]?.activityTypes || [];
+}
 
 function getVisibilityTypes() {
-  return [...BUILTIN_VISIBILITY_TYPES, ...(state.customVisibilityTypes || [])];
+  return [...getBuiltinVisibilityTypes(), ...(state.customVisibilityTypes || [])];
+}
+
+function getWeeklyRhythm() {
+  const role = state.settings?.visibilityRole || 'designer';
+  return ROLE_TEMPLATES[role]?.weeklyRhythm || [];
+}
+
+function getStalenessThresholds() {
+  const role = state.settings?.visibilityRole || 'designer';
+  return ROLE_TEMPLATES[role]?.stalenessThresholds || {};
 }
 
 const ALL_VECTORS = ['Communication', 'Craft', 'Technical Depth', 'Cross-team Influence', 'Strategy', 'Leadership', 'Collaboration'];
 
-const WEEKLY_RHYTHM = [
-  { day: 'Mon', label: 'Weekly Top 3', type: 'waywo' },
-  { day: 'Tue', label: 'Polish Work', type: 'draftboard' },
-  { day: 'Wed', label: 'WAYWO', type: 'waywo' },
-  { day: 'Thu', label: 'Hawkins', type: 'hawkins' },
-  { day: 'Fri', label: 'WIP', type: 'waywo', icon: 'draftboard' }
-];
+// Monograms for rhythm strip icons (role-agnostic)
+const TYPE_MONOGRAMS = {
+  waywo: { text: 'WA', color: '#4A90D9' },
+  draftboard: { text: 'DB', color: '#7B61FF' },
+  crit: { text: 'CR', color: '#E07C3A' },
+  rationale: { text: 'RA', color: '#3AAE60' },
+  hawkins: { text: 'HK', color: '#D94A6B' }
+};
 
-const STALENESS_THRESHOLDS = { waywo: 14, draftboard: 14, crit: 28, rationale: 28, hawkins: 28 };
+function getTypeMonogram(typeId) {
+  if (TYPE_MONOGRAMS[typeId]) return TYPE_MONOGRAMS[typeId];
+  // Generate monogram from label for custom types
+  const label = getVisibTypeLabel(typeId);
+  const words = label.split(/\s+/);
+  const text = words.length >= 2
+    ? (words[0][0] + words[1][0]).toUpperCase()
+    : label.substring(0, 2).toUpperCase();
+  // Deterministic color from ID
+  let hash = 0;
+  for (let i = 0; i < typeId.length; i++) hash = ((hash << 5) - hash) + typeId.charCodeAt(i);
+  const hue = Math.abs(hash) % 360;
+  return { text, color: `hsl(${hue}, 55%, 50%)` };
+}
+
+// --- Meeting → Visibility auto-detection ---
+const INSIGHT_VISIBILITY_MAP = {
+  stakeholdersInfluenced: { reach: 'cross-functional', evidenceType: 'decided' },
+  feedbackOnWork:         { reach: 'function', evidenceType: 'referenced' },
+  userContributions:      { reach: 'team', evidenceType: 'shared' },
+  whatPresented:          { reach: 'function', evidenceType: 'shared' },
+  blockersResolved:       { reach: 'cross-functional', evidenceType: 'decided' },
+  feedbackReceived:       { reach: 'team', evidenceType: 'referenced' },
+  commitments:            { reach: 'team', evidenceType: 'decided' },
+  scopeDecisions:         { reach: 'organization', evidenceType: 'decided' },
+  opportunities:          { reach: 'organization', evidenceType: 'invited' }
+};
+
+// Reach overrides based on meeting type
+const MEETING_TYPE_REACH_OVERRIDES = {
+  feedbackOnWork:    { '1:1': 'team' },
+  userContributions: { 'cross-functional': 'cross-functional' },
+  whatPresented:     { strategic: 'organization' }
+};
+
+const EVIDENCE_STRENGTH = { decided: 4, invited: 3, referenced: 2, shared: 1 };
+const REACH_STRENGTH = { organization: 4, 'cross-functional': 3, 'function': 2, team: 1 };
+
+function detectVisibilityFromMeeting(meeting) {
+  if (!meeting || !meeting.insights || !meeting.id) return;
+  const dismissed = new Set(state.dismissedVisibilityKeys || []);
+  const existingIds = new Set((state.pendingVisibility || []).map(p => p.meetingId + ':' + p.insightKey));
+
+  // Count dismissals per insightKey+meetingType for auto-suppression
+  const dismissalCounts = {};
+  for (const dk of dismissed) {
+    // dk format: meetingId:insightKey — look up meeting type
+    const [mId, iKey] = dk.split(':');
+    if (!iKey) continue;
+    const m = (state.meetings || []).find(x => x.id === mId);
+    const mt = m?.type || 'other';
+    const countKey = iKey + ':' + mt;
+    dismissalCounts[countKey] = (dismissalCounts[countKey] || 0) + 1;
+  }
+
+  const candidates = [];
+  for (const [insightKey, defaults] of Object.entries(INSIGHT_VISIBILITY_MAP)) {
+    const insightValue = meeting.insights[insightKey];
+    // Skip empty insights
+    if (!insightValue || (typeof insightValue === 'string' && insightValue.trim().length === 0) ||
+        (Array.isArray(insightValue) && insightValue.length === 0)) continue;
+
+    const dedupKey = meeting.id + ':' + insightKey;
+    if (dismissed.has(dedupKey) || existingIds.has(dedupKey)) continue;
+
+    // Auto-suppress if 3+ dismissals of same insightKey from same meeting type
+    const meetingType = meeting.type || 'other';
+    const suppressKey = insightKey + ':' + meetingType;
+    if ((dismissalCounts[suppressKey] || 0) >= 3) continue;
+
+    // Calculate reach with meeting-type override
+    let reach = defaults.reach;
+    const overrides = MEETING_TYPE_REACH_OVERRIDES[insightKey];
+    if (overrides && overrides[meetingType]) {
+      reach = overrides[meetingType];
+    }
+
+    const evidenceType = defaults.evidenceType;
+    const note = typeof insightValue === 'string' ? insightValue.substring(0, 120) :
+                 Array.isArray(insightValue) ? insightValue.join(', ').substring(0, 120) : '';
+
+    candidates.push({
+      id: 'pv_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+      meetingId: meeting.id,
+      meetingTitle: meeting.title || 'Untitled meeting',
+      meetingDate: meeting.date ? meeting.date.slice(0, 10) : todayStr(),
+      reach,
+      evidenceType,
+      insightKey,
+      note,
+      vectors: meeting.insightVectorTags || [],
+      detectedAt: new Date().toISOString(),
+      _score: (REACH_STRENGTH[reach] || 1) * (EVIDENCE_STRENGTH[evidenceType] || 1)
+    });
+  }
+
+  // Cap at 2 per meeting: highest reach × strongest evidence
+  candidates.sort((a, b) => b._score - a._score);
+  const capped = candidates.slice(0, 2);
+  // Track overflow count for "See N more" link
+  if (candidates.length > 2) {
+    capped._overflowCount = candidates.length - 2;
+    capped._overflowMeetingId = meeting.id;
+    capped._allCandidates = candidates;
+  }
+
+  for (const c of capped) {
+    delete c._score;
+    state.pendingVisibility.push(c);
+  }
+
+  if (capped.length > 0) {
+    saveState();
+    renderTabNav(); // Update badge
+  }
+}
 
 const DRAFT_TYPE_CONFIG = {
   top3:          { label: 'Weekly Top 3',    visibType: 'waywo',      audience: 'pod',  maxTokens: 400 },
@@ -13190,6 +15321,16 @@ function buildDraftboardWipPrompt() {
   };
 }
 
+function buildGenericDraftPrompt(activityTypeLabel) {
+  const entries = getCurrentWeekEntries();
+  const recent = getRecentEntries(5);
+  const all = [...entries, ...recent.filter(r => !entries.find(e => e.date === r.date))];
+  return {
+    systemPrompt: `You are a concise writing assistant. Write a visibility post for the activity type described. Structure: Context, What you did, Impact, Next steps. 250 words max. Professional but casual tone. No preamble, no sign-off. Use markdown bold for section labels.`,
+    userPrompt: `Write a concise visibility post for "${activityTypeLabel}". Draw from the journal entries below to highlight relevant work.\n\nJournal entries:\n${formatEntriesForPrompt(all)}`
+  };
+}
+
 const DRAFT_PROMPT_BUILDERS = {
   top3: buildTop3Prompt,
   draftboard: buildDraftboardPrompt,
@@ -13207,6 +15348,7 @@ let visibDraftType = null;
 let visibDraftText = '';
 
 function getVisibTypeLabel(id) {
+  if (id === 'meeting') return 'Meeting Evidence';
   return getVisibilityTypes().find(t => t.id === id)?.label || id;
 }
 
@@ -13251,7 +15393,7 @@ function getLastActivityByType(typeId) {
 function getStalenessNudges() {
   const today = todayStr();
   const nudges = [];
-  for (const [typeId, threshold] of Object.entries(STALENESS_THRESHOLDS)) {
+  for (const [typeId, threshold] of Object.entries(getStalenessThresholds())) {
     const lastDate = getLastActivityByType(typeId);
     if (!lastDate) {
       nudges.push({ type: typeId, label: getVisibTypeLabel(typeId), daysSince: null });
@@ -13296,7 +15438,36 @@ function renderVisibility() {
   if (visibView === 'draft' && visibDraftType) { renderVisibDraft(panel); return; }
   if (visibView === 'log') { renderVisibLog(panel); return; }
   if (visibView === 'detail' && visibDetailId) { renderVisibDetail(panel); return; }
+  // Show role picker if role not set
+  if (!state.settings.visibilityRole) { renderVisibRolePicker(panel); return; }
   renderVisibDashboard(panel);
+}
+
+function renderVisibRolePicker(panel) {
+  panel.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-xl)">
+      <span style="font-size:15px;font-weight:600">Visibility</span>
+    </div>
+    <div style="max-width:500px;margin:var(--space-2xl) auto;text-align:center">
+      <div style="font-size:15px;font-weight:600;margin-bottom:var(--space-sm)">Choose your visibility profile</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:var(--space-xl)">This sets up activity types and weekly rhythm. You can change this later in settings.</div>
+      <div style="display:flex;gap:var(--space-lg);justify-content:center">
+        <div class="visib-role-card" onclick="selectVisibilityRole('designer')" style="flex:1;max-width:220px;padding:var(--space-lg);border:1px solid var(--border-default);border-radius:var(--radius-lg);cursor:pointer;text-align:left;transition:border-color 0.15s" onmouseenter="this.style.borderColor='var(--accent-interactive)'" onmouseleave="this.style.borderColor='var(--border-default)'">
+          <div style="font-weight:600;margin-bottom:var(--space-sm)">Designer</div>
+          <div style="font-size:12px;color:var(--text-muted);line-height:1.5">WAYWO posts, Draftboard shares, Design Crits, Hawkins contributions. Weekly rhythm built for design visibility.</div>
+        </div>
+        <div class="visib-role-card" onclick="selectVisibilityRole('custom')" style="flex:1;max-width:220px;padding:var(--space-lg);border:1px solid var(--border-default);border-radius:var(--radius-lg);cursor:pointer;text-align:left;transition:border-color 0.15s" onmouseenter="this.style.borderColor='var(--accent-interactive)'" onmouseleave="this.style.borderColor='var(--border-default)'">
+          <div style="font-weight:600;margin-bottom:var(--space-sm)">Custom</div>
+          <div style="font-size:12px;color:var(--text-muted);line-height:1.5">Build your own activity types and rhythm from scratch. Great for engineers, PMs, or any role.</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function selectVisibilityRole(role) {
+  state.settings.visibilityRole = role;
+  saveState();
+  renderVisibility();
 }
 
 function renderVisibDashboard(panel) {
@@ -13305,31 +15476,93 @@ function renderVisibDashboard(panel) {
   const last30 = getVisibActivitiesLast30();
   const nudges = getStalenessNudges();
   const vectorCoverage = computeVectorCoverage(last30);
-  const reach = computeReachDistribution(last30);
+  const rhythm = getWeeklyRhythm();
 
-  // Weekly rhythm strip
+  // Weekly rhythm strip (monogram icons, role-aware)
   const monday = getWeekMonday(todayStr());
   const weekDates = getWeekDates(monday);
   const today = todayStr();
-  const todayDow = new Date(today + 'T12:00:00').getDay(); // 1=Mon..5=Fri
 
-  const RHYTHM_ICONS = { waywo: 'Slack.svg', draftboard: 'Draftboard.svg', hawkins: 'Hawkins.svg' };
-  const rhythmHtml = WEEKLY_RHYTHM.map((r, i) => {
+  const rhythmHtml = rhythm.length > 0 ? rhythm.map((r, i) => {
     const dateStr = weekDates[i];
     const hasActivity = weekActivities.some(a => a.date === dateStr);
     const isToday = dateStr === today;
-    const icon = RHYTHM_ICONS[r.icon || r.type] || 'Slack.svg';
-    return `<div class="visib-rhythm-card${hasActivity ? ' filled' : ''}${isToday ? ' today' : ''}" onclick="startVisibDraft('${RHYTHM_DRAFT_TYPES[i]}')">
+    const mono = getTypeMonogram(r.monogram ? r.type : (r.type || ''));
+    const typeObj = getVisibTypeObj(r.type);
+    const isDraftable = typeObj?.draftable !== false;
+    const clickAction = isDraftable && r.draftType
+      ? `startVisibDraft('${r.draftType}')`
+      : `visibView='log';visibLogType='${r.type || ''}';visibLogSubtype='';renderVisibility()`;
+    return `<div class="visib-rhythm-card${hasActivity ? ' filled' : ''}${isToday ? ' today' : ''}" onclick="${clickAction}">
       <span class="visib-rhythm-day-label">${r.day}</span>
-      <img class="visib-rhythm-icon" src="${icon}" alt="${r.label}">
+      <span class="visib-rhythm-monogram" style="background:${mono.color}">${mono.text}</span>
       <span class="visib-rhythm-sublabel">${r.label}</span>
     </div>`;
-  }).join('');
+  }).join('') : '';
 
   // Staleness nudges
   const nudgeHtml = nudges.length > 0 ? `<div class="visib-nudges">${nudges.map(n =>
     `<div class="visib-nudge">${n.daysSince === null ? `No ${n.label} logged yet` : `No ${n.label} in ${n.daysSince} days`}</div>`
   ).join('')}</div>` : '';
+
+  // Pending visibility from meetings
+  const pending = state.pendingVisibility || [];
+  let pendingHtml = '';
+  if (pending.length > 0) {
+    // Group by meeting
+    const byMeeting = {};
+    for (const p of pending) {
+      if (!byMeeting[p.meetingId]) byMeeting[p.meetingId] = { title: p.meetingTitle, date: p.meetingDate, items: [] };
+      byMeeting[p.meetingId].items.push(p);
+    }
+    const reachLabelsShort = { team: 'Team', 'function': 'Function', 'cross-functional': 'Cross-func', organization: 'Org' };
+    const evidenceLabelsShort = { shared: 'Shared', referenced: 'Referenced', invited: 'Invited', decided: 'Decided' };
+    const INSIGHT_LABELS = {
+      stakeholdersInfluenced: 'Stakeholder influence',
+      feedbackOnWork: 'Feedback on work',
+      userContributions: 'Contributions shared',
+      whatPresented: 'Presented work',
+      blockersResolved: 'Blockers resolved',
+      feedbackReceived: 'Feedback received',
+      commitments: 'Commitments made',
+      scopeDecisions: 'Scope decisions',
+      opportunities: 'Opportunities surfaced'
+    };
+
+    const meetingGroups = Object.entries(byMeeting).map(([mId, group]) => {
+      const itemsHtml = group.items.map(p => `
+        <div class="visib-pending-item" id="pending-${p.id}">
+          <div style="display:flex;align-items:center;gap:var(--space-sm);margin-bottom:4px">
+            <span class="visib-audience-tag" style="font-size:11px">${reachLabelsShort[p.reach] || p.reach} · ${evidenceLabelsShort[p.evidenceType] || p.evidenceType}</span>
+            <span style="font-size:12px;font-weight:500;color:var(--text-primary)">${INSIGHT_LABELS[p.insightKey] || p.insightKey}</span>
+          </div>
+          ${p.note ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;line-height:1.4">${escapeHtml(p.note)}</div>` : ''}
+          ${p.vectors && p.vectors.length > 0 ? `<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">${p.vectors.join(' · ')}</div>` : ''}
+          <div style="display:flex;gap:var(--space-sm)">
+            <button class="btn-secondary" style="font-size:12px;padding:3px 10px" onclick="confirmPendingVisibility('${p.id}')">Confirm</button>
+            <button class="btn-ghost" style="font-size:12px;padding:3px 10px" onclick="dismissPendingVisibility('${p.id}')">Dismiss</button>
+          </div>
+        </div>
+      `).join('');
+      return `<div style="margin-bottom:var(--space-md)">
+        <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:var(--space-sm)">${escapeHtml(group.title)} · ${formatDateShort(group.date)}</div>
+        ${itemsHtml}
+      </div>`;
+    }).join('');
+
+    const batchBtns = pending.length >= 3 ? `
+      <div style="display:flex;gap:var(--space-sm);margin-top:var(--space-sm)">
+        <button class="btn-secondary" style="font-size:12px;padding:3px 10px" onclick="confirmAllPendingVisibility()">Confirm All</button>
+        <button class="btn-ghost" style="font-size:12px;padding:3px 10px" onclick="dismissAllPendingVisibility()">Dismiss All</button>
+      </div>` : '';
+
+    pendingHtml = `
+      <div class="visib-section visib-pending-section">
+        <div class="visib-section-title" style="margin-bottom:var(--space-md)">Detected from Meetings</div>
+        ${meetingGroups}
+        ${batchBtns}
+      </div>`;
+  }
 
   // AI suggestions
   const suggestionsHtml = visibSuggestions.length > 0
@@ -13382,7 +15615,6 @@ function renderVisibDashboard(panel) {
   // Recent activity list
   const recent = [...activities].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20);
   const recentHtml = recent.length > 0 ? recent.map(a => {
-    const typeObj = getVisibTypeObj(a.type);
     const rLabel = { team: 'Team', 'function': 'Function', 'cross-functional': 'Cross-func', organization: 'Org' }[a.reach] || a.reach || 'Team';
     const eLabel = { shared: 'Shared', referenced: 'Referenced', invited: 'Invited', decided: 'Decided' }[a.evidenceType] || 'Shared';
     return `<div class="visib-activity-card" onclick="openVisibDetail('${a.id}')">
@@ -13396,17 +15628,28 @@ function renderVisibDashboard(panel) {
     </div>`;
   }).join('') : '';
 
+  // Custom role empty state
+  const isCustom = state.settings.visibilityRole === 'custom';
+  const hasTypes = getVisibilityTypes().length > 0;
+
   // Empty state
-  if (activities.length === 0) {
+  if (activities.length === 0 && pending.length === 0) {
     panel.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-xl)">
         <span style="font-size:15px;font-weight:600">Visibility</span>
-        <button class="btn-secondary btn-accent" onclick="visibView='log';visibLogType='';visibLogSubtype='';renderVisibility()">Log Activity</button>
+        <div style="display:flex;gap:var(--space-sm)">
+          <button class="btn-secondary btn-accent" onclick="visibView='log';visibLogType='';visibLogSubtype='';renderVisibility()">Log Activity</button>
+        </div>
       </div>
-      <div class="visib-rhythm-strip">${rhythmHtml}</div>
+      ${rhythmHtml ? `<div class="visib-rhythm-strip">${rhythmHtml}</div>` : ''}
+      ${pendingHtml}
       <div class="empty-state">
-        <div style="font-weight:600">Track where your work is visible and to whom.</div>
-        <div class="empty-state-secondary">Log your first visibility activity to start building your record.</div>
+        ${isCustom && !hasTypes
+          ? `<div style="font-weight:600">Build your visibility profile</div>
+             <div class="empty-state-secondary">Add your first activity type to start tracking where your work is visible.</div>
+             <button class="btn-secondary" style="margin-top:var(--space-md)" onclick="addCustomVisibilityType()">Add Activity Type</button>`
+          : `<div style="font-weight:600">Track where your work is visible and to whom.</div>
+             <div class="empty-state-secondary">Log your first visibility activity to start building your record.</div>`}
       </div>`;
     return;
   }
@@ -13414,12 +15657,16 @@ function renderVisibDashboard(panel) {
   panel.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-xl)">
       <span style="font-size:15px;font-weight:600">Visibility</span>
-      <button class="btn-secondary btn-accent" onclick="visibView='log';visibLogType='';visibLogSubtype='';renderVisibility()">Log Activity</button>
+      <div style="display:flex;gap:var(--space-sm)">
+        <button class="btn-secondary btn-accent" onclick="visibView='log';visibLogType='';visibLogSubtype='';renderVisibility()">Log Activity</button>
+      </div>
     </div>
 
-    <div class="visib-rhythm-strip">${rhythmHtml}</div>
+    ${rhythmHtml ? `<div class="visib-rhythm-strip">${rhythmHtml}</div>` : ''}
 
     ${nudgeHtml}
+
+    ${pendingHtml}
 
     <div class="visib-section">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-md)">
@@ -13448,6 +15695,154 @@ function renderVisibDashboard(panel) {
       ${recentHtml}
     </div>
   `;
+}
+
+// --- Pending visibility confirm/dismiss ---
+function confirmPendingVisibility(id) {
+  const item = (state.pendingVisibility || []).find(p => p.id === id);
+  if (!item) return;
+  const container = document.getElementById('pending-' + id);
+  if (!container) return;
+
+  const reachLevels = ['team', 'function', 'cross-functional', 'organization'];
+  const evidenceTypes = ['shared', 'referenced', 'invited', 'decided'];
+  const reachLabelsMap = { team: 'Team', 'function': 'Function', 'cross-functional': 'Cross-func', organization: 'Organization' };
+  const evidenceLabelsMap = { shared: 'Shared', referenced: 'Referenced', invited: 'Invited', decided: 'Decided' };
+
+  // Render inline edit form
+  container.innerHTML = `
+    <div style="padding:var(--space-md);background:var(--bg-secondary);border-radius:var(--radius-md);border-left:3px solid var(--accent-interactive)">
+      <div style="font-size:12px;font-weight:600;margin-bottom:var(--space-sm)">Confirm visibility evidence</div>
+      ${item.note ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:var(--space-md);line-height:1.4">${escapeHtml(item.note)}</div>` : ''}
+      <div style="margin-bottom:var(--space-sm)">
+        <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:4px">Reach</div>
+        <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap">
+          ${reachLevels.map(r => `<label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer">
+            <input type="radio" name="pendingReach-${id}" value="${r}" ${r === item.reach ? 'checked' : ''}> ${reachLabelsMap[r]}
+          </label>`).join('')}
+        </div>
+      </div>
+      <div style="margin-bottom:var(--space-sm)">
+        <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:4px">Evidence</div>
+        <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap">
+          ${evidenceTypes.map(e => `<label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer">
+            <input type="radio" name="pendingEvidence-${id}" value="${e}" ${e === item.evidenceType ? 'checked' : ''}> ${evidenceLabelsMap[e]}
+          </label>`).join('')}
+        </div>
+      </div>
+      <div style="margin-bottom:var(--space-sm)">
+        <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:4px">Vectors</div>
+        <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap">
+          ${ALL_VECTORS.map(v => `<button class="visib-vector-chip${(item.vectors || []).includes(v) ? ' selected' : ''}" onclick="togglePendingVector(this,'${id}','${v}')" style="font-size:11px;padding:2px 8px;border-radius:12px;border:1px solid var(--border-default);background:${(item.vectors || []).includes(v) ? 'var(--accent-interactive)' : 'transparent'};color:${(item.vectors || []).includes(v) ? '#fff' : 'var(--text-muted)'};cursor:pointer">${v}</button>`).join('')}
+        </div>
+      </div>
+      <div style="display:flex;gap:var(--space-sm);margin-top:var(--space-md)">
+        <button class="btn-primary" style="font-size:12px;padding:4px 12px" onclick="savePendingVisibility('${id}')">Save</button>
+        <button class="btn-ghost" style="font-size:12px;padding:4px 12px" onclick="renderVisibility()">Cancel</button>
+      </div>
+    </div>`;
+}
+
+function togglePendingVector(btn, id, vector) {
+  const item = (state.pendingVisibility || []).find(p => p.id === id);
+  if (!item) return;
+  if (!item.vectors) item.vectors = [];
+  const idx = item.vectors.indexOf(vector);
+  if (idx >= 0) {
+    item.vectors.splice(idx, 1);
+    btn.style.background = 'transparent';
+    btn.style.color = 'var(--text-muted)';
+    btn.classList.remove('selected');
+  } else {
+    item.vectors.push(vector);
+    btn.style.background = 'var(--accent-interactive)';
+    btn.style.color = '#fff';
+    btn.classList.add('selected');
+  }
+}
+
+function savePendingVisibility(id) {
+  const item = (state.pendingVisibility || []).find(p => p.id === id);
+  if (!item) return;
+
+  const reach = document.querySelector(`input[name="pendingReach-${id}"]:checked`)?.value || item.reach;
+  const evidence = document.querySelector(`input[name="pendingEvidence-${id}"]:checked`)?.value || item.evidenceType;
+
+  const activity = {
+    id: Date.now(),
+    date: item.meetingDate,
+    type: 'meeting',
+    subtype: '',
+    reach,
+    evidenceType: evidence,
+    audience: reach,
+    note: item.note || '',
+    link: '',
+    vectors: item.vectors || [],
+    source: 'meeting',
+    sourceMeetingId: item.meetingId
+  };
+
+  state.visibilityActivities.push(activity);
+  state.pendingVisibility = state.pendingVisibility.filter(p => p.id !== id);
+  saveState();
+  renderTabNav();
+  renderVisibility();
+  showToast('Visibility evidence confirmed');
+}
+
+function dismissPendingVisibility(id) {
+  const item = (state.pendingVisibility || []).find(p => p.id === id);
+  if (!item) return;
+  const dismissKey = item.meetingId + ':' + item.insightKey;
+  if (!state.dismissedVisibilityKeys) state.dismissedVisibilityKeys = [];
+  if (!state.dismissedVisibilityKeys.includes(dismissKey)) {
+    state.dismissedVisibilityKeys.push(dismissKey);
+  }
+  state.pendingVisibility = state.pendingVisibility.filter(p => p.id !== id);
+  saveState();
+  renderTabNav();
+  renderVisibility();
+}
+
+function confirmAllPendingVisibility() {
+  const pending = [...(state.pendingVisibility || [])];
+  for (const item of pending) {
+    state.visibilityActivities.push({
+      id: Date.now() + Math.random(),
+      date: item.meetingDate,
+      type: 'meeting',
+      subtype: '',
+      reach: item.reach,
+      evidenceType: item.evidenceType,
+      audience: item.reach,
+      note: item.note || '',
+      link: '',
+      vectors: item.vectors || [],
+      source: 'meeting',
+      sourceMeetingId: item.meetingId
+    });
+  }
+  state.pendingVisibility = [];
+  saveState();
+  renderTabNav();
+  renderVisibility();
+  showToast(`${pending.length} visibility items confirmed`);
+}
+
+function dismissAllPendingVisibility() {
+  if (!state.dismissedVisibilityKeys) state.dismissedVisibilityKeys = [];
+  for (const item of (state.pendingVisibility || [])) {
+    const dismissKey = item.meetingId + ':' + item.insightKey;
+    if (!state.dismissedVisibilityKeys.includes(dismissKey)) {
+      state.dismissedVisibilityKeys.push(dismissKey);
+    }
+  }
+  state.pendingVisibility = [];
+  saveState();
+  renderTabNav();
+  renderVisibility();
+  showToast('All pending items dismissed');
 }
 
 function showMatrixDetail(reach, evidenceType) {
@@ -13596,7 +15991,7 @@ function addCustomVisibilityType() {
   if (!label || !label.trim()) return;
   const id = 'custom-' + Date.now();
   if (!state.customVisibilityTypes) state.customVisibilityTypes = [];
-  state.customVisibilityTypes.push({ id, label: label.trim(), vectors: [] });
+  state.customVisibilityTypes.push({ id, label: label.trim(), vectors: [], draftable: true });
   saveState();
   visibLogType = id;
   renderVisibility();
@@ -13712,7 +16107,17 @@ Output only the suggestions, one per line, no numbering, no preamble.`;
 }
 
 async function startVisibDraft(draftType) {
-  const config = DRAFT_TYPE_CONFIG[draftType];
+  let config = DRAFT_TYPE_CONFIG[draftType];
+  let builder = DRAFT_PROMPT_BUILDERS[draftType];
+
+  // If no built-in config, check if it's a custom/generic type
+  if (!config && !builder) {
+    // draftType might be a type ID — build generic config
+    const typeLabel = getVisibTypeLabel(draftType);
+    config = { label: typeLabel, visibType: draftType, maxTokens: 500 };
+    builder = () => buildGenericDraftPrompt(typeLabel);
+  }
+
   if (!config) return;
   if (!state.settings.baseUrl) {
     showToast('Set up API in Settings first');
@@ -13730,7 +16135,7 @@ async function startVisibDraft(draftType) {
   renderVisibility();
 
   try {
-    const builder = DRAFT_PROMPT_BUILDERS[draftType];
+    if (!builder) builder = DRAFT_PROMPT_BUILDERS[draftType];
     const { systemPrompt, userPrompt } = builder();
     const result = await callClaude(systemPrompt, userPrompt, config.maxTokens);
     visibDraftText = result.trim();
@@ -13750,7 +16155,7 @@ async function startVisibDraft(draftType) {
 
 function renderVisibDraft(panel) {
   const config = DRAFT_TYPE_CONFIG[visibDraftType];
-  const label = config ? config.label : 'Draft';
+  const label = config ? config.label : getVisibTypeLabel(visibDraftType) || 'Draft';
   const isLoading = visibDraftText === '';
 
   panel.innerHTML = `
@@ -13834,7 +16239,7 @@ function saveVisibDraft() {
   const text = (editing ? textarea.value : visibDraftText).trim();
   if (!text) return;
 
-  const config = DRAFT_TYPE_CONFIG[visibDraftType];
+  const config = DRAFT_TYPE_CONFIG[visibDraftType] || { visibType: visibDraftType, subtype: '', audience: 'team' };
   const typeObj = getVisibTypeObj(config.visibType);
 
   const activity = {
@@ -13842,6 +16247,8 @@ function saveVisibDraft() {
     date: todayStr(),
     type: config.visibType,
     subtype: config.subtype || '',
+    reach: config.audience === 'pod' ? 'team' : config.audience === 'cbp' ? 'function' : config.audience === 'org' ? 'organization' : 'team',
+    evidenceType: 'shared',
     audience: config.audience,
     note: text,
     link: '',
@@ -13869,12 +16276,18 @@ function visibDraftBack() {
 }
 
 async function regenerateVisibDraft() {
-  const config = DRAFT_TYPE_CONFIG[visibDraftType];
+  let config = DRAFT_TYPE_CONFIG[visibDraftType];
+  let builder = DRAFT_PROMPT_BUILDERS[visibDraftType];
+  if (!config && !builder) {
+    const typeLabel = getVisibTypeLabel(visibDraftType);
+    config = { label: typeLabel, visibType: visibDraftType, maxTokens: 500 };
+    builder = () => buildGenericDraftPrompt(typeLabel);
+  }
   if (!config) return;
   visibDraftText = '';
   renderVisibility();
   try {
-    const builder = DRAFT_PROMPT_BUILDERS[visibDraftType];
+    if (!builder) builder = DRAFT_PROMPT_BUILDERS[visibDraftType];
     const { systemPrompt, userPrompt } = builder();
     const result = await callClaude(systemPrompt, userPrompt, config.maxTokens);
     visibDraftText = result.trim();
