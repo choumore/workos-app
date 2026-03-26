@@ -1813,6 +1813,7 @@ body {
 .week-triage-action.promote { border-color: #155724; color: #155724; background: #d4edda; }
 .week-triage-action.promote:hover { background: #c3e6cb; }
 .week-triage-action.defer { color: var(--text-muted); }
+.week-triage-action.skip { color: var(--text-muted); border-style: dashed; }
 .week-triage-card-star { margin-top: var(--space-xs); }
 .week-triage-progress {
   height: 3px;
@@ -9854,7 +9855,7 @@ One specific, actionable focus for next ${type === 'quarterly' ? 'quarter' : 'mo
 let weeklyTriageStep = 0; // 0 = not active, 1 = inbox, 2 = this-week, 3 = share
 let weekTriageQueue = [];
 let weekTriageIdx = 0;
-let weekTriageCounts = { kept: 0, promoted: 0, deferred: 0 };
+let weekTriageCounts = { kept: 0, promoted: 0, deferred: 0, skipped: 0 };
 
 function isWeeklyTriageNeeded() {
   const today = todayStr();
@@ -9908,7 +9909,7 @@ function renderWeeklyTriage(panel) {
     if (weekTriageQueue.length === 0) {
       weekTriageQueue = weekItems.map(t => t.id);
       weekTriageIdx = 0;
-      weekTriageCounts = { kept: 0, promoted: 0, deferred: 0 };
+      weekTriageCounts = { kept: 0, promoted: 0, deferred: 0, skipped: 0 };
     }
 
     if (weekTriageIdx >= weekTriageQueue.length) {
@@ -9924,6 +9925,7 @@ function renderWeeklyTriage(panel) {
             <div class="week-triage-summary-row"><span class="week-triage-summary-count">${weekTriageCounts.kept}</span> kept this week</div>
             <div class="week-triage-summary-row"><span class="week-triage-summary-count">${weekTriageCounts.promoted}</span> promoted to today</div>
             <div class="week-triage-summary-row"><span class="week-triage-summary-count">${weekTriageCounts.deferred}</span> deferred to backlog</div>
+            ${weekTriageCounts.skipped > 0 ? `<div class="week-triage-summary-row"><span class="week-triage-summary-count">${weekTriageCounts.skipped}</span> skipped (still in this week)</div>` : ''}
           </div>
           <div style="text-align:right;margin-top:var(--space-lg)"><button class="btn-secondary btn-accent" onclick="weekTriageQueue=[];weeklyTriageStep=3;renderDashboard()">Next: Share Weekly Plan</button></div>
         </div>`;
@@ -9936,6 +9938,8 @@ function renderWeeklyTriage(panel) {
 
     const age = Math.floor((Date.now() - new Date(current.createdAt || 0).getTime()) / 86400000);
     const sourceLabel = current.sourceTitle || (current.source === 'recurring' ? 'Recurring' : current.source || '');
+    const meetingDate = current.meetingDate ? new Date(current.meetingDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+    const meetingTitle = current.meetingTitle ? escapeHtml(current.meetingTitle) : '';
 
     panel.innerHTML = `
       <div class="triage-overlay">
@@ -9947,7 +9951,7 @@ function renderWeeklyTriage(panel) {
           ${current.parentId ? (() => { const p = state.todos.find(t => t.id === current.parentId); return p ? `<div class="week-triage-card-parent">${escapeHtml(p.text)}</div>` : ''; })() : ''}
           <div class="week-triage-card-text">${escapeHtml(current.text)}</div>
           <div class="week-triage-card-meta">
-            ${sourceLabel ? escapeHtml(sourceLabel) + ' · ' : ''}${age}d ago
+            ${meetingTitle ? meetingTitle + ' · ' : ''}${meetingDate ? meetingDate + ' · ' : ''}${sourceLabel ? escapeHtml(sourceLabel) + ' · ' : ''}${age}d ago
             ${current.starred ? ' · ★ Starred' : ''}
             ${todoDueTag(current.priority)}
           </div>
@@ -9955,6 +9959,7 @@ function renderWeeklyTriage(panel) {
             <button class="week-triage-action keep" onclick="weekTriageAction('keep')">Keep this week</button>
             <button class="week-triage-action promote" onclick="weekTriageAction('today')">→ Today</button>
             <button class="week-triage-action defer" onclick="weekTriageAction('backlog')">Defer</button>
+            <button class="week-triage-action skip" onclick="weekTriageAction('skip')">Skip</button>
           </div>
           <div class="week-triage-card-star">
             <button class="btn-ghost" style="font-size:13px" onclick="toggleTodoStar('${current.id}');renderDashboard()">${current.starred ? '★ Unstar' : '☆ Star as high-impact'}</button>
@@ -10093,6 +10098,9 @@ function weekTriageAction(action) {
     todo.priority = 'backlog';
     todo.triagedAt = new Date().toISOString();
     todo.deferCount = (todo.deferCount || 0) + 1;
+  } else if (action === 'skip') {
+    weekTriageCounts.skipped++;
+    // No change — stays in this-week, untouched
   }
   saveState();
   weekTriageIdx++;
@@ -10110,6 +10118,7 @@ function weekTriageUndo() {
   if (action === 'keep') weekTriageCounts.kept--;
   else if (action === 'today') weekTriageCounts.promoted--;
   else if (action === 'backlog') weekTriageCounts.deferred--;
+  else if (action === 'skip') weekTriageCounts.skipped--;
   weekTriageIdx--;
   weekTriageLastAction = null;
   saveState();
