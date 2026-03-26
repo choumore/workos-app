@@ -10788,9 +10788,7 @@ function addCoachingTodo(btn, date) {
     deferCount: 0
   });
   saveState();
-  btn.textContent = '✓ Added';
-  btn.disabled = true;
-  showToast('Added to inbox');
+  showToast('Added to inbox: ' + text.trim().substring(0, 40));
 }
 
 function addVisibilityTodo(text, sourceTitle) {
