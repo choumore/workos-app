@@ -10105,8 +10105,7 @@ function renderWeeklyTriage(panel) {
     const current = state.todos.find(t => t.id === currentId);
     if (!current) { weekTriageIdx++; renderDashboard(); return true; }
 
-    const age = Math.floor((Date.now() - new Date(current.createdAt || 0).getTime()) / 86400000);
-    const sourceLabel = current.sourceTitle || (current.source === 'recurring' ? 'Recurring' : current.source || '');
+    const sourceLabel = current.meetingId ? '' : current.sourceTitle || (current.source === 'recurring' ? 'Recurring' : current.source === 'follow-up' ? 'Follow-up' : current.source === 'subtask' ? 'Subtask' : current.source === 'coaching' ? 'Coaching' : current.source === 'visibility' ? 'Visibility' : current.source === 'manual' ? 'Manually added' : current.source || '');
     const meetingObj = current.meetingId ? state.meetings.find(m => m.id === current.meetingId) : null;
     const meetingTitle = current.meetingTitle || (meetingObj ? meetingObj.title : '') || '';
     const meetingDateRaw = current.meetingDate || (meetingObj ? meetingObj.date : '') || '';
@@ -10122,7 +10121,7 @@ function renderWeeklyTriage(panel) {
           ${current.parentId ? (() => { const p = state.todos.find(t => t.id === current.parentId); return p ? `<div class="week-triage-card-parent">${escapeHtml(p.text)}</div>` : ''; })() : ''}
           <div class="week-triage-card-text">${escapeHtml(current.text)}</div>
           <div class="week-triage-card-meta">
-            ${meetingTitle ? escapeHtml(meetingTitle) + ' · ' : ''}${meetingDateFmt ? meetingDateFmt + ' · ' : ''}${sourceLabel ? escapeHtml(sourceLabel) + ' · ' : ''}${age}d ago
+            ${meetingTitle ? escapeHtml(meetingTitle) + ' · ' : ''}${meetingDateFmt ? meetingDateFmt : ''}${sourceLabel ? (meetingDateFmt ? ' · ' : '') + escapeHtml(sourceLabel) : ''}
             ${current.starred ? ' · ★ Starred' : ''}
             ${todoDueTag(current.priority)}
           </div>
@@ -10505,7 +10504,7 @@ function renderTriageCard() {
   const meetingTitle = item.meetingTitle || (meeting ? meeting.title : '') || '';
   const meetingDateRaw = item.meetingDate || (meeting ? meeting.date : '') || '';
   const meetingDateFmt = meetingDateRaw ? (() => { const d = new Date(meetingDateRaw.length <= 10 ? meetingDateRaw + 'T00:00:00' : meetingDateRaw); return isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); })() : '';
-  const sourceLabel = item.meetingId ? (item.source === 'meeting' ? 'Meeting' : item.source || 'Meeting') : item.sourceTitle || (item.source === 'recurring' ? 'Recurring' : item.source === 'follow-up' ? 'Follow-up' : item.source === 'subtask' ? 'Subtask' : item.source === 'coaching' ? 'Coaching' : item.source === 'visibility' ? 'Visibility' : 'Manual');
+  const sourceLabel = item.meetingId ? '' : item.sourceTitle || (item.source === 'recurring' ? 'Recurring' : item.source === 'follow-up' ? 'Follow-up' : item.source === 'subtask' ? 'Subtask' : item.source === 'coaching' ? 'Coaching' : item.source === 'visibility' ? 'Visibility' : 'Manually added');
   const recurrenceBtnHtml = item.recurrence
     ? `<button class="btn-secondary" style="color:var(--accent-interactive)" onclick="toggleTriageRecurrenceMenu('${item.id}', this)">🔄 ${recurrenceLabel(item.recurrence)}</button>`
     : `<button class="btn-secondary" style="color:var(--text-primary)" onclick="toggleTriageRecurrenceMenu('${item.id}', this)">🔄 Set Recurring</button>`;
@@ -10523,7 +10522,7 @@ function renderTriageCard() {
       ${item.parentId ? (() => { const p = state.todos.find(t => t.id === item.parentId); return p ? `<div style="font-size:11px;font-weight:500;color:var(--text-muted);margin-bottom:var(--space-xs)">↳ subtask of ${escapeHtml(p.text)}</div>` : ''; })() : ''}
       <div class="triage-mobile-card-text" id="triageCardText">${escapeHtml(item.text)}</div>
       <div class="triage-mobile-card-meta">
-        <span>${meetingTitle ? escapeHtml(meetingTitle) + ' · ' : ''}${meetingDateFmt ? meetingDateFmt + ' · ' : ''}${escapeHtml(sourceLabel)} · ${age}d ago ${todoDueTag(item.priority)}</span>
+        <span>${meetingTitle ? escapeHtml(meetingTitle) + ' · ' : ''}${meetingDateFmt ? meetingDateFmt : ''}${sourceLabel ? (meetingDateFmt ? ' · ' : '') + escapeHtml(sourceLabel) : ''} ${todoDueTag(item.priority)}</span>
       </div>
       <div style="display:flex;gap:var(--space-sm);justify-content:center;flex-wrap:wrap;margin-top:var(--space-md)">
         <button class="btn-secondary" style="color:#d4a017" onclick="toggleTodoStar('${item.id}');renderTriageCard()">${item.starred ? '★ Starred' : '☆ Star'}</button>
