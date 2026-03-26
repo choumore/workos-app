@@ -3717,8 +3717,8 @@ body {
   z-index: 999;
   display: flex;
   flex-direction: column;
-  padding: var(--space-lg);
-  padding-bottom: env(safe-area-inset-bottom, var(--space-lg));
+  padding: var(--space-sm) var(--space-lg);
+  padding-bottom: env(safe-area-inset-bottom, var(--space-sm));
   overflow: hidden;
   touch-action: none;
 }
@@ -3726,7 +3726,7 @@ body {
   display: flex;
   align-items: center;
   gap: var(--space-md);
-  margin-bottom: var(--space-lg);
+  margin-bottom: var(--space-sm);
 }
 .triage-mobile-title { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
 .triage-mobile-progress {
@@ -3750,17 +3750,18 @@ body {
   justify-content: center;
   align-items: center;
   text-align: center;
-  padding: var(--space-xl);
+  padding: var(--space-sm) var(--space-md);
+  min-height: 0;
 }
 .triage-mobile-card-text {
   font-size: 22px;
   font-weight: 600;
   color: var(--text-primary);
-  line-height: 1.5;
-  margin-bottom: var(--space-lg);
+  line-height: 1.4;
+  margin-bottom: var(--space-sm);
   overflow-wrap: break-word;
   word-break: break-word;
-  max-height: 33vh;
+  max-height: 28vh;
   overflow-y: auto;
 }
 .triage-mobile-card-meta { font-size: 15px; color: var(--text-muted); display: flex; align-items: center; gap: var(--space-sm); flex-wrap: wrap; justify-content: center; }
@@ -10037,7 +10038,7 @@ function renderWeeklyTriage(panel) {
     const meetingObj = current.meetingId ? state.meetings.find(m => m.id === current.meetingId) : null;
     const meetingTitle = current.meetingTitle || (meetingObj ? meetingObj.title : '') || '';
     const meetingDateRaw = current.meetingDate || (meetingObj ? meetingObj.date : '') || '';
-    const meetingDateFmt = meetingDateRaw ? new Date(meetingDateRaw + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+    const meetingDateFmt = meetingDateRaw ? (() => { const d = new Date(meetingDateRaw.length <= 10 ? meetingDateRaw + 'T00:00:00' : meetingDateRaw); return isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); })() : '';
 
     panel.innerHTML = `
       <div class="triage-overlay">
@@ -10413,7 +10414,7 @@ function renderTriageCard() {
 
     overlay.innerHTML = `
       ${getMobileTabsHtml()}
-      <div class="triage-mobile-header" style="margin-top:var(--space-md)">
+      <div class="triage-mobile-header">
         <div class="triage-mobile-progress"><div class="triage-mobile-progress-fill" style="width:100%"></div></div>
         <span class="triage-mobile-count">${total}/${total}</span>
       </div>
@@ -10431,8 +10432,8 @@ function renderTriageCard() {
   const meeting = item.meetingId ? state.meetings.find(m => m.id === item.meetingId) : null;
   const meetingTitle = item.meetingTitle || (meeting ? meeting.title : '') || '';
   const meetingDateRaw = item.meetingDate || (meeting ? meeting.date : '') || '';
-  const meetingDateFmt = meetingDateRaw ? new Date(meetingDateRaw + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
-  const sourceLabel = meeting ? meeting.title : item.sourceTitle || (item.source === 'recurring' ? 'Recurring' : item.source === 'follow-up' ? 'Follow-up' : item.source === 'subtask' ? 'Subtask' : item.source === 'coaching' ? 'Coaching' : item.source === 'visibility' ? 'Visibility' : 'Manual');
+  const meetingDateFmt = meetingDateRaw ? (() => { const d = new Date(meetingDateRaw.length <= 10 ? meetingDateRaw + 'T00:00:00' : meetingDateRaw); return isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); })() : '';
+  const sourceLabel = item.meetingId ? (item.source === 'meeting' ? 'Meeting' : item.source || 'Meeting') : item.sourceTitle || (item.source === 'recurring' ? 'Recurring' : item.source === 'follow-up' ? 'Follow-up' : item.source === 'subtask' ? 'Subtask' : item.source === 'coaching' ? 'Coaching' : item.source === 'visibility' ? 'Visibility' : 'Manual');
   const recurrenceBtnHtml = item.recurrence
     ? `<button class="btn-secondary" style="color:var(--accent-interactive)" onclick="toggleTriageRecurrenceMenu('${item.id}', this)">🔄 ${recurrenceLabel(item.recurrence)}</button>`
     : `<button class="btn-secondary" style="color:var(--text-primary)" onclick="toggleTriageRecurrenceMenu('${item.id}', this)">🔄 Set Recurring</button>`;
@@ -10442,7 +10443,7 @@ function renderTriageCard() {
 
   overlay.innerHTML = `
     ${getMobileTabsHtml()}
-    <div class="triage-mobile-header" style="margin-top:var(--space-md)">
+    <div class="triage-mobile-header">
       <div class="triage-mobile-progress"><div class="triage-mobile-progress-fill" style="width:${progress}%"></div></div>
       <span class="triage-mobile-count">${triageIndex}/${total}</span>
     </div>
