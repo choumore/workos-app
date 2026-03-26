@@ -3836,7 +3836,7 @@ body {
   transition: all 150ms;
   color: var(--text-primary);
 }
-.triage-mobile-btn:hover { background: var(--surface-hover); }
+.triage-mobile-btn:hover { background: color-mix(in srgb, var(--surface-card) 85%, var(--text-primary)); }
 .triage-mobile-btn:active { transform: scale(0.96); }
 .triage-mobile-btn.flash-today { background: rgba(45,138,78,0.15); border-color: #2d8a4e; }
 .triage-mobile-btn.flash-tomorrow { background: rgba(59,130,246,0.15); border-color: #3b82f6; }
@@ -10546,7 +10546,7 @@ function renderTriageCard() {
     <div class="triage-mobile-undo">${undoHtml}</div>
     <div class="triage-mobile-actions">
       <button class="triage-mobile-btn" id="triBtn-today" onclick="triageMobileAction('today')">Today</button>
-      <button class="triage-mobile-btn" id="triBtn-tomorrow" onclick="triageMobileAction('tomorrow')">Next WeekDay</button>
+      <button class="triage-mobile-btn" id="triBtn-tomorrow" onclick="triageMobileAction('tomorrow')">Next Weekday</button>
       <button class="triage-mobile-btn" id="triBtn-this-week" onclick="triageMobileAction('this-week')">This Week</button>
       <button class="triage-mobile-btn" id="triBtn-backlog" onclick="triageMobileAction('backlog')">Backlog</button>
     </div>
