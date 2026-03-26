@@ -3819,6 +3819,22 @@ body {
   max-height: 28vh;
   overflow-y: auto;
 }
+.triage-mobile-card-text { cursor: text; }
+.triage-edit-input {
+  width: 100%;
+  font: 22px var(--font-family);
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: center;
+  background: var(--surface-card);
+  border: 1px solid var(--accent-interactive);
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm);
+  line-height: 1.4;
+  resize: none;
+  outline: none;
+  box-sizing: border-box;
+}
 .triage-mobile-card-meta { font-size: 15px; color: var(--text-muted); display: flex; align-items: center; gap: var(--space-sm); flex-wrap: wrap; justify-content: center; }
 .triage-mobile-undo {
   text-align: center;
@@ -10546,7 +10562,7 @@ function renderTriageCard() {
     <div class="triage-mobile-card triage-card-enter" id="triageCard">
       <div class="triage-mobile-card-content">
         ${item.parentId ? (() => { const p = state.todos.find(t => t.id === item.parentId); return p ? `<div style="font-size:11px;font-weight:500;color:var(--text-muted);margin-bottom:var(--space-xs)">↳ subtask of ${escapeHtml(p.text)}</div>` : ''; })() : ''}
-        <div class="triage-mobile-card-text" id="triageCardText">${escapeHtml(item.text)}</div>
+        <div class="triage-mobile-card-text" id="triageCardText" onclick="startTriageEdit('${item.id}')">${escapeHtml(item.text)}</div>
         <div class="triage-mobile-card-meta">
           <span>${meetingTitle ? escapeHtml(meetingTitle) + ' · ' : ''}${meetingDateFmt ? meetingDateFmt : ''}${sourceLabel ? (meetingDateFmt ? ' · ' : '') + escapeHtml(sourceLabel) : ''} ${todoDueTag(item.priority)}</span>
         </div>
@@ -10671,6 +10687,37 @@ function triageMobileAction(priority) {
   saveState();
   saveTriageCounts();
   setTimeout(renderTriageCard, 200);
+}
+
+function startTriageEdit(todoId) {
+  const el = document.getElementById('triageCardText');
+  if (!el || el.querySelector('textarea')) return;
+  const todo = state.todos.find(t => t.id === todoId);
+  if (!todo) return;
+  const textarea = document.createElement('textarea');
+  textarea.className = 'triage-edit-input';
+  textarea.value = todo.text;
+  textarea.addEventListener('keydown', (e) => {
+    e.stopPropagation();
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveTriageEdit(todoId, textarea.value); }
+    if (e.key === 'Escape') { e.preventDefault(); renderTriageCard(); }
+  });
+  textarea.addEventListener('blur', () => saveTriageEdit(todoId, textarea.value));
+  el.textContent = '';
+  el.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+}
+
+function saveTriageEdit(todoId, newText) {
+  const trimmed = (newText || '').trim();
+  if (!trimmed) { renderTriageCard(); return; }
+  const todo = state.todos.find(t => t.id === todoId);
+  if (todo && todo.text !== trimmed) {
+    todo.text = trimmed;
+    saveState();
+  }
+  renderTriageCard();
 }
 
 function triageSkip() {
