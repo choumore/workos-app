@@ -7937,8 +7937,14 @@ document.getElementById('tabNav').addEventListener('click', (e) => {
 /* ========================================
    API Integration
    ======================================== */
-const WORKOS_VERSION = '2.4.0';
+const WORKOS_VERSION = '2.4.1';
 const WORKOS_CHANGELOG = [
+  { version: '2.4.1', date: '2026-03-26', changes: [
+    'Mobile triage: meeting title, date, parent task, and due tags in card metadata',
+    'Mobile triage: dynamic font sizing for long titles (33vh cap)',
+    'Weekly triage step persists across page reloads via sessionStorage',
+    'Version number and changelog in Settings > About',
+  ]},
   { version: '2.4.0', date: '2026-03-26', changes: [
     'Card-based weekly triage flow replaces drag-handle reordering',
     'Skip action in triage for items needing more research',
