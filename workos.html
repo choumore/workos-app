@@ -7167,9 +7167,9 @@ function renderTodoItem(todo) {
 
   const isDismissed = todo.status === 'dismissed';
 
-  // Reschedule button — context-aware destinations per bucket
-  const rescheduleBtn = (!isDone && !isDismissed && todo.priority !== 'inbox')
-    ? `<button class="todo-recurrence-btn" onclick="showRescheduleMenu('${todo.id}', this)">Reschedule</button>`
+  // Reschedule/Schedule button — context-aware destinations per bucket
+  const rescheduleBtn = (!isDone && !isDismissed)
+    ? `<button class="todo-recurrence-btn" onclick="showRescheduleMenu('${todo.id}', this)">${todo.priority === 'inbox' ? 'Schedule' : 'Reschedule'}</button>`
     : '';
 
   const dueHtml = todoDueTag(todo.priority);
