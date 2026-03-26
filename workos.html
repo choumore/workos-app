@@ -3760,6 +3760,8 @@ body {
   margin-bottom: var(--space-lg);
   overflow-wrap: break-word;
   word-break: break-word;
+  max-height: 33vh;
+  overflow-y: auto;
 }
 .triage-mobile-card-meta { font-size: 15px; color: var(--text-muted); display: flex; align-items: center; gap: var(--space-sm); flex-wrap: wrap; justify-content: center; }
 .triage-mobile-undo {
@@ -10417,6 +10419,9 @@ function renderTriageCard() {
   const item = triageQueue[triageIndex];
   const age = Math.floor((Date.now() - new Date(item.createdAt || 0).getTime()) / 86400000);
   const meeting = item.meetingId ? state.meetings.find(m => m.id === item.meetingId) : null;
+  const meetingTitle = item.meetingTitle || (meeting ? meeting.title : '') || '';
+  const meetingDateRaw = item.meetingDate || (meeting ? meeting.date : '') || '';
+  const meetingDateFmt = meetingDateRaw ? new Date(meetingDateRaw + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
   const sourceLabel = meeting ? meeting.title : item.sourceTitle || (item.source === 'recurring' ? 'Recurring' : item.source === 'follow-up' ? 'Follow-up' : item.source === 'subtask' ? 'Subtask' : item.source === 'coaching' ? 'Coaching' : item.source === 'visibility' ? 'Visibility' : 'Manual');
   const recurrenceBtnHtml = item.recurrence
     ? `<button class="btn-secondary" style="color:var(--accent-interactive)" onclick="toggleTriageRecurrenceMenu('${item.id}', this)">🔄 ${recurrenceLabel(item.recurrence)}</button>`
@@ -10432,9 +10437,10 @@ function renderTriageCard() {
       <span class="triage-mobile-count">${triageIndex}/${total}</span>
     </div>
     <div class="triage-mobile-card triage-card-enter" id="triageCard">
-      <div class="triage-mobile-card-text">${escapeHtml(item.text)}</div>
+      ${item.parentId ? (() => { const p = state.todos.find(t => t.id === item.parentId); return p ? `<div style="font-size:11px;font-weight:500;color:var(--text-muted);margin-bottom:var(--space-xs)">↳ subtask of ${escapeHtml(p.text)}</div>` : ''; })() : ''}
+      <div class="triage-mobile-card-text" id="triageCardText">${escapeHtml(item.text)}</div>
       <div class="triage-mobile-card-meta">
-        <span>from: ${escapeHtml(sourceLabel)} · ${age}d ago</span>
+        <span>${meetingTitle ? escapeHtml(meetingTitle) + ' · ' : ''}${meetingDateFmt ? meetingDateFmt + ' · ' : ''}${escapeHtml(sourceLabel)} · ${age}d ago ${todoDueTag(item.priority)}</span>
       </div>
       <div style="display:flex;gap:var(--space-sm);justify-content:center;flex-wrap:wrap;margin-top:var(--space-md)">
         <button class="btn-secondary" style="color:#d4a017" onclick="toggleTodoStar('${item.id}');renderTriageCard()">${item.starred ? '★ Starred' : '☆ Star'}</button>
@@ -10451,6 +10457,18 @@ function renderTriageCard() {
       <button class="triage-mobile-btn" id="triBtn-backlog" onclick="triageMobileAction('backlog')">Backlog</button>
     </div>
     <div style="text-align:center;margin-top:var(--space-sm)"><button style="font:14px var(--font-family);color:var(--text-muted);background:none;border:none;cursor:pointer;padding:var(--space-sm) var(--space-lg)" onclick="triageSkip()">Skip — decide later</button></div>`;
+
+  // Dynamically shrink title font if it exceeds 33vh
+  requestAnimationFrame(() => {
+    const el = document.getElementById('triageCardText');
+    if (!el) return;
+    const maxH = window.innerHeight * 0.33;
+    let size = parseInt(getComputedStyle(el).fontSize);
+    while (el.scrollHeight > maxH && size > 11) {
+      size--;
+      el.style.fontSize = size + 'px';
+    }
+  });
 }
 
 function toggleTriageRecurrenceMenu(todoId, btn) {
