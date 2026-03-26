@@ -1212,9 +1212,28 @@ body {
    Settings
    ======================================== */
 .settings-section {
-  margin-bottom: var(--space-3xl);
+  margin-bottom: var(--space-sm);
   padding-bottom: 8px;
 }
+.settings-section.settings-card {
+  background: var(--surface-card);
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-lg);
+  cursor: default;
+}
+.settings-card-header {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+.settings-card-header .settings-section-title { margin-bottom: 0; flex: 1; }
+.settings-card-chevron {
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.settings-card-body { margin-top: var(--space-md); }
+.settings-card-body.hidden { display: none; }
 .settings-section-title {
   font-size: 15px;
   font-weight: 600;
@@ -4473,7 +4492,7 @@ body {
    State
    ======================================== */
 let state = {
-  settings: { name: '', role: '', baseUrl: '', projectId: '', apiKey: '', model: 'sonnet', slackWebhook: '', promotionNotes: '', insightsProfile: '', ghToken: '', ghGistId: '', googleClientId: '', meetingsGistId: '', features: { contributions: true, visibility: true, meetings: true, todos: true } },
+  settings: { name: '', role: '', baseUrl: '', projectId: '', apiKey: '', model: 'sonnet', slackWebhook: '', promotionNotes: '', insightsProfile: '', insightsProfileRaw: '', ghToken: '', ghGistId: '', googleClientId: '', meetingsGistId: '', features: { contributions: true, visibility: true, meetings: true, todos: true } },
   entries: [],
   wins: [],
   weeklyBriefs: [],
@@ -14051,42 +14070,83 @@ function renderSettings() {
 }
 
 function settingsProfileHtml() {
-  return `
-    <div class="settings-section">
-      <div class="form-group">
-        <label class="form-label">Name</label>
-        <input class="form-input" id="settingName" value="${escapeHtml(state.settings.name)}" placeholder="Your name">
+  const hasPromo = (state.settings.promotionNotes || '').trim().length > 0;
+  const hasVectors = (state.vectors || []).length > 0;
+  const promoProcessed = hasPromo && hasVectors;
+
+  const hasInsightsRaw = (state.settings.insightsProfileRaw || '').trim().length > 0;
+  const hasInsights = (state.settings.insightsProfile || '').trim().length > 0;
+  const insightsProcessed = hasInsights && hasInsightsRaw;
+
+  const promoContent = promoProcessed
+    ? `<div id="promoCompactView">
+        <textarea class="form-textarea" style="height:calc(4 * 1.5em + 2 * var(--space-sm));resize:none" readonly>${escapeHtml(state.settings.promotionNotes)}</textarea>
+        <div style="margin-top:var(--space-xs)"><button class="btn-ghost" style="font-size:12px" onclick="document.getElementById('promoCompactView').classList.add('hidden');document.getElementById('promoEditView').classList.remove('hidden')">Edit</button></div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Role</label>
-        <input class="form-input" id="settingRole" value="${escapeHtml(state.settings.role)}" placeholder="e.g., Senior Product Designer">
+      <div id="promoEditView" class="hidden">
+        <div class="form-hint" style="margin-bottom:var(--space-xs)">Original notes</div>
+        <textarea class="form-textarea" style="min-height:calc(10 * 1.5em + 2 * var(--space-sm))" id="settingPromotion" placeholder="Paste your rough notes...">${escapeHtml(state.settings.promotionNotes)}</textarea>
+        <div class="form-hint" style="margin-top:var(--space-xs)">The AI uses these to connect your daily work to your promotion goals.</div>
+      </div>`
+    : `<textarea class="form-textarea" style="min-height:calc(10 * 1.5em + 2 * var(--space-sm))" id="settingPromotion" placeholder="Paste your rough notes from your manager conversation here...">${escapeHtml(state.settings.promotionNotes)}</textarea>
+      <div class="form-hint" style="margin-top:var(--space-xs)">The AI uses these to connect your daily work to your promotion goals.</div>`;
+
+  const insightsContent = insightsProcessed
+    ? `<div id="insightsCompactView">
+        <textarea class="form-textarea" style="height:calc(4 * 1.5em + 2 * var(--space-sm));resize:none" readonly>${escapeHtml(state.settings.insightsProfile)}</textarea>
+        <div style="margin-top:var(--space-xs)"><button class="btn-ghost" style="font-size:12px" onclick="document.getElementById('insightsCompactView').classList.add('hidden');document.getElementById('insightsEditView').classList.remove('hidden')">Edit</button></div>
       </div>
-    </div>
-    <div class="settings-section">
-      <div class="settings-section-title">Promotion Notes</div>
-      <div class="form-hint" style="margin-bottom:var(--space-sm)">What your manager said about promotion requirements</div>
-      <div class="form-group">
-        <textarea class="form-textarea" style="min-height:calc(10 * 1.5em + 2 * var(--space-sm))" id="settingPromotion" placeholder="Paste your rough notes from your manager conversation here...">${escapeHtml(state.settings.promotionNotes)}</textarea>
-        <div class="form-hint">The AI uses these to connect your daily work to your promotion goals.</div>
-      </div>
-    </div>
-    <div class="settings-section">
-      <div class="settings-section-title">Insights Discovery Profile</div>
-      <div class="form-hint" style="margin-bottom:var(--space-sm)">Paste your Insights Discovery profile text or .md content. Click Compact to extract key traits for AI context.</div>
-      <div class="form-group">
-        <textarea class="form-textarea" style="min-height:calc(10 * 1.5em + 2 * var(--space-sm))" id="settingInsights" placeholder="Paste your Insights Discovery profile here...">${escapeHtml(state.settings.insightsProfile)}</textarea>
+      <div id="insightsEditView" class="hidden">
+        <div class="form-hint" style="margin-bottom:var(--space-xs)">Original profile text</div>
+        <textarea class="form-textarea" style="min-height:calc(10 * 1.5em + 2 * var(--space-sm))" id="settingInsightsRaw" placeholder="Paste your Insights Discovery profile here...">${escapeHtml(state.settings.insightsProfileRaw)}</textarea>
         <div style="display:flex;align-items:center;gap:var(--space-sm);margin-top:var(--space-xs)">
-          <button class="btn btn-secondary btn-accent" id="compactInsightsBtn" onclick="compactInsightsProfile()">Compact Profile</button>
-          ${state.settings.insightsProfile ? '<span class="form-hint" style="color:var(--accent)">Profile loaded</span>' : ''}
+          <button class="btn btn-secondary btn-accent" id="compactInsightsBtn" onclick="compactInsightsProfile()">Re-compact Profile</button>
         </div>
-        <div class="form-hint" style="margin-top:var(--space-xs)">The AI uses your personality profile to personalize coaching, action items, and communication suggestions.</div>
+        <div class="form-hint" style="margin-top:var(--space-xs)">The AI uses your personality profile to personalize coaching and suggestions.</div>
+      </div>`
+    : `<textarea class="form-textarea" style="min-height:calc(10 * 1.5em + 2 * var(--space-sm))" id="settingInsights" placeholder="Paste your Insights Discovery profile here...">${escapeHtml(state.settings.insightsProfile || state.settings.insightsProfileRaw || '')}</textarea>
+      <div style="display:flex;align-items:center;gap:var(--space-sm);margin-top:var(--space-xs)">
+        <button class="btn btn-secondary btn-accent" id="compactInsightsBtn" onclick="compactInsightsProfile()">Compact Profile</button>
+        ${hasInsights ? '<span class="form-hint" style="color:var(--accent)">Profile loaded</span>' : ''}
       </div>
-      ${state.settings.insightsProfile ? `
-      <details style="margin-top:var(--space-md)">
-        <summary style="cursor:pointer;font-size:13px;font-weight:600;color:var(--text-secondary)">Active AI context preview</summary>
-        <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:var(--space-sm) var(--space-md);font-size:13px;line-height:1.5;color:var(--text-secondary);margin-top:var(--space-xs)">${formatBulletList(state.settings.insightsProfile)}</div>
-        <div class="form-hint" style="margin-top:var(--space-xs)">This is the exact text included in every AI call — coaching, weekly briefs, meeting prep, and action items.</div>
-      </details>` : ''}
+      <div class="form-hint" style="margin-top:var(--space-xs)">The AI uses your personality profile to personalize coaching and suggestions.</div>`;
+
+  return `
+    <div class="settings-section settings-card">
+      <div class="settings-card-header" onclick="const b=this.nextElementSibling;const c=this.querySelector('.settings-card-chevron');const h=b.classList.toggle('hidden');c.textContent=h?'▸':'▾'">
+        <div class="settings-section-title">Basic Info</div>
+        <span class="settings-card-chevron">▾</span>
+      </div>
+      <div class="settings-card-body">
+        <div class="form-group">
+          <label class="form-label">Name</label>
+          <input class="form-input" id="settingName" value="${escapeHtml(state.settings.name)}" placeholder="Your name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Role</label>
+          <input class="form-input" id="settingRole" value="${escapeHtml(state.settings.role)}" placeholder="e.g., Senior Product Designer">
+        </div>
+      </div>
+    </div>
+    <div class="settings-section settings-card">
+      <div class="settings-card-header" onclick="const b=this.nextElementSibling;const c=this.querySelector('.settings-card-chevron');const h=b.classList.toggle('hidden');c.textContent=h?'▸':'▾'">
+        <div class="settings-section-title">Promotion Notes</div>
+        <span class="settings-card-chevron">▾</span>
+      </div>
+      <div class="settings-card-body">
+        <div class="form-hint" style="margin-bottom:var(--space-sm)">What your manager said about promotion requirements</div>
+        <div class="form-group">${promoContent}</div>
+      </div>
+    </div>
+    <div class="settings-section settings-card">
+      <div class="settings-card-header" onclick="const b=this.nextElementSibling;const c=this.querySelector('.settings-card-chevron');const h=b.classList.toggle('hidden');c.textContent=h?'▸':'▾'">
+        <div class="settings-section-title">Insights Discovery Profile</div>
+        <span class="settings-card-chevron">▾</span>
+      </div>
+      <div class="settings-card-body">
+        <div class="form-hint" style="margin-bottom:var(--space-sm)">${insightsProcessed ? 'AI-compacted summary active' : 'Paste your Insights Discovery profile text. Click Compact to extract key traits.'}</div>
+        <div class="form-group">${insightsContent}</div>
+      </div>
     </div>`;
 }
 
@@ -14147,10 +14207,24 @@ function settingsFeaturesHtml() {
     </div>`;
 }
 
+function settingsCardWrap(title, content) {
+  return `<div class="settings-section settings-card">
+    <div class="settings-card-header" onclick="const b=this.nextElementSibling;const c=this.querySelector('.settings-card-chevron');const h=b.classList.toggle('hidden');c.textContent=h?'▸':'▾'">
+      <div class="settings-section-title">${title}</div>
+      <span class="settings-card-chevron">▾</span>
+    </div>
+    <div class="settings-card-body">${content}</div>
+  </div>`;
+}
+
 function settingsIntegrationsHtml() {
   return `
-    <div class="settings-section">
-      <div class="settings-section-title">AI Coaching</div>
+    <div class="settings-section settings-card">
+      <div class="settings-card-header" onclick="const b=this.nextElementSibling;const c=this.querySelector('.settings-card-chevron');const h=b.classList.toggle('hidden');c.textContent=h?'▸':'▾'">
+        <div class="settings-section-title">AI Coaching</div>
+        <span class="settings-card-chevron">▾</span>
+      </div>
+      <div class="settings-card-body">
       <div class="form-group">
         <label class="form-label">Gateway Base URL</label>
         <input class="form-input" id="settingBaseUrl" value="${escapeHtml(state.settings.baseUrl)}" placeholder="e.g., http://localhost:8090/mtlsproxy:mgp/proxy/workos">
@@ -14183,17 +14257,21 @@ function settingsIntegrationsHtml() {
           </label>
         </div>
       </div>
+      </div>
     </div>
-    <div class="settings-section">
-      <div class="settings-section-title">Slack</div>
+    ${settingsCardWrap('Slack', `
       <div class="form-group">
         <label class="form-label">Slack Webhook URL</label>
         <input class="form-input" id="settingSlack" value="${escapeHtml(state.settings.slackWebhook)}" placeholder="https://hooks.slack.com/...">
         <div class="form-hint">Used for posting weekly plans and reports (coming in a future update).</div>
       </div>
-    </div>
-    <div class="settings-section">
-      <div class="settings-section-title">Cloud Sync</div>
+    `)}
+    <div class="settings-section settings-card">
+      <div class="settings-card-header" onclick="const b=this.nextElementSibling;const c=this.querySelector('.settings-card-chevron');const h=b.classList.toggle('hidden');c.textContent=h?'▸':'▾'">
+        <div class="settings-section-title">Cloud Sync</div>
+        <span class="settings-card-chevron">▾</span>
+      </div>
+      <div class="settings-card-body">
       <div class="form-hint" style="margin-bottom:var(--space-lg)">Sync data across devices via a private GitHub Gist. Your data stays in your GitHub account.</div>
       <div class="form-group">
         <label class="form-label">GitHub Personal Access Token</label>
@@ -14209,9 +14287,14 @@ function settingsIntegrationsHtml() {
         <button class="btn-secondary" onclick="manualSync()">Sync Now</button>
         <div class="api-status" id="syncStatus">${state.settings.ghToken && state.settings.ghGistId ? '' : ''}</div>
       </div>
+      </div>
     </div>
-    <div class="settings-section">
-      <div class="settings-section-title">Google Calendar</div>
+    <div class="settings-section settings-card">
+      <div class="settings-card-header" onclick="const b=this.nextElementSibling;const c=this.querySelector('.settings-card-chevron');const h=b.classList.toggle('hidden');c.textContent=h?'▸':'▾'">
+        <div class="settings-section-title">Google Calendar</div>
+        <span class="settings-card-chevron">▾</span>
+      </div>
+      <div class="settings-card-body">
       <div class="form-hint" style="margin-bottom:var(--space-lg)">Connect Google Calendar to test the Meeting Intelligence Pipeline. Token is session-only — not synced or persisted.</div>
       <div class="form-group">
         <label class="form-label">OAuth Client ID</label>
@@ -14233,6 +14316,7 @@ function settingsIntegrationsHtml() {
         <div class="api-status" id="gcalStatus"></div>
       </div>
       `}
+      </div>
     </div>`;
 }
 
@@ -14382,6 +14466,7 @@ function attachSettingsListeners() {
     saveField('settingRole', 'role');
     saveField('settingPromotion', 'promotionNotes');
     saveField('settingInsights', 'insightsProfile');
+    saveField('settingInsightsRaw', 'insightsProfileRaw');
   }
 
   if (settingsSubTab === 'integrations') {
@@ -14413,12 +14498,15 @@ function attachSettingsListeners() {
 }
 
 async function compactInsightsProfile() {
-  const textarea = document.getElementById('settingInsights');
+  const textarea = document.getElementById('settingInsights') || document.getElementById('settingInsightsRaw');
   const btn = document.getElementById('compactInsightsBtn');
   if (!textarea || !btn) return;
 
   const raw = textarea.value.trim();
   if (!raw) { showToast('Paste your Insights profile first'); return; }
+
+  // Always store the raw input
+  state.settings.insightsProfileRaw = raw;
 
   if (!state.settings.baseUrl) {
     showToast('Set up AI integration first to compact profile');
