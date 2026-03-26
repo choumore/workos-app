@@ -3856,7 +3856,7 @@ body {
 .triage-mobile-done-breakdown { font-size: 13px; color: var(--text-secondary); line-height: 2; }
 .triage-card-enter { animation: triageCardIn 150ms ease; }
 .triage-card-exit { animation: triageCardOut 200ms ease forwards; }
-@keyframes triageCardIn { from { transform: translateX(-30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes triageCardIn { from { transform: translateX(30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 @keyframes triageCardOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(60px); opacity: 0; } }
 .triage-mobile-tabs {
   display: flex;
@@ -10024,7 +10024,12 @@ Object.defineProperty(window, 'weeklyTriageStep', {
 });
 let weekTriageQueue = [];
 let weekTriageIdx = 0;
-let weekTriageCounts = { kept: 0, promoted: 0, deferred: 0, skipped: 0 };
+let weekTriageCounts = JSON.parse(sessionStorage.getItem('weekTriageCounts') || 'null') || { kept: 0, promoted: 0, deferred: 0, skipped: 0 };
+
+function saveTriageCounts() {
+  sessionStorage.setItem('weekTriageCounts', JSON.stringify(weekTriageCounts));
+  sessionStorage.setItem('mobileTriageCounts', JSON.stringify(triageCounts));
+}
 
 function isWeeklyTriageNeeded() {
   const today = todayStr();
@@ -10078,7 +10083,9 @@ function renderWeeklyTriage(panel) {
     if (weekTriageQueue.length === 0) {
       weekTriageQueue = weekItems.map(t => t.id);
       weekTriageIdx = 0;
-      weekTriageCounts = { kept: 0, promoted: 0, deferred: 0, skipped: 0 };
+      // Preserve counts from sessionStorage if resuming, otherwise reset
+      const hasProgress = Object.values(weekTriageCounts).some(v => v > 0);
+      if (!hasProgress) weekTriageCounts = { kept: 0, promoted: 0, deferred: 0, skipped: 0 };
     }
 
     if (weekTriageIdx >= weekTriageQueue.length) {
@@ -10284,6 +10291,7 @@ function weekTriageAction(action) {
     // No change — stays in this-week, untouched
   }
   saveState();
+  saveTriageCounts();
   weekTriageIdx++;
   renderDashboard();
 }
@@ -10303,6 +10311,7 @@ function weekTriageUndo() {
   weekTriageIdx--;
   weekTriageLastAction = null;
   saveState();
+  saveTriageCounts();
   renderDashboard();
 }
 
@@ -10320,6 +10329,8 @@ function completeWeeklyTriage() {
     else state.weeklyPlanHistory.push(entry);
   }
   weeklyTriageStep = 0;
+  weekTriageCounts = { kept: 0, promoted: 0, deferred: 0, skipped: 0 };
+  saveTriageCounts();
   saveState();
   renderDashboard();
 }
@@ -10358,7 +10369,7 @@ let triageQueue = [];
 let triageIndex = 0;
 let triageLastAction = null;
 let triageLastPriority = 'today';
-let triageCounts = { today: 0, tomorrow: 0, 'this-week': 0, backlog: 0, deleted: 0 };
+let triageCounts = JSON.parse(sessionStorage.getItem('mobileTriageCounts') || 'null') || { today: 0, tomorrow: 0, 'this-week': 0, backlog: 0, deleted: 0 };
 let mobileMode = 'inbox'; // 'inbox' | 'today' | 'this-week' | 'backlog'
 
 function openMobileTriage(mode) {
@@ -10371,6 +10382,7 @@ function openMobileTriage(mode) {
   triageIndex = 0;
   triageLastAction = null;
   triageCounts = { today: 0, tomorrow: 0, 'this-week': 0, backlog: 0, deleted: 0 };
+  saveTriageCounts();
 
   if (!document.getElementById('mobileTriage')) {
     const overlay = document.createElement('div');
@@ -10642,6 +10654,7 @@ function triageMobileAction(priority) {
 
   triageIndex++;
   saveState();
+  saveTriageCounts();
   setTimeout(renderTriageCard, 200);
 }
 
@@ -10691,6 +10704,7 @@ function triageUndo() {
 
   triageLastAction = null;
   saveState();
+  saveTriageCounts();
   renderTriageCard();
 }
 
