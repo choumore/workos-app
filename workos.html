@@ -9938,7 +9938,11 @@ One specific, actionable focus for next ${type === 'quarterly' ? 'quarter' : 'mo
   }
 }
 
-let weeklyTriageStep = 0; // 0 = not active, 1 = inbox, 2 = this-week, 3 = share
+let _weeklyTriageStep = parseInt(sessionStorage.getItem('weeklyTriageStep') || '0');
+Object.defineProperty(window, 'weeklyTriageStep', {
+  get() { return _weeklyTriageStep; },
+  set(v) { _weeklyTriageStep = v; sessionStorage.setItem('weeklyTriageStep', v); }
+});
 let weekTriageQueue = [];
 let weekTriageIdx = 0;
 let weekTriageCounts = { kept: 0, promoted: 0, deferred: 0, skipped: 0 };
