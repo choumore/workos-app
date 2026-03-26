@@ -7940,11 +7940,13 @@ document.getElementById('tabNav').addEventListener('click', (e) => {
    ======================================== */
 const WORKOS_VERSION = '2.4.1';
 const WORKOS_CHANGELOG = [
-  { version: '2.4.1', date: '2026-03-26', changes: [
+  { version: '2.4.1', patch: true, date: '2026-03-26', changes: [
     'Mobile triage: meeting title, date, parent task, and due tags in card metadata',
     'Mobile triage: dynamic font sizing for long titles (33vh cap)',
     'Weekly triage step persists across page reloads via sessionStorage',
     'Version number and changelog in Settings > About',
+    'Fix duplicate meeting title and Invalid Date in triage metadata',
+    'Compact mobile triage layout for smaller screens',
   ]},
   { version: '2.4.0', date: '2026-03-26', changes: [
     'Card-based weekly triage flow replaces drag-handle reordering',
@@ -14241,7 +14243,19 @@ function settingsDataHtml() {
 }
 
 function settingsAboutHtml() {
-  const changelogHtml = WORKOS_CHANGELOG.map(release => `
+  // Merge patch releases into their parent version for display
+  const displayReleases = [];
+  let pendingPatchChanges = [];
+  for (const release of WORKOS_CHANGELOG) {
+    if (release.patch) {
+      pendingPatchChanges.push(...release.changes);
+    } else {
+      const merged = [...pendingPatchChanges, ...release.changes];
+      pendingPatchChanges = [];
+      displayReleases.push({ ...release, changes: merged });
+    }
+  }
+  const changelogHtml = displayReleases.map(release => `
     <div class="changelog-release">
       <div class="changelog-version-header">
         <span class="changelog-version-tag">v${release.version}</span>
