@@ -14087,7 +14087,7 @@ function settingsProfileHtml() {
 
   const hasInsightsRaw = (state.settings.insightsProfileRaw || '').trim().length > 0;
   const hasInsights = (state.settings.insightsProfile || '').trim().length > 0;
-  const insightsProcessed = hasInsights && hasInsightsRaw;
+  const insightsProcessed = hasInsights;
 
   const vectorSummary = promoProcessed
     ? state.vectors.map(v => `- **${v.name}**: ${v.description || ''}`).join('\n')
@@ -14112,7 +14112,7 @@ function settingsProfileHtml() {
       </div>
       <div id="insightsEditView" class="hidden">
         <div class="form-hint" style="margin-bottom:var(--space-xs)">Original profile text</div>
-        <textarea class="form-textarea" style="min-height:calc(10 * 1.5em + 2 * var(--space-sm))" id="settingInsightsRaw" placeholder="Paste your Insights Discovery profile here...">${escapeHtml(state.settings.insightsProfileRaw)}</textarea>
+        <textarea class="form-textarea" style="min-height:calc(10 * 1.5em + 2 * var(--space-sm))" id="settingInsightsRaw" placeholder="Paste your Insights Discovery profile here...">${escapeHtml(state.settings.insightsProfileRaw || state.settings.insightsProfile)}</textarea>
         <div style="display:flex;align-items:center;gap:var(--space-sm);margin-top:var(--space-xs)">
           <button class="btn btn-secondary btn-accent" id="compactInsightsBtn" onclick="compactInsightsProfile()">Re-compact Profile</button>
         </div>
