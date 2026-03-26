@@ -1223,6 +1223,34 @@ body {
 .settings-section-title + .form-hint {
   margin-top: -12px;
 }
+/* Changelog */
+.changelog-release { margin-bottom: var(--space-lg); }
+.changelog-version-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xs);
+}
+.changelog-version-tag {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-interactive);
+  background: var(--surface-ai);
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+}
+.changelog-date {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.changelog-list {
+  margin: 0;
+  padding-left: var(--space-lg);
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+.changelog-list li { margin-bottom: 2px; }
 .api-status {
   font-size: 13px;
   margin-top: var(--space-xs);
@@ -7907,6 +7935,60 @@ document.getElementById('tabNav').addEventListener('click', (e) => {
 /* ========================================
    API Integration
    ======================================== */
+const WORKOS_VERSION = '2.4.0';
+const WORKOS_CHANGELOG = [
+  { version: '2.4.0', date: '2026-03-26', changes: [
+    'Card-based weekly triage flow replaces drag-handle reordering',
+    'Skip action in triage for items needing more research',
+    'Meeting title and date shown in triage card metadata',
+    'Dynamic font sizing for long triage titles on mobile',
+    'AI drafts now use first person, formatted with bold/bullets, no em-dashes',
+    'Weekly plan renders formatted HTML instead of raw markdown',
+    'Regenerate button on weekly brief detail view',
+  ]},
+  { version: '2.3.0', date: '2026-03-23', changes: [
+    'Reschedule dropdown replaces 2x2 priority grid on todo items',
+    'Search bar across all todo buckets with grouped results',
+    'Delete confirmation with inline Yes/No prompt',
+    'Deleted tab with restore functionality',
+    'Subtasks keep independent deadlines when nested',
+    'Parent reschedule shows confirmation when subtasks have later deadlines',
+    'Done todos can be nested under parent tasks',
+    'Due deadline tags (Today/Tomorrow/This Week/Backlog) shown after todo title',
+    'Pull-forward section in daily focus triage for Tomorrow/This Week items',
+    'CTA buttons (Set recurring, + subtask, nest) use secondary accent style',
+    'Nest picker uses solid background fill and stays within viewport',
+  ]},
+  { version: '2.2.0', date: '2026-03-20', changes: [
+    'Visibility Phase 4: meeting auto-detection, role templates, generic drafts',
+    'Open loops replaced with computed view from todos',
+    'Open loops layout and button hierarchy redesign',
+  ]},
+  { version: '2.1.0', date: '2026-03-17', changes: [
+    'Recurring to-dos with daily/weekday/weekly/biweekly/monthly options',
+    'Inline todo editing on click',
+    'Star/unstar for high-impact items',
+    'Mobile triage with This Week and Backlog tabs',
+    'Triage source labels for all todo types',
+  ]},
+  { version: '2.0.0', date: '2026-03-14', changes: [
+    'Unified todo system: single source of truth across all views',
+    'Daily focus triage on dashboard with drag reordering',
+    'Monday weekly triage flow (3 steps: inbox, this week, share plan)',
+    'Todo buckets: Inbox, Today, Tomorrow, This Week, Backlog, Done',
+    'Meeting action items auto-imported as todos',
+    'Follow-up prompts on todo completion',
+  ]},
+  { version: '1.0.0', date: '2026-03-01', changes: [
+    'Initial release: daily work journal with AI coaching',
+    'Vector-based promotion tracking dashboard',
+    'Weekly briefs with wins detection',
+    'Meeting intelligence pipeline',
+    '1:1 prep generation',
+    'GitHub Gist sync for data backup',
+  ]},
+];
+
 const BASE_SYSTEM_PROMPT = `You are a career coach embedded in a personal work journal. The user's name is Mo — a Senior Product Designer working toward promotion. When generating shareable drafts (weekly plans, Slack posts, briefs), write in first person ("I", "my") as Mo — never refer to Mo in the third person. For coaching notes, analysis, and reflections, address Mo as "you".
 
 Formatting rules for all output:
@@ -13876,7 +13958,8 @@ function renderSettings() {
     { id: 'features', label: 'Features' },
     { id: 'integrations', label: 'Integrations' },
     { id: 'meetings', label: 'Meetings' },
-    { id: 'data', label: 'Data' }
+    { id: 'data', label: 'Data' },
+    { id: 'about', label: 'About' }
   ];
   const tabNav = tabs.map(t =>
     `<button class="sub-nav-btn${settingsSubTab === t.id ? ' active' : ''}" onclick="settingsSubTab='${t.id}';renderSettings()">${t.label}</button>`
@@ -13888,6 +13971,7 @@ function renderSettings() {
   else if (settingsSubTab === 'integrations') content = settingsIntegrationsHtml();
   else if (settingsSubTab === 'meetings') content = meetingsSettingsHtml();
   else if (settingsSubTab === 'data') content = settingsDataHtml();
+  else if (settingsSubTab === 'about') content = settingsAboutHtml();
 
   panel.innerHTML = `<div class="sub-nav">${tabNav}</div>${content}`;
   attachSettingsListeners();
@@ -14088,6 +14172,29 @@ function settingsDataHtml() {
         <button class="btn-secondary" onclick="restoreBackup()">Restore Backup</button>
       </div>
       <div class="form-hint" style="margin-top:var(--space-sm)">${state.entries.length} entries, ${getConfirmedWins().length} wins, ${state.weeklyBriefs.length} briefs</div>
+    </div>`;
+}
+
+function settingsAboutHtml() {
+  const changelogHtml = WORKOS_CHANGELOG.map(release => `
+    <div class="changelog-release">
+      <div class="changelog-version-header">
+        <span class="changelog-version-tag">v${release.version}</span>
+        <span class="changelog-date">${new Date(release.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+      </div>
+      <ul class="changelog-list">${release.changes.map(c => `<li>${escapeHtml(c)}</li>`).join('')}</ul>
+    </div>`
+  ).join('');
+
+  return `
+    <div class="settings-section" style="text-align:center;padding:var(--space-xl) 0">
+      <div style="font-size:20px;font-weight:700;color:var(--text-primary)">WorkOS</div>
+      <div style="font-size:14px;color:var(--text-secondary);margin-top:var(--space-xs)">v${WORKOS_VERSION}</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:var(--space-xs)">Career companion for designers</div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-title">Changelog</div>
+      ${changelogHtml}
     </div>`;
 }
 
