@@ -1737,7 +1737,7 @@ body {
 
 /* Weekly triage */
 .triage-overlay { max-width: 100%; }
-.triage-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: var(--space-xl); }
+.triage-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: var(--space-sm); }
 .triage-title { font-size: 18px; font-weight: 600; }
 .triage-list { display: flex; flex-direction: column; gap: var(--space-sm); }
 .triage-item {
@@ -1761,7 +1761,7 @@ body {
 .week-triage-card {
   background: var(--surface-card);
   border-radius: var(--radius-lg);
-  padding: var(--space-xl);
+  padding: var(--space-md) var(--space-lg);
   text-align: center;
   animation: fadeIn 0.15s ease;
 }
@@ -1779,6 +1779,8 @@ body {
   line-height: 1.5;
   margin-bottom: var(--space-md);
   word-break: break-word;
+  max-height: 33vh;
+  overflow-y: auto;
 }
 .week-triage-card-meta {
   font-size: 12px;
@@ -1819,7 +1821,7 @@ body {
   height: 3px;
   background: var(--border-default);
   border-radius: 2px;
-  margin-top: var(--space-lg);
+  margin-top: var(--space-sm);
   overflow: hidden;
 }
 .week-triage-progress-bar {
@@ -9938,8 +9940,10 @@ function renderWeeklyTriage(panel) {
 
     const age = Math.floor((Date.now() - new Date(current.createdAt || 0).getTime()) / 86400000);
     const sourceLabel = current.sourceTitle || (current.source === 'recurring' ? 'Recurring' : current.source || '');
-    const meetingDate = current.meetingDate ? new Date(current.meetingDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
-    const meetingTitle = current.meetingTitle ? escapeHtml(current.meetingTitle) : '';
+    const meetingObj = current.meetingId ? state.meetings.find(m => m.id === current.meetingId) : null;
+    const meetingTitle = current.meetingTitle || (meetingObj ? meetingObj.title : '') || '';
+    const meetingDateRaw = current.meetingDate || (meetingObj ? meetingObj.date : '') || '';
+    const meetingDateFmt = meetingDateRaw ? new Date(meetingDateRaw + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
 
     panel.innerHTML = `
       <div class="triage-overlay">
@@ -9951,7 +9955,7 @@ function renderWeeklyTriage(panel) {
           ${current.parentId ? (() => { const p = state.todos.find(t => t.id === current.parentId); return p ? `<div class="week-triage-card-parent">${escapeHtml(p.text)}</div>` : ''; })() : ''}
           <div class="week-triage-card-text">${escapeHtml(current.text)}</div>
           <div class="week-triage-card-meta">
-            ${meetingTitle ? meetingTitle + ' · ' : ''}${meetingDate ? meetingDate + ' · ' : ''}${sourceLabel ? escapeHtml(sourceLabel) + ' · ' : ''}${age}d ago
+            ${meetingTitle ? escapeHtml(meetingTitle) + ' · ' : ''}${meetingDateFmt ? meetingDateFmt + ' · ' : ''}${sourceLabel ? escapeHtml(sourceLabel) + ' · ' : ''}${age}d ago
             ${current.starred ? ' · ★ Starred' : ''}
             ${todoDueTag(current.priority)}
           </div>
@@ -9973,6 +9977,17 @@ function renderWeeklyTriage(panel) {
           <button class="btn-ghost" style="font-size:12px" onclick="weekTriageQueue=[];weeklyTriageStep=3;renderDashboard()">Skip remaining →</button>
         </div>
       </div>`;
+    // Dynamically shrink title font if it exceeds 33vh
+    requestAnimationFrame(() => {
+      const el = panel.querySelector('.week-triage-card-text');
+      if (!el) return;
+      const maxH = window.innerHeight * 0.33;
+      let size = 16;
+      while (el.scrollHeight > maxH && size > 11) {
+        size--;
+        el.style.fontSize = size + 'px';
+      }
+    });
     return true;
 
   } else if (weeklyTriageStep === 3) {
