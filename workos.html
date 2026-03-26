@@ -1234,6 +1234,17 @@ body {
 }
 .settings-card-body { margin-top: var(--space-md); }
 .settings-card-body.hidden { display: none; }
+.settings-summary-box {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  max-height: calc(4 * 1.6em + var(--space-md));
+  overflow-y: auto;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--bg-base);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+}
 .settings-section-title {
   font-size: 15px;
   font-weight: 600;
@@ -14078,13 +14089,16 @@ function settingsProfileHtml() {
   const hasInsights = (state.settings.insightsProfile || '').trim().length > 0;
   const insightsProcessed = hasInsights && hasInsightsRaw;
 
+  const vectorSummary = promoProcessed
+    ? state.vectors.map(v => `- **${v.name}**: ${v.description || ''}`).join('\n')
+    : '';
+
   const promoContent = promoProcessed
     ? `<div id="promoCompactView">
-        <textarea class="form-textarea" style="height:calc(4 * 1.5em + 2 * var(--space-sm));resize:none" readonly>${escapeHtml(state.settings.promotionNotes)}</textarea>
-        <div style="margin-top:var(--space-xs)"><button class="btn-ghost" style="font-size:12px" onclick="document.getElementById('promoCompactView').classList.add('hidden');document.getElementById('promoEditView').classList.remove('hidden')">Edit</button></div>
+        <div class="settings-summary-box">${formatBulletList(vectorSummary)}</div>
+        <div style="margin-top:var(--space-xs)"><button class="btn-ghost" style="font-size:12px" onclick="document.getElementById('promoCompactView').classList.add('hidden');document.getElementById('promoEditView').classList.remove('hidden')">Edit original notes</button></div>
       </div>
       <div id="promoEditView" class="hidden">
-        <div class="form-hint" style="margin-bottom:var(--space-xs)">Original notes</div>
         <textarea class="form-textarea" style="min-height:calc(10 * 1.5em + 2 * var(--space-sm))" id="settingPromotion" placeholder="Paste your rough notes...">${escapeHtml(state.settings.promotionNotes)}</textarea>
         <div class="form-hint" style="margin-top:var(--space-xs)">The AI uses these to connect your daily work to your promotion goals.</div>
       </div>`
@@ -14093,8 +14107,8 @@ function settingsProfileHtml() {
 
   const insightsContent = insightsProcessed
     ? `<div id="insightsCompactView">
-        <textarea class="form-textarea" style="height:calc(4 * 1.5em + 2 * var(--space-sm));resize:none" readonly>${escapeHtml(state.settings.insightsProfile)}</textarea>
-        <div style="margin-top:var(--space-xs)"><button class="btn-ghost" style="font-size:12px" onclick="document.getElementById('insightsCompactView').classList.add('hidden');document.getElementById('insightsEditView').classList.remove('hidden')">Edit</button></div>
+        <div class="settings-summary-box">${formatBulletList(state.settings.insightsProfile)}</div>
+        <div style="margin-top:var(--space-xs)"><button class="btn-ghost" style="font-size:12px" onclick="document.getElementById('insightsCompactView').classList.add('hidden');document.getElementById('insightsEditView').classList.remove('hidden')">Edit original profile</button></div>
       </div>
       <div id="insightsEditView" class="hidden">
         <div class="form-hint" style="margin-bottom:var(--space-xs)">Original profile text</div>
