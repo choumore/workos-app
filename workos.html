@@ -13711,15 +13711,16 @@ function buildMeetingDurationChart(bucketInfo) {
 
 function computeMoodEnergyCorrelation(meetings) {
   const moodScores = { '😊': 5, '🔥': 4, '😐': 3, '😤': 2, '😰': 1, '😴': 1 };
-  // Count meetings per date
+  // Count meetings per date (normalize ISO dates to YYYY-MM-DD)
   const meetingsByDate = {};
-  meetings.forEach(m => { if (m.date) meetingsByDate[m.date] = (meetingsByDate[m.date] || 0) + 1; });
-  // Group journal entries by light (0-1 meetings) vs heavy (2+)
+  meetings.forEach(m => { const d = m.date ? meetingDateStr(m) : ''; if (d) meetingsByDate[d] = (meetingsByDate[d] || 0) + 1; });
+  // Group journal entries by light (0-2 meetings) vs heavy (5+)
   const groups = { light: { energy: [], mood: [] }, heavy: { energy: [], mood: [] } };
   state.entries.forEach(entry => {
     if (!entry.date) return;
     const mc = meetingsByDate[entry.date] || 0;
-    const group = mc <= 1 ? 'light' : 'heavy';
+    const group = mc <= 2 ? 'light' : mc >= 5 ? 'heavy' : null;
+    if (!group) return;
     if (entry.energy) groups[group].energy.push(entry.energy);
     if (entry.mood && moodScores[entry.mood] !== undefined) groups[group].mood.push(moodScores[entry.mood]);
   });
@@ -13761,8 +13762,8 @@ function buildMoodEnergyCorrelation(meetings) {
   return `<div class="mi-section">
     <div class="mi-section-label">Mood &amp; Energy Correlation</div>
     <div class="mi-correlation-row">
-      ${renderCard('Light Days (0–1 meetings)', data.light, '#3aa85c')}
-      ${renderCard('Heavy Days (2+ meetings)', data.heavy, '#c53030')}
+      ${renderCard('Light Days (0–2 meetings)', data.light, '#3aa85c')}
+      ${renderCard('Heavy Days (5+ meetings)', data.heavy, '#c53030')}
     </div>
   </div>`;
 }
