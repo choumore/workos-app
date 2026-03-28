@@ -3133,6 +3133,8 @@ body {
 }
 .btn-reanalyze:hover { color: var(--accent-interactive); border-color: var(--accent-interactive); }
 .btn-reanalyze:disabled { opacity: 0.5; cursor: default; }
+.humanize-link { font-size: 11px; color: var(--text-muted); text-decoration: none; font-weight: 500; cursor: pointer; }
+.humanize-link:hover { color: var(--accent-interactive); }
 .meeting-card-section {
   margin-top: var(--space-lg);
 }
@@ -8213,6 +8215,27 @@ async function callClaude(systemPrompt, userPrompt, maxTokens) {
   return data.choices[0].message.content;
 }
 
+const HUMANIZER_SYSTEM_PROMPT = `You are a writing editor. Your job is to rewrite AI-generated text so it reads as natural, human-written prose. Remove these 25 common AI writing patterns:
+
+CONTENT: 1) Undue significance — remove "pivotal", "testament to", "crucial", "vital" unless truly warranted. 2) Notability emphasis — cut "renowned", "famous", "notable" filler. 3) Superficial analysis — replace vague claims with specifics. 4) Vague attributions — "many believe", "widely regarded" → name the source or cut it. 5) Promotional language — cut "vibrant", "bustling", "nestled", "tapestry". 6) Outdated references — remove "as of [date]", "in recent years".
+
+LANGUAGE: 7) AI vocabulary — replace "delve", "leverage", "facilitate", "foster", "landscape", "realm", "embark", "navigate", "intricate", "nuanced", "multifaceted", "comprehensive", "robust", "synergy", "paradigm", "holistic", "pivotal", "commendable", "noteworthy", "invaluable" with plain words. 8) Copula overuse — vary sentence structure beyond "X is Y". 9) Negative parallelisms — cut "not only...but also", "not just...but". 10) Filler phrases — cut "it is important to note that", "it is worth mentioning that", "it should be noted that". 11) Weasel words — cut "some", "various", "several", "many" when vague.
+
+STYLE: 12) Em dash overuse — replace most em dashes with commas, periods, or parentheses. 13) Rule of three — if three adjectives/items appear together in a pattern, vary it. 14) Semicolon overuse — break into separate sentences. 15) Colon overuse for elaboration — restructure. 16) Exclamation marks — remove unless truly warranted. 17) Sycophantic openers — never start with "Great question!" or "Absolutely!".
+
+COMMUNICATION: 18) Hedging — cut "arguably", "perhaps it could be said". 19) Disclaimers — remove "I'm just an AI" or "I cannot provide personal advice". 20) Over-summarizing — don't restate what was just said. 21) Formulaic transitions — cut "furthermore", "moreover", "additionally". 22) Bolding key terms — remove bold from terms that don't need emphasis. 23) Repetitive structure — vary paragraph/bullet patterns. 24) Outline-like headers — only use headers if the original had them. 25) Generic conclusions — cut "in conclusion", "overall", "in summary" wrap-ups. 26) Causal labels without explanation — "structural", "systemic", "inherent", "fundamental", "organic", "intrinsic", "natural (as cause)" label a cause without stating the mechanism. Replace the label with the actual mechanism, or delete the sentence if it just restates "there is a gap." Test: substitute "because of how X works" — if still vague, the original did no work.
+
+PROCESS:
+1. Scan the text for the 25 patterns above
+2. Rewrite affected sections using plain, direct language
+3. Keep the same meaning, facts, and structure (markdown bold headers, bullets)
+4. Add personality: vary sentence length, use first person where appropriate, be specific not generic
+5. Return ONLY the rewritten text — no commentary, no before/after, no explanations`;
+
+async function humanizeText(text) {
+  return await callClaude(HUMANIZER_SYSTEM_PROMPT, text, 1000);
+}
+
 function buildDailyPrompt(entry) {
   const promo = state.settings.promotionNotes || 'No promotion notes provided yet.';
   // Get entries strictly before this entry's date (not today's date)
@@ -11471,7 +11494,10 @@ function renderLogTab() {
           <div class="history-section-label" style="cursor:pointer" onclick="toggleCoachingNote(this)"><span class="section-emoji">💬</span> Coaching note <span class="reminder-cta"><span class="cta-icon">▾</span> Hide</span></div>
           <div class="history-reflection">
             <div class="ai-text">${formatCoachingNote(entry.aiReflection)}</div>
-            <button class="btn-reanalyze" style="margin-top:var(--space-sm)" onclick="event.stopPropagation();reanalyzeCoaching(${entry.id}, this)">Reanalyze</button>
+            <div style="display:flex;gap:var(--space-sm);margin-top:var(--space-sm)">
+              <button class="btn-reanalyze" onclick="event.stopPropagation();reanalyzeCoaching(${entry.id}, this)">Reanalyze</button>
+              <button class="btn-reanalyze" onclick="event.stopPropagation();humanizeCoachingNote(${entry.id}, this)">Humanize</button>
+            </div>
           </div>` : ''}
       </div>
       ${i < entries.length - 1 ? '<hr class="history-divider">' : ''}
@@ -11812,7 +11838,7 @@ function renderPostSubmit(panel, entry) {
     <div class="card-ai" id="aiReflectionCard">
       <div id="aiReflectionContent">
         ${entry.aiReflection
-          ? `<span class="ai-icon">💬</span><div class="ai-text">${formatCoachingNote(entry.aiReflection)}</div><button class="btn-reanalyze" style="margin-top:var(--space-sm)" onclick="reanalyzeCoaching(${entry.id}, this)">Reanalyze</button>`
+          ? `<span class="ai-icon">💬</span><div class="ai-text">${formatCoachingNote(entry.aiReflection)}</div><div style="display:flex;gap:var(--space-sm);margin-top:var(--space-sm)"><button class="btn-reanalyze" onclick="reanalyzeCoaching(${entry.id}, this)">Reanalyze</button><button class="btn-reanalyze" onclick="humanizeCoachingNote(${entry.id}, this)">Humanize</button></div>`
           : `<span class="ai-icon">💬</span><div class="loading-dots"><span>·</span><span>·</span><span>·</span></div>`
         }
       </div>
@@ -11856,7 +11882,7 @@ async function reanalyzeCoaching(entryId, btn) {
     // Re-render after toast so it stays visible
     const aiContainer = document.getElementById('aiReflectionContent');
     if (aiContainer) {
-      aiContainer.innerHTML = `<span class="ai-icon">💬</span><div class="ai-text">${formatCoachingNote(reflection)}</div><button class="btn-reanalyze" style="margin-top:var(--space-sm)" onclick="reanalyzeCoaching(${entryId}, this)">Reanalyze</button>`;
+      aiContainer.innerHTML = `<span class="ai-icon">💬</span><div class="ai-text">${formatCoachingNote(reflection)}</div><div style="display:flex;gap:var(--space-sm);margin-top:var(--space-sm)"><button class="btn-reanalyze" onclick="reanalyzeCoaching(${entryId}, this)">Reanalyze</button><button class="btn-reanalyze" onclick="humanizeCoachingNote(${entryId}, this)">Humanize</button></div>`;
     } else {
       renderHistory();
     }
@@ -11869,6 +11895,29 @@ async function reanalyzeCoaching(entryId, btn) {
                    e.message === 'no_key' ? 'no API configured' :
                    e.message === 'api_error' ? 'API error' : 'failed — check console';
     showToast('Reanalysis failed: ' + reason);
+  }
+}
+
+async function humanizeCoachingNote(entryId, btn) {
+  const entry = state.entries.find(e => e.id === entryId);
+  if (!entry || !entry.aiReflection) return;
+  const origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Humanizing…';
+  try {
+    entry.aiReflection = await humanizeText(entry.aiReflection);
+    saveState();
+    showToast('Coaching note humanized');
+    const aiContainer = document.getElementById('aiReflectionContent');
+    if (aiContainer) {
+      aiContainer.innerHTML = `<span class="ai-icon">💬</span><div class="ai-text">${formatCoachingNote(entry.aiReflection)}</div><div style="display:flex;gap:var(--space-sm);margin-top:var(--space-sm)"><button class="btn-reanalyze" onclick="reanalyzeCoaching(${entryId}, this)">Reanalyze</button><button class="btn-reanalyze" onclick="humanizeCoachingNote(${entryId}, this)">Humanize</button></div>`;
+    } else {
+      renderHistory();
+    }
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = origText;
+    showToast('Failed to humanize. Check API settings.');
   }
 }
 
@@ -12218,7 +12267,10 @@ function renderHistory() {
         <div class="history-section-label" style="cursor:pointer" onclick="toggleCoachingNote(this)"><span class="section-emoji">💬</span> Coaching note <span class="reminder-cta"><span class="cta-icon">▾</span> Hide</span></div>
         <div class="history-reflection" id="hist-reflection-${i}">
           <div class="ai-text">${formatCoachingNote(entry.aiReflection)}</div>
-          <button class="btn-reanalyze" style="margin-top:var(--space-sm)" onclick="event.stopPropagation();reanalyzeCoaching(${entry.id}, this)">Reanalyze</button>
+          <div style="display:flex;gap:var(--space-sm);margin-top:var(--space-sm)">
+            <button class="btn-reanalyze" onclick="event.stopPropagation();reanalyzeCoaching(${entry.id}, this)">Reanalyze</button>
+            <button class="btn-reanalyze" onclick="event.stopPropagation();humanizeCoachingNote(${entry.id}, this)">Humanize</button>
+          </div>
         </div>` : ''}
     </div>
     ${i < entries.length - 1 ? '<hr class="history-divider">' : ''}
@@ -13023,12 +13075,18 @@ function renderBriefDetail(panel) {
     </div>
 
     <div class="brief-section">
-      <div class="section-header">Patterns</div>
+      <div class="section-header-row">
+        <span class="section-header" style="margin-bottom:0">Patterns</span>
+        <a href="#" class="humanize-link" onclick="event.preventDefault();humanizeBriefSection(${brief.id},'patterns',this)">Humanize</a>
+      </div>
       <div class="card">${formatBriefText(brief.patterns)}</div>
     </div>
 
     <div class="brief-section">
-      <div class="section-header">Vectors</div>
+      <div class="section-header-row">
+        <span class="section-header" style="margin-bottom:0">Vectors</span>
+        <a href="#" class="humanize-link" onclick="event.preventDefault();humanizeBriefSection(${brief.id},'vectorCheckIn',this)">Humanize</a>
+      </div>
       <div class="card">${formatBriefText(brief.vectorCheckIn)}</div>
     </div>
 
@@ -13064,18 +13122,27 @@ function renderBriefDetail(panel) {
     <div class="brief-section">
       <div class="section-header-row">
         <span class="section-header" style="margin-bottom:0">1:1 Prep</span>
-        <button class="btn-icon" onclick="copyPrep()" title="Copy to clipboard">⧉</button>
+        <div style="display:flex;gap:var(--space-sm);align-items:center">
+          <a href="#" class="humanize-link" onclick="event.preventDefault();humanizeBriefSection(${brief.id},'oneOnOnePrep',this)">Humanize</a>
+          <button class="btn-icon" onclick="copyPrep()" title="Copy to clipboard">⧉</button>
+        </div>
       </div>
       <div class="card" id="prepContent">${formatBriefText(brief.oneOnOnePrep)}</div>
     </div>
 
     ${brief.vectorProgress ? `<div class="brief-section">
-      <div class="section-header">Vector Progress</div>
+      <div class="section-header-row">
+        <span class="section-header" style="margin-bottom:0">Vector Progress</span>
+        <a href="#" class="humanize-link" onclick="event.preventDefault();humanizeBriefSection(${brief.id},'vectorProgress',this)">Humanize</a>
+      </div>
       <div class="card">${formatBriefText(brief.vectorProgress)}</div>
     </div>` : ''}
 
     ${brief.openLoopsSummary ? `<div class="brief-section">
-      <div class="section-header">Open Loops</div>
+      <div class="section-header-row">
+        <span class="section-header" style="margin-bottom:0">Open Loops</span>
+        <a href="#" class="humanize-link" onclick="event.preventDefault();humanizeBriefSection(${brief.id},'openLoopsSummary',this)">Humanize</a>
+      </div>
       <div class="card">${formatBriefText(brief.openLoopsSummary)}</div>
     </div>` : ''}
 
@@ -13231,6 +13298,20 @@ async function regenerateBrief(weekOf) {
     showToast('Failed to regenerate brief');
     renderBriefs();
   }
+}
+
+async function humanizeBriefSection(briefId, sectionKey, linkEl) {
+  const brief = state.weeklyBriefs.find(b => b.id === briefId);
+  if (!brief || !brief[sectionKey]) return;
+  if (linkEl) { linkEl.textContent = 'Humanizing…'; linkEl.style.pointerEvents = 'none'; }
+  try {
+    brief[sectionKey] = await humanizeText(brief[sectionKey]);
+    saveState();
+    showToast('Section humanized');
+  } catch (e) {
+    showToast('Failed to humanize. Check API settings.');
+  }
+  renderBriefs();
 }
 
 async function startGenerateBrief() {
@@ -16581,6 +16662,7 @@ function renderVisibDraft(panel) {
            <button class="btn-secondary" onclick="saveVisibDraft()" style="color:var(--text-primary);padding-top:var(--space-md);padding-bottom:var(--space-md)">Save & Log</button>
            <button class="btn-secondary" onclick="toggleVisibDraftEdit()" id="visibDraftEditBtn" style="color:var(--text-primary);padding-top:var(--space-md);padding-bottom:var(--space-md)">Edit</button>
            <button class="btn-secondary" onclick="regenerateVisibDraft()" style="color:var(--text-primary);padding-top:var(--space-md);padding-bottom:var(--space-md)">Regenerate</button>
+           <button class="btn-secondary" id="humanizeVisibBtn" onclick="humanizeVisibDraft()" style="color:var(--text-primary);padding-top:var(--space-md);padding-bottom:var(--space-md)">Humanize</button>
          </div>`
     }`;
 }
@@ -16700,6 +16782,21 @@ async function regenerateVisibDraft() {
   } catch (e) {
     showToast('Failed to regenerate. Check API settings.');
     visibDraftText = '(generation failed — try again)';
+  }
+  renderVisibility();
+}
+
+async function humanizeVisibDraft() {
+  const textarea = document.getElementById('visibDraftTextarea');
+  const currentText = (textarea && textarea.style.display !== 'none') ? textarea.value : visibDraftText;
+  if (!currentText) return;
+  const btn = document.getElementById('humanizeVisibBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Humanizing…'; }
+  try {
+    visibDraftText = await humanizeText(currentText);
+    showToast('Draft humanized');
+  } catch (e) {
+    showToast('Failed to humanize. Check API settings.');
   }
   renderVisibility();
 }
