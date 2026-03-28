@@ -4532,7 +4532,7 @@ body {
    State
    ======================================== */
 let state = {
-  settings: { name: '', role: '', baseUrl: '', projectId: '', apiKey: '', model: 'sonnet', slackWebhook: '', promotionNotes: '', insightsProfile: '', insightsProfileRaw: '', ghToken: '', ghGistId: '', googleClientId: '', meetingsGistId: '', features: { contributions: true, visibility: true, meetings: true, todos: true } },
+  settings: { name: '', role: '', baseUrl: '', projectId: '', apiKey: '', model: 'sonnet', slackWebhook: '', slackToken: '', promotionNotes: '', insightsProfile: '', insightsProfileRaw: '', ghToken: '', ghGistId: '', googleClientId: '', meetingsGistId: '', features: { contributions: true, visibility: true, meetings: true, todos: true } },
   entries: [],
   wins: [],
   weeklyBriefs: [],
@@ -4562,7 +4562,8 @@ let state = {
   dismissedVisibilityKeys: [],
   coachingState: { activeObservations: [], resolvedObservations: [], lastUpdated: null },
   monthlyReflections: {},
-  quarterlyReflections: {}
+  quarterlyReflections: {},
+  slackSyncedTs: []
 };
 
 let logMode = 'form'; // 'form' | 'submitted' | 'intention' | 'editing'
@@ -4626,6 +4627,7 @@ function loadState() {
       state.coachingState = saved.coachingState || { activeObservations: [], resolvedObservations: [], lastUpdated: null };
       state.monthlyReflections = saved.monthlyReflections || {};
       state.quarterlyReflections = saved.quarterlyReflections || {};
+      state.slackSyncedTs = saved.slackSyncedTs || [];
 
       // Migrate old weeklyIntention values from entries
       for (const entry of state.entries) {
@@ -5640,7 +5642,8 @@ async function syncPush() {
       quarterlyReflections: state.quarterlyReflections || {},
       customVisibilityTypes: state.customVisibilityTypes || [],
       pendingVisibility: state.pendingVisibility || [],
-      dismissedVisibilityKeys: state.dismissedVisibilityKeys || []
+      dismissedVisibilityKeys: state.dismissedVisibilityKeys || [],
+      slackSyncedTs: state.slackSyncedTs || []
     };
     const content = JSON.stringify(syncState, null, 2);
     const headers = {
@@ -5758,6 +5761,11 @@ async function syncPull() {
     state.dismissedVisibilityKeys = [...new Set([
       ...(state.dismissedVisibilityKeys || []),
       ...(remote.dismissedVisibilityKeys || [])
+    ])];
+    // Merge Slack synced timestamps: union
+    state.slackSyncedTs = [...new Set([
+      ...(state.slackSyncedTs || []),
+      ...(remote.slackSyncedTs || [])
     ])];
     // Merge deleted meeting IDs from both local and remote
     const remoteDeleted = remote.deletedMeetingIds || [];
@@ -7094,6 +7102,10 @@ function renderTodos() {
     ? `<button class="btn-secondary btn-accent" style="font-size:${isMobile ? '15px' : '12px'};${isMobile ? 'width:100%;padding:var(--space-lg) var(--space-xl);display:flex;justify-content:center;align-items:center' : ''}" onclick="openMobileTriage('inbox')">Triage To-Dos (${items.length})</button>`
     : '';
 
+  const slackSyncBtn = state.settings.slackToken
+    ? `<button class="btn-secondary" style="font-size:12px" onclick="syncSlackReactions()">Sync from Slack</button>`
+    : '';
+
   const emptyMessages = {
     inbox: 'No new action items. Meeting action items will appear here automatically.',
     today: 'No items for today. Move items here from Inbox.',
@@ -7130,7 +7142,7 @@ function renderTodos() {
     <div style="margin-bottom:var(--space-xl)">
       <div class="sub-nav" style="margin-bottom:0">${filterHtml}</div>
       <input type="text" class="todo-search" id="todoSearchInput" placeholder="Search all todos..." value="${escapeHtml(todosSearchQuery)}" oninput="todosSearchQuery=this.value;const _c=this.selectionStart;renderTodos();const _s=document.getElementById('todoSearchInput');_s.focus();_s.setSelectionRange(_c,_c)" onkeydown="if(event.key==='Escape'){todosSearchQuery='';renderTodos()}">
-      ${triageBtnHtml ? `<div style="margin-top:var(--space-md)">${triageBtnHtml}</div>` : ''}
+      ${triageBtnHtml || slackSyncBtn ? `<div style="margin-top:var(--space-md);display:flex;gap:var(--space-sm);flex-wrap:wrap">${triageBtnHtml}${slackSyncBtn}</div>` : ''}
     </div>
     ${todosFilter !== 'done' && todosFilter !== 'deleted' ? `<div class="todo-add-item" style="display:flex;gap:var(--space-sm);align-items:center">
       <input type="text" id="addManualTodoInput" style="flex:1" placeholder="Add a to-do..." onkeydown="if(event.key==='Enter'){addManualTodo();event.preventDefault()}">
@@ -7153,6 +7165,12 @@ function renderTodoItem(todo) {
     sourceClass = 'todo-source';
   } else if (todo.source === 'recurring') {
     sourceLabel = 'Recurring';
+    sourceClick = '';
+    sourceClass = 'todo-source';
+  } else if (todo.source === 'slack') {
+    sourceLabel = todo.slackPermalink
+      ? `<a href="${escapeHtml(todo.slackPermalink)}" target="_blank" style="color:inherit;text-decoration:underline">Slack ${escapeHtml(todo.sourceTitle || '')}</a>`
+      : 'Slack' + (todo.sourceTitle ? ' ' + escapeHtml(todo.sourceTitle) : '');
     sourceClick = '';
     sourceClass = 'todo-source';
   } else if (isManual) {
@@ -10120,7 +10138,7 @@ function renderWeeklyTriage(panel) {
     weeklyTriageStep = 1;
     const itemsHtml = inboxItems.map(t => {
       const age = Math.floor((Date.now() - new Date(t.createdAt || 0).getTime()) / 86400000);
-      const sourceLabel = t.sourceTitle || (t.source === 'recurring' ? 'Recurring' : t.source || '');
+      const sourceLabel = t.source === 'slack' ? ('Slack ' + (t.sourceTitle || '')) : t.sourceTitle || (t.source === 'recurring' ? 'Recurring' : t.source || '');
       const recBadge = t.recurrence
         ? `<button class="btn-secondary" style="font-size:11px;padding:var(--space-xs) var(--space-md);color:var(--accent-interactive)" onclick="event.stopPropagation();toggleTodoRecurrenceMenu('${t.id}', this)">🔄 ${recurrenceLabel(t.recurrence)}</button>`
         : `<button class="btn-secondary" style="font-size:11px;padding:var(--space-xs) var(--space-md);color:var(--text-primary)" onclick="event.stopPropagation();toggleTodoRecurrenceMenu('${t.id}', this)">🔄 Set Recurring</button>`;
@@ -10185,7 +10203,7 @@ function renderWeeklyTriage(panel) {
     const current = state.todos.find(t => t.id === currentId);
     if (!current) { weekTriageIdx++; renderDashboard(); return true; }
 
-    const sourceLabel = current.meetingId ? '' : current.sourceTitle || (current.source === 'recurring' ? 'Recurring' : current.source === 'follow-up' ? 'Follow-up' : current.source === 'subtask' ? 'Subtask' : current.source === 'coaching' ? 'Coaching' : current.source === 'visibility' ? 'Visibility' : current.source === 'manual' ? 'Manually added' : current.source || '');
+    const sourceLabel = current.meetingId ? '' : current.source === 'slack' ? ('Slack ' + (current.sourceTitle || '')) : current.sourceTitle || (current.source === 'recurring' ? 'Recurring' : current.source === 'follow-up' ? 'Follow-up' : current.source === 'subtask' ? 'Subtask' : current.source === 'coaching' ? 'Coaching' : current.source === 'visibility' ? 'Visibility' : current.source === 'manual' ? 'Manually added' : current.source || '');
     const meetingObj = current.meetingId ? state.meetings.find(m => m.id === current.meetingId) : null;
     const meetingTitle = current.meetingTitle || (meetingObj ? meetingObj.title : '') || '';
     const meetingDateRaw = current.meetingDate || (meetingObj ? meetingObj.date : '') || '';
@@ -10589,7 +10607,7 @@ function renderTriageCard() {
   const meetingTitle = item.meetingTitle || (meeting ? meeting.title : '') || '';
   const meetingDateRaw = item.meetingDate || (meeting ? meeting.date : '') || '';
   const meetingDateFmt = meetingDateRaw ? (() => { const d = new Date(meetingDateRaw.length <= 10 ? meetingDateRaw + 'T00:00:00' : meetingDateRaw); return isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); })() : '';
-  const sourceLabel = item.meetingId ? '' : item.sourceTitle || (item.source === 'recurring' ? 'Recurring' : item.source === 'follow-up' ? 'Follow-up' : item.source === 'subtask' ? 'Subtask' : item.source === 'coaching' ? 'Coaching' : item.source === 'visibility' ? 'Visibility' : 'Manually added');
+  const sourceLabel = item.meetingId ? '' : item.source === 'slack' ? ('Slack ' + (item.sourceTitle || '')) : item.sourceTitle || (item.source === 'recurring' ? 'Recurring' : item.source === 'follow-up' ? 'Follow-up' : item.source === 'subtask' ? 'Subtask' : item.source === 'coaching' ? 'Coaching' : item.source === 'visibility' ? 'Visibility' : 'Manually added');
   const recurrenceBtnHtml = item.recurrence
     ? `<button class="btn-secondary" style="color:var(--accent-interactive)" onclick="toggleTriageRecurrenceMenu('${item.id}', this)">🔄 ${recurrenceLabel(item.recurrence)}</button>`
     : `<button class="btn-secondary" style="color:var(--text-primary)" onclick="toggleTriageRecurrenceMenu('${item.id}', this)">🔄 Set Recurring</button>`;
@@ -14448,6 +14466,16 @@ function settingsIntegrationsHtml() {
     </div>
     ${settingsCardWrap('Slack', `
       <div class="form-group">
+        <label class="form-label">Slack User OAuth Token</label>
+        <input class="form-input" id="settingSlackToken" type="password" value="${state.settings.slackToken}" placeholder="xoxp-...">
+        <div class="form-hint">Create a Slack app at <a href="https://api.slack.com/apps" target="_blank">api.slack.com/apps</a> with <code>reactions:read</code>, <code>channels:read</code>, <code>groups:read</code> scopes. Uses User OAuth Token (xoxp-).</div>
+      </div>
+      <div class="form-group" style="display:flex;gap:var(--space-sm);align-items:center;flex-wrap:wrap">
+        <button class="btn-secondary" onclick="testSlackConnection()">Test Connection</button>
+        <button class="btn-secondary" onclick="syncSlackReactions()">Sync :workos: Reactions</button>
+        <div class="api-status" id="slackTokenStatus"></div>
+      </div>
+      <div class="form-group" style="margin-top:var(--space-lg)">
         <label class="form-label">Slack Webhook URL</label>
         <input class="form-input" id="settingSlack" value="${escapeHtml(state.settings.slackWebhook)}" placeholder="https://hooks.slack.com/...">
         <div class="form-hint">Used for posting weekly plans and reports (coming in a future update).</div>
@@ -14548,6 +14576,145 @@ function settingsAboutHtml() {
       <div style="font-size:13px;color:var(--text-secondary);margin-bottom:var(--space-md)">Current WorkOS version: <strong>v${WORKOS_VERSION}</strong></div>
       ${changelogHtml}
     </div>`;
+}
+
+/* ---- Slack Integration ---- */
+const SLACK_PROXY_BASE = 'http://localhost:8090/slack';
+
+async function slackApiFetch(method, params = {}) {
+  const token = state.settings.slackToken;
+  if (!token) throw new Error('No Slack token configured');
+  const qs = new URLSearchParams(params).toString();
+  const url = SLACK_PROXY_BASE + '/' + method + (qs ? '?' + qs : '');
+  const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
+  if (!res.ok) throw new Error('Slack API HTTP ' + res.status);
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || 'Slack API error');
+  return data;
+}
+
+async function testSlackConnection() {
+  const statusEl = document.getElementById('slackTokenStatus');
+  // Save token from input if not yet saved
+  const inputEl = document.getElementById('settingSlackToken');
+  if (inputEl && inputEl.value.trim()) {
+    state.settings.slackToken = inputEl.value.trim();
+    saveState();
+  }
+  if (!state.settings.slackToken) {
+    if (statusEl) { statusEl.className = 'api-status invalid'; statusEl.textContent = 'Enter a Slack token first'; }
+    return;
+  }
+  if (statusEl) { statusEl.className = 'api-status checking'; statusEl.textContent = 'Testing...'; }
+  try {
+    const data = await slackApiFetch('auth.test');
+    if (statusEl) {
+      statusEl.className = 'api-status valid';
+      statusEl.textContent = 'Connected as ' + (data.user || '?') + ' in ' + (data.team || '?');
+    }
+  } catch (e) {
+    if (statusEl) { statusEl.className = 'api-status invalid'; statusEl.textContent = 'Error: ' + e.message; }
+  }
+}
+
+async function syncSlackReactions() {
+  const statusEl = document.getElementById('slackTokenStatus');
+  // Save token from input if not yet saved
+  const inputEl = document.getElementById('settingSlackToken');
+  if (inputEl && inputEl.value.trim()) {
+    state.settings.slackToken = inputEl.value.trim();
+    saveState();
+  }
+  if (!state.settings.slackToken) {
+    showToast('Enter a Slack token first');
+    return;
+  }
+  if (statusEl) { statusEl.className = 'api-status checking'; statusEl.textContent = 'Syncing reactions...'; }
+
+  try {
+    const syncedSet = new Set(state.slackSyncedTs || []);
+    const channelNameCache = new Map();
+    const newTodos = [];
+    let cursor = '';
+
+    // Paginate reactions.list
+    do {
+      const params = { count: '100', full: 'true' };
+      if (cursor) params.cursor = cursor;
+      const data = await slackApiFetch('reactions.list', params);
+      const items = data.items || [];
+
+      for (const item of items) {
+        if (item.type !== 'message' || !item.message) continue;
+        const msg = item.message;
+        const reactions = msg.reactions || [];
+        const hasWorkos = reactions.some(r => r.name === 'workos');
+        if (!hasWorkos) continue;
+
+        const channel = item.channel;
+        const ts = msg.ts;
+        const dedupKey = channel + ':' + ts;
+        if (syncedSet.has(dedupKey)) continue;
+
+        // Enrich: get channel name
+        let channelName = channelNameCache.get(channel);
+        if (!channelName) {
+          try {
+            const info = await slackApiFetch('conversations.info', { channel });
+            channelName = (info.channel && info.channel.name) || channel;
+          } catch (e) {
+            channelName = channel;
+          }
+          channelNameCache.set(channel, channelName);
+        }
+
+        // Enrich: get permalink
+        let permalink = '';
+        try {
+          const pl = await slackApiFetch('chat.getPermalink', { channel, message_ts: ts });
+          permalink = pl.permalink || '';
+        } catch (e) { /* permalink is optional */ }
+
+        const todoText = (msg.text || '').substring(0, 500) || '(no text)';
+        newTodos.push({
+          id: 'slack_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+          text: todoText,
+          status: 'open',
+          priority: 'inbox',
+          source: 'slack',
+          sourceTitle: '#' + channelName,
+          slackChannel: channel,
+          slackChannelName: channelName,
+          slackTs: ts,
+          slackPermalink: permalink,
+          createdAt: new Date().toISOString(),
+          completedAt: null,
+          scheduledFor: null,
+          parentId: null,
+          triagedAt: null,
+          deferCount: 0
+        });
+        syncedSet.add(dedupKey);
+      }
+
+      cursor = (data.response_metadata && data.response_metadata.next_cursor) || '';
+    } while (cursor);
+
+    // Persist
+    state.slackSyncedTs = [...syncedSet];
+    if (newTodos.length > 0) {
+      state.todos.push(...newTodos);
+    }
+    saveState();
+    renderTodos();
+
+    if (statusEl) { statusEl.className = 'api-status valid'; statusEl.textContent = 'Synced'; }
+    showToast(newTodos.length > 0 ? newTodos.length + ' new item' + (newTodos.length !== 1 ? 's' : '') + ' from Slack' : 'Already up to date');
+  } catch (e) {
+    console.error('Slack sync failed:', e);
+    if (statusEl) { statusEl.className = 'api-status invalid'; statusEl.textContent = 'Error: ' + e.message; }
+    showToast('Slack sync failed: ' + e.message);
+  }
 }
 
 function connectGoogleCalendar() {
@@ -14667,6 +14834,9 @@ function attachSettingsListeners() {
     document.querySelectorAll('input[name="model"]').forEach(radio => {
       radio.addEventListener('change', (e) => { state.settings.model = e.target.value; saveState(); });
     });
+
+    const slackTokenEl = document.getElementById('settingSlackToken');
+    if (slackTokenEl) slackTokenEl.addEventListener('blur', (e) => { state.settings.slackToken = e.target.value.trim(); saveState(); });
 
     const ghTokenEl = document.getElementById('settingGhToken');
     if (ghTokenEl) ghTokenEl.addEventListener('blur', (e) => { state.settings.ghToken = e.target.value.trim(); saveState(); });
