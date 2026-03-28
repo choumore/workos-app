@@ -23,7 +23,7 @@ class CORSProxy(http.server.BaseHTTPRequestHandler):
 
     def _proxy_request(self, url, method="GET", body=None, headers=None):
         """Shared proxy logic for both GET and POST."""
-        req = urllib.request.Request(url, data=body, method=method)
+        req = urllib.request.Request(url, data=body if body else None, method=method)
         if headers:
             for k, v in headers.items():
                 req.add_header(k, v)
@@ -79,7 +79,7 @@ class CORSProxy(http.server.BaseHTTPRequestHandler):
         self._proxy_request(url, method="POST", body=body, headers=fwd)
 
     def log_message(self, fmt, *args):
-        print(f"[proxy] {args[0]}")
+        print(f"[proxy] {fmt % args}")
 
 if __name__ == "__main__":
     server = http.server.HTTPServer(("127.0.0.1", PORT), CORSProxy)
