@@ -7375,7 +7375,6 @@ function toggleTodo(id) {
       }
     }
     saveState();
-    renderTodos();
     showFollowUpPrompt(id, 'todos');
   }
 }
@@ -7400,19 +7399,33 @@ function showFollowUpPrompt(todoId, context) {
     depth++;
   }
 
-  const containerId = context === 'todos' ? `todo-item-${todoId}` : `focus-item-${todoId}`;
-  const container = document.getElementById(containerId) || document.querySelector(`[data-todo-id="${todoId}"]`);
-  if (!container) return;
+  // Re-render first so the list reflects the completed state
+  if (context === 'todos') renderTodos();
+  else renderDashboard();
 
   // Remove any existing follow-up prompt
   const existing = document.getElementById('followUpPrompt');
   if (existing) existing.remove();
 
+  // Try to find the completed todo's DOM element
+  let container = document.querySelector(`[data-todo-id="${todoId}"]`);
+
+  // If the todo is no longer visible (filtered out), prepend to the todo list
+  let prependMode = false;
+  if (!container) {
+    const todoList = context === 'todos'
+      ? document.querySelector('#panel-todos .todo-list') || document.getElementById('panel-todos')
+      : document.querySelector('#panel-dashboard .focus-list') || document.getElementById('panel-dashboard');
+    if (!todoList) return;
+    container = todoList;
+    prependMode = true;
+  }
+
   const prompt = document.createElement('div');
   prompt.id = 'followUpPrompt';
   prompt.className = 'follow-up-prompt';
   prompt.innerHTML = `
-    <div class="follow-up-header">+ Follow up?${depth >= 3 ? ' <span style="color:var(--text-muted);font-size:11px">(chain depth: ' + depth + ')</span>' : ''}</div>
+    <div class="follow-up-header">${prependMode ? `<span style="font-size:12px;color:var(--text-muted)">✓ ${escapeHtml(todo.text.substring(0, 60))}</span><br>` : ''}+ Follow up?${depth >= 3 ? ' <span style="color:var(--text-muted);font-size:11px">(chain depth: ' + depth + ')</span>' : ''}</div>
     <input class="form-input follow-up-input" id="followUpText" placeholder="What's the next step?">
     <div class="follow-up-schedule">
       <button class="follow-up-when" data-days="0">Today</button>
@@ -7421,7 +7434,12 @@ function showFollowUpPrompt(todoId, context) {
       <button class="follow-up-when" data-days="7">1 week</button>
       <button class="btn-secondary follow-up-create" onclick="createFollowUp('${todoId}')">Create</button>
     </div>`;
-  container.after(prompt);
+
+  if (prependMode) {
+    container.prepend(prompt);
+  } else {
+    container.after(prompt);
+  }
 
   // Wire up schedule buttons
   prompt.querySelectorAll('.follow-up-when').forEach(btn => {
@@ -7433,12 +7451,14 @@ function showFollowUpPrompt(todoId, context) {
 
   const input = document.getElementById('followUpText');
   input.focus();
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') createFollowUp(todoId); if (e.key === 'Escape') prompt.remove(); });
-
-  // Auto-dismiss after 8 seconds of no interaction
-  let dismissTimer = setTimeout(() => prompt.remove(), 8000);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') createFollowUp(todoId); if (e.key === 'Escape') { prompt.remove(); } });
+  // Also listen for focus/input to reset the dismiss timer
+  let dismissTimer = setTimeout(() => { prompt.remove(); }, 8000);
+  const resetTimer = () => { clearTimeout(dismissTimer); dismissTimer = setTimeout(() => { prompt.remove(); }, 8000); };
   prompt.addEventListener('mouseenter', () => clearTimeout(dismissTimer));
-  prompt.addEventListener('mouseleave', () => { dismissTimer = setTimeout(() => prompt.remove(), 5000); });
+  prompt.addEventListener('mouseleave', () => { dismissTimer = setTimeout(() => { prompt.remove(); }, 5000); });
+  input.addEventListener('input', resetTimer);
+  input.addEventListener('focus', resetTimer);
 }
 
 function createFollowUp(parentId) {
@@ -7467,6 +7487,7 @@ function createFollowUp(parentId) {
   saveState();
 
   if (prompt) prompt.remove();
+  renderTodos();
   showToast('Follow-up created' + (scheduledFor ? ' — scheduled for ' + scheduledFor : ''));
 }
 
@@ -10838,7 +10859,6 @@ function toggleFocusTodo(todoId) {
       }
     }
     saveState();
-    renderDashboard();
     showFollowUpPrompt(todoId, 'focus');
   }
 }
