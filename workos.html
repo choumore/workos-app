@@ -4504,6 +4504,40 @@ body {
   cursor: pointer;
 }
 .todo-hint:hover { color: var(--accent); }
+
+/* Chat */
+.chat-container { display: flex; flex-direction: column; height: calc(100vh - 120px); }
+.chat-messages { flex: 1; overflow-y: auto; padding: var(--space-md); display: flex; flex-direction: column; gap: var(--space-sm); }
+.chat-msg { display: flex; gap: var(--space-sm); }
+.chat-msg-user { justify-content: flex-end; }
+.chat-msg-assistant { justify-content: flex-start; }
+.chat-bubble { max-width: 85%; padding: var(--space-sm) var(--space-md); border-radius: 12px; font-size: 13px; line-height: 1.5; word-wrap: break-word; }
+.chat-bubble p { margin: 0 0 var(--space-xs) 0; }
+.chat-bubble p:last-child { margin-bottom: 0; }
+.chat-bubble ul.history-bullets { margin: var(--space-xs) 0; padding-left: 1.2em; }
+.chat-msg-user .chat-bubble { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+.chat-msg-assistant .chat-bubble { background: var(--bg-card); border: 1px solid var(--border-default); border-bottom-left-radius: 4px; }
+.chat-actions { display: flex; gap: var(--space-xs); margin-top: 4px; padding-left: var(--space-xs); }
+.chat-actions button { font-size: 11px; color: var(--text-muted); background: none; border: none; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+.chat-actions button:hover { color: var(--accent); background: var(--bg-primary); }
+.chat-input-bar { display: flex; gap: var(--space-sm); padding: var(--space-md); border-top: 1px solid var(--border-default); background: var(--bg-primary); align-items: flex-end; }
+.chat-input-bar textarea { flex: 1; resize: none; border: 1px solid var(--border-default); border-radius: 8px; padding: var(--space-sm) var(--space-md); font-size: 13px; font-family: inherit; background: var(--bg-card); color: var(--text-primary); min-height: 40px; max-height: 120px; line-height: 1.4; }
+.chat-input-bar textarea:focus { outline: none; border-color: var(--accent); }
+.chat-input-bar button { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 8px 16px; font-size: 13px; cursor: pointer; white-space: nowrap; height: 40px; }
+.chat-input-bar button:hover { opacity: 0.9; }
+.chat-input-bar button:disabled { opacity: 0.5; cursor: not-allowed; }
+.chat-quick-prompts { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--space-lg); text-align: center; }
+.chat-quick-prompts h2 { font-size: 20px; font-weight: 600; margin: 0 0 var(--space-xs) 0; }
+.chat-quick-prompts p { color: var(--text-muted); font-size: 13px; margin: 0 0 var(--space-lg) 0; }
+.chat-prompt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-sm); max-width: 500px; width: 100%; }
+.chat-prompt-chip { background: var(--bg-card); border: 1px solid var(--border-default); border-radius: 8px; padding: var(--space-sm) var(--space-md); font-size: 13px; cursor: pointer; text-align: left; color: var(--text-primary); transition: border-color 0.15s; }
+.chat-prompt-chip:hover { border-color: var(--accent); color: var(--accent); }
+.chat-typing { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm) var(--space-md); }
+.chat-typing .loading-dots { font-size: 16px; }
+@media (max-width: 600px) {
+  .chat-prompt-grid { grid-template-columns: 1fr; }
+  .chat-bubble { max-width: 92%; }
+}
 </style>
 </head>
 <body>
@@ -4522,6 +4556,7 @@ body {
   <div id="panel-visibility" class="panel"></div>
   <div id="panel-meetings" class="panel"></div>
   <div id="panel-todos" class="panel"></div>
+  <div id="panel-chat" class="panel"></div>
   <div id="panel-settings" class="panel"></div>
 </div>
 
@@ -4589,6 +4624,8 @@ let todosFilter = 'inbox'; // 'inbox' | 'today' | 'tomorrow' | 'this-week' | 'ba
 let todosAgeFilter = 'all'; // 'all' | '1d' | '1w' | '2w' | '1m'
 let todosSearchQuery = '';
 let newTodoRecurrence = null;
+let chatMessages = []; // { role, content, timestamp } — ephemeral, not persisted
+let chatLoading = false;
 
 function loadState() {
   try {
@@ -7050,6 +7087,173 @@ function getTodoCounts() {
   };
 }
 
+/* ========================================
+   Career Chat — Render + Actions
+   ======================================== */
+
+function renderChat() {
+  const panel = document.getElementById('panel-chat');
+  if (!panel) return;
+
+  const quickPrompts = [
+    'What should I focus on this week?',
+    'Draft a visibility post about my recent work',
+    'What patterns do you see in my journal?',
+    'Generate my promotion narrative',
+    'What feedback have I received recently?',
+    'What vectors need the most attention?'
+  ];
+
+  if (chatMessages.length === 0 && !chatLoading) {
+    // Empty state
+    panel.innerHTML = `<div class="chat-container">
+      <div class="chat-quick-prompts">
+        <h2>Career Chat</h2>
+        <p>Ask anything about your work, vectors, feedback, or career trajectory.</p>
+        <div class="chat-prompt-grid">
+          ${quickPrompts.map(p => `<button class="chat-prompt-chip" onclick="sendChatFromPrompt(this.textContent)">${escapeHtml(p)}</button>`).join('')}
+        </div>
+      </div>
+      <div class="chat-input-bar">
+        <textarea placeholder="Ask about your career, vectors, wins, meetings..." rows="1" onkeydown="handleChatKeydown(event)" oninput="autoResizeChatInput(this)" id="chatInput"></textarea>
+        <button onclick="sendChatMessage()" id="chatSendBtn">Send</button>
+      </div>
+    </div>`;
+    return;
+  }
+
+  // Conversation mode
+  const messagesHtml = chatMessages.map((m, idx) => {
+    if (m.role === 'user') {
+      return `<div class="chat-msg chat-msg-user">
+        <div class="chat-bubble">${escapeHtml(m.content)}</div>
+      </div>`;
+    } else {
+      return `<div class="chat-msg chat-msg-assistant">
+        <div>
+          <div class="chat-bubble">${formatBulletList(m.content)}</div>
+          <div class="chat-actions">
+            <button onclick="saveChatInsight(${idx})">Save Insight</button>
+            <button onclick="copyChatMessage(${idx})">Copy</button>
+          </div>
+        </div>
+      </div>`;
+    }
+  }).join('');
+
+  const typingHtml = chatLoading ? `<div class="chat-msg chat-msg-assistant">
+    <div class="chat-typing"><div class="loading-dots"><span>.</span><span>.</span><span>.</span></div></div>
+  </div>` : '';
+
+  panel.innerHTML = `<div class="chat-container">
+    <div class="chat-messages" id="chatMessagesScroll">
+      ${messagesHtml}
+      ${typingHtml}
+    </div>
+    <div class="chat-input-bar">
+      <textarea placeholder="Follow up..." rows="1" onkeydown="handleChatKeydown(event)" oninput="autoResizeChatInput(this)" id="chatInput"${chatLoading ? ' disabled' : ''}></textarea>
+      <button onclick="sendChatMessage()" id="chatSendBtn"${chatLoading ? ' disabled' : ''}>Send</button>
+    </div>
+  </div>`;
+
+  // Auto-scroll to bottom
+  const scrollEl = document.getElementById('chatMessagesScroll');
+  if (scrollEl) scrollEl.scrollTop = scrollEl.scrollHeight;
+}
+
+async function sendChatMessage() {
+  const input = document.getElementById('chatInput');
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text || chatLoading) return;
+
+  chatMessages.push({ role: 'user', content: text, timestamp: Date.now() });
+  chatLoading = true;
+  renderChat();
+
+  try {
+    const systemPrompt = buildChatSystemPrompt();
+    // Build API messages: copy chat history, inject Tier 2 context into last user message
+    const tier2 = buildChatTier2Context(text);
+    const apiMessages = chatMessages.map((m, i) => {
+      if (i === chatMessages.length - 1 && m.role === 'user' && tier2) {
+        return { role: m.role, content: m.content + tier2 };
+      }
+      return { role: m.role, content: m.content };
+    });
+
+    const response = await callClaudeChat(systemPrompt, apiMessages, 2000);
+    chatMessages.push({ role: 'assistant', content: response, timestamp: Date.now() });
+  } catch (err) {
+    const errorMessages = {
+      no_key: 'No API key configured. Go to Settings → Integrations to set up your API connection.',
+      invalid_key: 'API key is invalid or expired. Check Settings → Integrations.',
+      rate_limited: 'Rate limited — wait a moment and try again.'
+    };
+    const errorText = errorMessages[err.message] || ('Something went wrong: ' + err.message);
+    chatMessages.push({ role: 'assistant', content: errorText, timestamp: Date.now() });
+  }
+
+  chatLoading = false;
+  renderChat();
+}
+
+function sendChatFromPrompt(text) {
+  const input = document.getElementById('chatInput');
+  if (input) input.value = text;
+  sendChatMessage();
+}
+
+function handleChatKeydown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendChatMessage();
+  }
+}
+
+function autoResizeChatInput(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function saveChatInsight(msgIdx) {
+  const msg = chatMessages[msgIdx];
+  if (!msg || msg.role !== 'assistant') return;
+
+  const cs = state.coachingState;
+  cs.activeObservations.push({
+    id: 'obs-' + Date.now(),
+    topic: msg.content.substring(0, 150),
+    firstSurfaced: new Date().toISOString().split('T')[0],
+    lastSurfaced: new Date().toISOString().split('T')[0],
+    timesShown: 1,
+    evidence: [],
+    status: 'active',
+    source: 'chat'
+  });
+
+  // Cap at 10 active
+  if (cs.activeObservations.length > 10) {
+    const oldest = cs.activeObservations.sort((a, b) => a.timesShown - b.timesShown)[0];
+    cs.activeObservations = cs.activeObservations.filter(o => o.id !== oldest.id);
+    cs.resolvedObservations.push({ ...oldest, status: 'expired' });
+  }
+
+  cs.lastUpdated = new Date().toISOString();
+  saveState();
+  showToast('Insight saved to coaching observations');
+}
+
+function copyChatMessage(msgIdx) {
+  const msg = chatMessages[msgIdx];
+  if (!msg) return;
+  navigator.clipboard.writeText(msg.content).then(() => {
+    showToast('Copied to clipboard');
+  }).catch(() => {
+    showToast('Failed to copy');
+  });
+}
+
 function renderTodos() {
   const panel = document.getElementById('panel-todos');
   if (!panel) return;
@@ -7997,6 +8201,7 @@ function renderTabNav() {
   const f = state.settings.features || {};
   const tabs = [
     { id: 'dashboard', label: 'Dashboard' },
+    { id: 'chat', label: 'Chat' },
     { id: 'log', label: 'Log' },
     { id: 'briefs', label: 'Briefs' },
     f.todos !== false ? { id: 'todos', label: 'To-Dos' } : null,
@@ -8038,6 +8243,7 @@ function switchTab(tabName) {
   if (tabName === 'log') renderLogTab();
   if (tabName === 'meetings') renderMeetings();
   if (tabName === 'todos') renderTodos();
+  if (tabName === 'chat') renderChat();
   if (tabName === 'settings') renderSettings();
 }
 
@@ -8231,6 +8437,223 @@ async function callClaude(systemPrompt, userPrompt, maxTokens) {
 
   const data = await res.json();
   return data.choices[0].message.content;
+}
+
+async function callClaudeChat(systemPrompt, messages, maxTokens) {
+  if (!state.settings.baseUrl) throw new Error('no_key');
+
+  const model = state.settings.model === 'opus' ? 'claude-opus-4-6' : 'claude-sonnet-4-6';
+  const baseUrl = state.settings.baseUrl.replace(/\/+$/, '');
+
+  const headers = { 'Content-Type': 'application/json' };
+  if (state.settings.projectId) {
+    headers['x-netflix-copilot-project-id'] = state.settings.projectId;
+  }
+  if (state.settings.apiKey) {
+    headers['Authorization'] = 'Bearer ' + state.settings.apiKey;
+  }
+
+  const res = await fetch(baseUrl + '/v1/chat/completions', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      model,
+      max_tokens: maxTokens,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...messages
+      ]
+    })
+  });
+
+  if (!res.ok) {
+    if (res.status === 401 || res.status === 403) throw new Error('invalid_key');
+    if (res.status === 429) throw new Error('rate_limited');
+    let detail = '';
+    try { const errBody = await res.text(); detail = errBody.substring(0, 500); } catch (_) {}
+    console.error('API error:', res.status, detail);
+    throw new Error('api_error: ' + res.status + ' ' + detail);
+  }
+
+  const data = await res.json();
+  return data.choices[0].message.content;
+}
+
+/* ========================================
+   Career Chat — System Prompt + Context
+   ======================================== */
+
+function buildChatSystemPrompt() {
+  const name = state.settings.name || 'the user';
+  const today = new Date().toISOString().split('T')[0];
+  const promo = state.settings.promotionNotes || 'No promotion notes set.';
+
+  // Vector scores with detail
+  let vectorBlock = '';
+  if (state.vectors && state.vectors.length > 0) {
+    const lines = state.vectors.map(v => {
+      const sc = state.vectorScoreCache[v.id] || {};
+      const stale = sc.daysSinceLast >= 0 ? `last ${sc.daysSinceLast}d ago` : 'never';
+      return `- ${v.name}: ${sc.tier || 'No evidence'} (score ${sc.score || 0}, ${sc.winCount || 0} wins, ${sc.meetingSignalCount || 0} meeting signals, ${sc.visibilityCount || 0} visibility posts) ${stale}`;
+    }).join('\n');
+    vectorBlock = `\n<vectors>\n${lines}\n</vectors>`;
+  }
+
+  // Active coaching observations
+  let coachingBlock = '';
+  const escalated = getEscalatedObservations();
+  if (escalated.length > 0) {
+    const lines = escalated.map(o => `- [L${o.escalationLevel}] "${o.topic}" (surfaced ${o.timesShown}x)`).join('\n');
+    coachingBlock = `\n<coaching_observations>\n${lines}\n</coaching_observations>`;
+  }
+
+  // Open loops (top 8)
+  let loopsBlock = '';
+  const loops = getComputedOpenLoops();
+  if (loops.length > 0) {
+    const lines = loops.slice(0, 8).map(l => `- ${l.description} (${l.ageDays}d old, L${l.escalationLevel})`).join('\n');
+    loopsBlock = `\n<open_loops>\n${lines}\n</open_loops>`;
+  }
+
+  // Insights profile
+  const insightsBlock = state.settings.insightsProfile
+    ? `\n<personality_profile>\n${state.settings.insightsProfile}\n</personality_profile>`
+    : '';
+
+  // Recent entries (last 5, compressed)
+  const recentEntries = (state.entries || []).sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 5);
+  let entriesBlock = '';
+  if (recentEntries.length > 0) {
+    const lines = recentEntries.map(e => `[${e.date}] E:${e.energy || '?'}/10 ${e.mood || ''} — ${(e.workDone || '').substring(0, 100)}`).join('\n');
+    entriesBlock = `\n<recent_entries>\n${lines}\n</recent_entries>`;
+  }
+
+  // Key people from meeting preps
+  const allStakeholders = (state.meetingPreps || []).flatMap(p => p.stakeholders || []);
+  const uniquePeople = [...new Map(allStakeholders.map(s => [s.name.toLowerCase(), s])).values()];
+  let peopleBlock = '';
+  if (uniquePeople.length > 0) {
+    const lines = uniquePeople.slice(0, 15).map(s => `- ${s.name} (${s.role})`).join('\n');
+    peopleBlock = `\n<key_people>\n${lines}\n</key_people>`;
+  }
+
+  return `You are ${name}'s career companion in WorkOS. Today is ${today}.
+
+You are opinionated, direct, and evidence-backed. You push back when something doesn't add up. You cite specific dates, entries, and data points — never be generic. When drafting anything (visibility posts, narratives, meeting prep), always write in first person as ${name}.
+
+You have full context about ${name}'s career trajectory:
+
+<promotion_context>
+${promo}
+</promotion_context>
+
+<snapshot>
+${state.compressedSnapshot || 'No snapshot available.'}
+</snapshot>
+${vectorBlock}${coachingBlock}${loopsBlock}${insightsBlock}${entriesBlock}${peopleBlock}
+
+Guidelines:
+- Be concise and direct. No preamble or sign-offs.
+- Cite specific evidence (dates, entries, scores) when making claims.
+- Push back if the user is avoiding something the data shows.
+- When generating artifacts (visibility posts, narratives), make them ready to use — not templates.
+- Use markdown formatting: **bold** for emphasis, bullet lists for structure.
+- If asked about a vector, reference its tier, score, and staleness.
+- If asked about a person, reference past meetings and interactions.`;
+}
+
+function buildChatTier2Context(userMessage) {
+  const msg = userMessage.toLowerCase();
+  let extra = [];
+
+  // Feedback / meeting feedback
+  if (msg.includes('feedback')) {
+    const meetings = (state.meetings || []).filter(m => m.feedback).sort((a, b) => (meetingDateStr(b)).localeCompare(meetingDateStr(a))).slice(0, 10);
+    if (meetings.length > 0) {
+      extra.push('<meeting_feedback>\n' + meetings.map(m => `[${meetingDateStr(m)}] ${m.title}: ${m.feedback}`).join('\n') + '\n</meeting_feedback>');
+    }
+  }
+
+  // Person mentioned
+  const person = findMentionedPerson(msg);
+  if (person) {
+    const meetings = (state.meetings || []).filter(m => {
+      const prep = (state.meetingPreps || []).find(p => p.meetingId === m.id);
+      if (!prep) return false;
+      return (prep.stakeholders || []).some(s => s.name.toLowerCase().includes(person.toLowerCase()));
+    }).sort((a, b) => (meetingDateStr(b)).localeCompare(meetingDateStr(a))).slice(0, 8);
+    if (meetings.length > 0) {
+      extra.push(`<meetings_with_${person.replace(/\s+/g, '_')}>\n` + meetings.map(m => `[${meetingDateStr(m)}] ${m.title}${m.notes ? ': ' + m.notes.substring(0, 150) : ''}`).join('\n') + `\n</meetings_with_${person.replace(/\s+/g, '_')}>`);
+    }
+  }
+
+  // Vector / progress / promotion
+  if (msg.includes('vector') || msg.includes('progress') || msg.includes('promotion')) {
+    const evidenceLines = [];
+    for (const v of (state.vectors || [])) {
+      const wins = (state.wins || []).filter(w => w.status === 'confirmed' && (w.vectors || []).includes(v.id)).slice(0, 3);
+      if (wins.length > 0) {
+        evidenceLines.push(`${v.name}: ${wins.map(w => `"${w.description}" (${w.date})`).join('; ')}`);
+      }
+    }
+    if (evidenceLines.length > 0) {
+      extra.push('<vector_evidence>\n' + evidenceLines.join('\n') + '\n</vector_evidence>');
+    }
+  }
+
+  // Win / achievement
+  if (msg.includes('win') || msg.includes('achievement')) {
+    const wins = (state.wins || []).filter(w => w.status === 'confirmed').sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 15);
+    if (wins.length > 0) {
+      extra.push('<confirmed_wins>\n' + wins.map(w => `[${w.date}] ${w.description}`).join('\n') + '\n</confirmed_wins>');
+    }
+  }
+
+  // Visibility / post / draft
+  if (msg.includes('visibility') || msg.includes('post') || msg.includes('draft')) {
+    const vis = (state.visibilityActivities || []).sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 10);
+    if (vis.length > 0) {
+      extra.push('<visibility_history>\n' + vis.map(v => `[${v.date}] ${v.type}: ${(v.description || '').substring(0, 100)}`).join('\n') + '\n</visibility_history>');
+    }
+  }
+
+  // Todo / focus / week
+  if (msg.includes('todo') || msg.includes('focus') || msg.includes('week')) {
+    const todos = (state.todos || []).filter(t => t.status !== 'done').sort((a, b) => (a.priority || 99) - (b.priority || 99)).slice(0, 15);
+    if (todos.length > 0) {
+      extra.push('<open_todos>\n' + todos.map(t => `- [P${t.priority || '?'}] ${t.description}${t.dueDate ? ' (due ' + t.dueDate + ')' : ''}`).join('\n') + '\n</open_todos>');
+    }
+  }
+
+  // Meeting / 1:1
+  if (msg.includes('meeting') || msg.includes('1:1') || msg.includes('one on one')) {
+    const meetings = (state.meetings || []).sort((a, b) => (meetingDateStr(b)).localeCompare(meetingDateStr(a))).slice(0, 10);
+    if (meetings.length > 0) {
+      extra.push('<recent_meetings>\n' + meetings.map(m => `[${meetingDateStr(m)}] ${m.title}${m.notes ? ': ' + m.notes.substring(0, 100) : ''}`).join('\n') + '\n</recent_meetings>');
+    }
+  }
+
+  // Narrative / promotion case
+  if (msg.includes('narrative') || msg.includes('promotion case')) {
+    const reflections = Object.entries(state.monthlyReflections || {}).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 6);
+    if (reflections.length > 0) {
+      extra.push('<monthly_reflections>\n' + reflections.map(([month, r]) => `[${month}] ${(r.summary || r.content || '').substring(0, 200)}`).join('\n') + '\n</monthly_reflections>');
+    }
+  }
+
+  return extra.length > 0 ? '\n\n[Additional context for this message]\n' + extra.join('\n\n') : '';
+}
+
+function findMentionedPerson(msg) {
+  const allStakeholders = (state.meetingPreps || []).flatMap(p => p.stakeholders || []);
+  const uniqueNames = [...new Set(allStakeholders.map(s => s.name.trim()))];
+  for (const name of uniqueNames) {
+    if (msg.includes(name.toLowerCase())) return name;
+    // Also check first name only
+    const firstName = name.split(' ')[0];
+    if (firstName.length > 2 && msg.includes(firstName.toLowerCase())) return name;
+  }
+  return null;
 }
 
 const HUMANIZER_SYSTEM_PROMPT = `You are a writing editor. Your job is to rewrite AI-generated text so it reads as natural, human-written prose. Remove these 25 common AI writing patterns:
