@@ -4548,7 +4548,7 @@ body {
 .usage-filter-btn { padding: 4px 12px; border-radius: 999px; border: 1px solid var(--border-default); background: transparent; color: var(--text-muted); font-size: 12px; cursor: pointer; transition: all .15s; }
 .usage-filter-btn:hover { border-color: var(--accent-500); color: var(--text-primary); }
 .usage-filter-btn.active { background: var(--accent-500); color: #fff; border-color: var(--accent-500); }
-.usage-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-sm); margin-bottom: var(--space-lg); }
+.usage-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-sm); margin-bottom: var(--space-lg); }
 .usage-stat { background: var(--surface-card); border: 1px solid var(--border-default); border-radius: var(--radius-sm); padding: var(--space-sm) var(--space-md); text-align: center; }
 .usage-stat-value { font-size: 20px; font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; }
 .usage-stat-label { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
@@ -4558,7 +4558,7 @@ body {
 .usage-table th:not(:first-child), .usage-table td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
 .usage-table tr:last-child td { border-bottom: none; }
 .usage-empty { text-align: center; color: var(--text-muted); padding: var(--space-xl) 0; font-size: 13px; }
-@media (max-width: 600px) { .usage-summary { grid-template-columns: 1fr; } .usage-modal-body { padding: var(--space-md); } }
+@media (max-width: 600px) { .usage-summary { grid-template-columns: repeat(2, 1fr); } .usage-modal-body { padding: var(--space-md); } }
 </style>
 </head>
 <body>
@@ -8452,6 +8452,27 @@ function logApiUsage(featureLabel, model, usage) {
   } catch (_) {}
 }
 
+function logApiError(featureLabel, model, errorType) {
+  if (!featureLabel) return;
+  try {
+    state.apiUsageLog.push({
+      ts: Date.now(),
+      feature: featureLabel,
+      model: model || 'unknown',
+      error: true,
+      errorType: errorType || 'unknown',
+      prompt_tokens: 0,
+      completion_tokens: 0,
+      total_tokens: 0,
+      cost: 0
+    });
+    if (state.apiUsageLog.length > 500) {
+      state.apiUsageLog = state.apiUsageLog.slice(-500);
+    }
+    try { saveState(); } catch (_) {}
+  } catch (_) {}
+}
+
 async function callClaude(systemPrompt, userPrompt, maxTokens, featureLabel) {
   if (!state.settings.baseUrl) throw new Error('no_key');
 
@@ -8480,8 +8501,10 @@ async function callClaude(systemPrompt, userPrompt, maxTokens, featureLabel) {
   });
 
   if (!res.ok) {
-    if (res.status === 401 || res.status === 403) throw new Error('invalid_key');
-    if (res.status === 429) throw new Error('rate_limited');
+    const errType = (res.status === 401 || res.status === 403) ? 'invalid_key' : res.status === 429 ? 'rate_limited' : 'api_error';
+    logApiError(featureLabel, model, errType);
+    if (errType === 'invalid_key') throw new Error('invalid_key');
+    if (errType === 'rate_limited') throw new Error('rate_limited');
     let detail = '';
     try { const errBody = await res.text(); detail = errBody.substring(0, 500); } catch (_) {}
     console.error('API error:', res.status, detail);
@@ -8521,8 +8544,10 @@ async function callClaudeChat(systemPrompt, messages, maxTokens, featureLabel) {
   });
 
   if (!res.ok) {
-    if (res.status === 401 || res.status === 403) throw new Error('invalid_key');
-    if (res.status === 429) throw new Error('rate_limited');
+    const errType = (res.status === 401 || res.status === 403) ? 'invalid_key' : res.status === 429 ? 'rate_limited' : 'api_error';
+    logApiError(featureLabel, model, errType);
+    if (errType === 'invalid_key') throw new Error('invalid_key');
+    if (errType === 'rate_limited') throw new Error('rate_limited');
     let detail = '';
     try { const errBody = await res.text(); detail = errBody.substring(0, 500); } catch (_) {}
     console.error('API error:', res.status, detail);
@@ -15510,34 +15535,42 @@ function showApiUsageModal() {
     const totalCalls = filtered.length;
     const totalTokens = filtered.reduce((s, e) => s + (e.total_tokens || 0), 0);
     const totalCost = filtered.reduce((s, e) => s + (e.cost || 0), 0);
+    const totalErrors = filtered.filter(e => e.error).length;
+    const errorRate = totalCalls > 0 ? Math.round(totalErrors / totalCalls * 100) : 0;
 
     // Group by feature
     const byFeature = {};
     for (const e of filtered) {
       const f = e.feature || 'Unknown';
-      if (!byFeature[f]) byFeature[f] = { calls: 0, input: 0, output: 0, total: 0, cost: 0 };
+      if (!byFeature[f]) byFeature[f] = { calls: 0, errors: 0, input: 0, output: 0, total: 0, cost: 0 };
       byFeature[f].calls++;
+      if (e.error) byFeature[f].errors++;
       byFeature[f].input += e.prompt_tokens || 0;
       byFeature[f].output += e.completion_tokens || 0;
       byFeature[f].total += e.total_tokens || 0;
       byFeature[f].cost += e.cost || 0;
     }
-    const sorted = Object.entries(byFeature).sort((a, b) => b[1].cost - a[1].cost);
+    const sorted = Object.entries(byFeature).sort((a, b) => b[1].total - a[1].total);
 
     let tableHtml = '';
     if (sorted.length === 0) {
       tableHtml = '<div class="usage-empty">No API calls in this period</div>';
     } else {
       tableHtml = `<table class="usage-table">
-        <thead><tr><th>Feature</th><th>Calls</th><th>Input</th><th>Output</th><th>Total</th><th>Cost</th></tr></thead>
-        <tbody>${sorted.map(([name, d]) => `<tr>
+        <thead><tr><th>Feature</th><th>Calls</th><th>Errors</th><th>Input</th><th>Output</th><th>Total</th><th>Cost</th></tr></thead>
+        <tbody>${sorted.map(([name, d]) => {
+          const errPct = d.calls > 0 && d.errors > 0 ? ` (${Math.round(d.errors / d.calls * 100)}%)` : '';
+          const errStyle = d.errors > 0 ? ' style="color:var(--accent-negative)"' : '';
+          return `<tr>
           <td>${escapeHtml(name)}</td>
           <td>${d.calls}</td>
+          <td${errStyle}>${d.errors}${errPct}</td>
           <td>${fmtTokens(d.input)}</td>
           <td>${fmtTokens(d.output)}</td>
           <td>${fmtTokens(d.total)}</td>
           <td>${fmtCost(d.cost)}</td>
-        </tr>`).join('')}</tbody>
+        </tr>`;
+        }).join('')}</tbody>
       </table>`;
     }
 
@@ -15549,6 +15582,7 @@ function showApiUsageModal() {
         <div class="usage-stat"><div class="usage-stat-value">${totalCalls}</div><div class="usage-stat-label">API Calls</div></div>
         <div class="usage-stat"><div class="usage-stat-value">${fmtTokens(totalTokens)}</div><div class="usage-stat-label">Tokens</div></div>
         <div class="usage-stat"><div class="usage-stat-value">${fmtCost(totalCost)}</div><div class="usage-stat-label">Est. Cost</div></div>
+        <div class="usage-stat"><div class="usage-stat-value">${totalErrors}${errorRate > 0 ? ` <span style="font-size:13px;color:var(--accent-negative)">(${errorRate}%)</span>` : ''}</div><div class="usage-stat-label">Errors</div></div>
       </div>
       ${tableHtml}`;
   }
