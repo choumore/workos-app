@@ -14355,9 +14355,16 @@ function computeMoodEnergyCorrelation(meetings) {
   // Count meetings per date (normalize ISO dates to YYYY-MM-DD)
   const meetingsByDate = {};
   meetings.forEach(m => { const d = m.date ? meetingDateStr(m) : ''; if (d) meetingsByDate[d] = (meetingsByDate[d] || 0) + 1; });
+  // Filter entries to same period as meetings
+  const range = getPeriodRange(meetingsInsightsPeriod);
+  const periodEntries = range ? state.entries.filter(e => {
+    if (!e.date) return false;
+    const d = new Date(e.date + 'T12:00:00');
+    return d >= range.start && d <= range.end;
+  }) : state.entries;
   // Group journal entries by light (0-2 meetings) vs heavy (5+)
   const groups = { light: { energy: [], mood: [] }, heavy: { energy: [], mood: [] } };
-  state.entries.forEach(entry => {
+  periodEntries.forEach(entry => {
     if (!entry.date) return;
     const mc = meetingsByDate[entry.date] || 0;
     const group = mc <= 2 ? 'light' : mc >= 5 ? 'heavy' : null;
