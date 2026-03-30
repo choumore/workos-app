@@ -94,7 +94,7 @@ class CORSProxy(http.server.BaseHTTPRequestHandler):
         print(f"[proxy] {fmt % args}")
 
 if __name__ == "__main__":
-    server = http.server.HTTPServer(("127.0.0.1", PORT), CORSProxy)
+    server = http.server.HTTPServer(("0.0.0.0", PORT), CORSProxy)
     print(f"CORS proxy running on http://localhost:{PORT}")
     print(f"Forwarding to {UPSTREAM}")
     print(f"Set WorkOS gateway base URL to: http://localhost:{PORT}/mtlsproxy:mgp/proxy/workos")
