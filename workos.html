@@ -4538,6 +4538,27 @@ body {
   .chat-prompt-grid { grid-template-columns: 1fr; }
   .chat-bubble { max-width: 92%; }
 }
+
+/* API Usage Modal */
+.usage-modal { background: var(--surface-card); border-radius: var(--radius-sm); width: min(640px, 92vw); max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0,0,0,.25); }
+.usage-modal-header { padding: var(--space-md) var(--space-lg); border-bottom: 1px solid var(--border-default); display: flex; align-items: center; justify-content: space-between; }
+.usage-modal-header h3 { margin: 0; font-size: 16px; color: var(--text-primary); }
+.usage-modal-body { padding: var(--space-lg); overflow-y: auto; flex: 1; }
+.usage-filter-bar { display: flex; gap: var(--space-xs); margin-bottom: var(--space-md); flex-wrap: wrap; }
+.usage-filter-btn { padding: 4px 12px; border-radius: 999px; border: 1px solid var(--border-default); background: transparent; color: var(--text-muted); font-size: 12px; cursor: pointer; transition: all .15s; }
+.usage-filter-btn:hover { border-color: var(--accent-500); color: var(--text-primary); }
+.usage-filter-btn.active { background: var(--accent-500); color: #fff; border-color: var(--accent-500); }
+.usage-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-sm); margin-bottom: var(--space-lg); }
+.usage-stat { background: var(--surface-card); border: 1px solid var(--border-default); border-radius: var(--radius-sm); padding: var(--space-sm) var(--space-md); text-align: center; }
+.usage-stat-value { font-size: 20px; font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.usage-stat-label { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.usage-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.usage-table th { text-align: left; font-weight: 500; color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .03em; padding: var(--space-xs) var(--space-sm); border-bottom: 1px solid var(--border-default); }
+.usage-table td { padding: var(--space-xs) var(--space-sm); border-bottom: 1px solid var(--border-default); color: var(--text-primary); }
+.usage-table th:not(:first-child), .usage-table td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+.usage-table tr:last-child td { border-bottom: none; }
+.usage-empty { text-align: center; color: var(--text-muted); padding: var(--space-xl) 0; font-size: 13px; }
+@media (max-width: 600px) { .usage-summary { grid-template-columns: 1fr; } .usage-modal-body { padding: var(--space-md); } }
 </style>
 </head>
 <body>
@@ -4598,7 +4619,8 @@ let state = {
   coachingState: { activeObservations: [], resolvedObservations: [], lastUpdated: null },
   monthlyReflections: {},
   quarterlyReflections: {},
-  slackSyncedTs: []
+  slackSyncedTs: [],
+  apiUsageLog: []
 };
 
 let logMode = 'form'; // 'form' | 'submitted' | 'intention' | 'editing'
@@ -4665,6 +4687,7 @@ function loadState() {
       state.monthlyReflections = saved.monthlyReflections || {};
       state.quarterlyReflections = saved.quarterlyReflections || {};
       state.slackSyncedTs = saved.slackSyncedTs || [];
+      state.apiUsageLog = saved.apiUsageLog || [];
 
       // Migrate old weeklyIntention values from entries
       for (const entry of state.entries) {
@@ -5336,7 +5359,7 @@ Example: {"1":{"vectors":["Craft"],"excerpt":"Mo pushed back on the design, advo
       console.log(`Batch ${Math.floor(i/batchSize)+1}: ${batch.length} items (${batchTypes}), IDs: ${batch.map(b=>b.id.substring(0,20)).join(', ')}`);
       let text;
       try {
-        text = await callClaude(getSystemPrompt(), prompt, 2000);
+        text = await callClaude(getSystemPrompt(), prompt, 2000, 'Vector Scoring');
       } catch (apiErr) {
         console.error(`Batch ${Math.floor(i/batchSize)+1} API failed:`, apiErr.message);
         continue;
@@ -6212,7 +6235,8 @@ async function fetchMeetings() {
           const result = await callClaude(
             buildMeetingSystemPrompt(),
             buildMeetingIntelligencePrompt(meeting),
-            2000
+            2000,
+            'Meeting Intelligence'
           );
           const parsed = parseMeetingJson(result);
           meeting.type = parsed.type && MEETING_TYPES[parsed.type] ? parsed.type : 'other';
@@ -6229,7 +6253,8 @@ async function fetchMeetings() {
             const fallback = await callClaude(
               'You summarize meeting transcripts. Return a JSON object with "summary" (2-3 sentences) and "actionItems" (bullet list or empty string). Return ONLY valid JSON.',
               `Meeting: ${meeting.title || 'Untitled'}\nParticipants: ${meeting.participants || 'Unknown'}\n\nTranscript:\n${(meeting.transcript || '').substring(0, 200000)}`,
-              500
+              500,
+              'Meeting Intelligence'
             );
             const parsed = parseMeetingJson(fallback);
             meeting.type = 'other';
@@ -6257,7 +6282,7 @@ async function fetchMeetings() {
           const typeLabel = MEETING_TYPES[meeting.type]?.label || meeting.type;
           const prompt = buildMeetingIntelligencePrompt(meeting) +
             `\n\nIMPORTANT: This meeting has been pre-classified as "${meeting.type}" (${typeLabel}). Use this type for extraction — do not reclassify. Set confidence to 1.0.`;
-          const result = await callClaude(buildMeetingSystemPrompt(), prompt, 2000);
+          const result = await callClaude(buildMeetingSystemPrompt(), prompt, 2000, 'Meeting Intelligence');
           const parsed = parseMeetingJson(result);
           meeting.summary = parsed.summary || '';
           meeting.actionItems = parsed.actionItems || '';
@@ -6305,7 +6330,7 @@ async function reprocessMeeting(meetingId, overrideType) {
     const prompt = buildMeetingIntelligencePrompt(meeting) +
       `\n\nIMPORTANT: The user has manually classified this meeting as "${overrideType}" (${typeLabel}). Use this type for extraction — do not reclassify. Set confidence to 1.0.`;
 
-    const result = await callClaude(buildMeetingSystemPrompt(), prompt, 2000);
+    const result = await callClaude(buildMeetingSystemPrompt(), prompt, 2000, 'Meeting Intelligence');
     const parsed = parseMeetingJson(result);
     meeting.type = overrideType; // preserve override
     meeting.typeConfidence = 1.0;
@@ -6390,7 +6415,7 @@ async function reanalyzeMeeting(meetingId, btn) {
     const typeLabel = MEETING_TYPES[currentType]?.label || currentType;
     const prompt = buildMeetingIntelligencePrompt(meeting) +
       `\n\nUse type "${currentType}" (${typeLabel}) for extraction. Set confidence to 1.0.`;
-    const result = await callClaude(buildMeetingSystemPrompt(), prompt, 2000);
+    const result = await callClaude(buildMeetingSystemPrompt(), prompt, 2000, 'Meeting Intelligence');
     console.log('Reanalyze raw response:', result);
     const parsed = parseMeetingJson(result);
     meeting.type = parsed.type && MEETING_TYPES[parsed.type] ? parsed.type : currentType;
@@ -7182,7 +7207,7 @@ async function sendChatMessage() {
       return { role: m.role, content: m.content };
     });
 
-    const response = await callClaudeChat(systemPrompt, apiMessages, 2000);
+    const response = await callClaudeChat(systemPrompt, apiMessages, 2000, 'Career Chat');
     chatMessages.push({ role: 'assistant', content: response, timestamp: Date.now() });
   } catch (err) {
     const errorMessages = {
@@ -8399,7 +8424,35 @@ function getSystemPrompt() {
 
 const SYSTEM_PROMPT = BASE_SYSTEM_PROMPT; // legacy reference
 
-async function callClaude(systemPrompt, userPrompt, maxTokens) {
+const API_COST_PER_M = {
+  'claude-sonnet-4-6': { input: 3, output: 15 },
+  'claude-opus-4-6': { input: 15, output: 75 }
+};
+
+function logApiUsage(featureLabel, model, usage) {
+  if (!featureLabel || !usage) return;
+  try {
+    const pricing = API_COST_PER_M[model] || API_COST_PER_M['claude-sonnet-4-6'];
+    const inputTokens = usage.prompt_tokens || 0;
+    const outputTokens = usage.completion_tokens || 0;
+    const cost = (inputTokens * pricing.input + outputTokens * pricing.output) / 1_000_000;
+    state.apiUsageLog.push({
+      ts: Date.now(),
+      feature: featureLabel,
+      model: model || 'unknown',
+      prompt_tokens: inputTokens,
+      completion_tokens: outputTokens,
+      total_tokens: inputTokens + outputTokens,
+      cost
+    });
+    if (state.apiUsageLog.length > 500) {
+      state.apiUsageLog = state.apiUsageLog.slice(-500);
+    }
+    try { saveState(); } catch (_) {}
+  } catch (_) {}
+}
+
+async function callClaude(systemPrompt, userPrompt, maxTokens, featureLabel) {
   if (!state.settings.baseUrl) throw new Error('no_key');
 
   const model = state.settings.model === 'opus' ? 'claude-opus-4-6' : 'claude-sonnet-4-6';
@@ -8436,10 +8489,11 @@ async function callClaude(systemPrompt, userPrompt, maxTokens) {
   }
 
   const data = await res.json();
+  logApiUsage(featureLabel, model, data.usage);
   return data.choices[0].message.content;
 }
 
-async function callClaudeChat(systemPrompt, messages, maxTokens) {
+async function callClaudeChat(systemPrompt, messages, maxTokens, featureLabel) {
   if (!state.settings.baseUrl) throw new Error('no_key');
 
   const model = state.settings.model === 'opus' ? 'claude-opus-4-6' : 'claude-sonnet-4-6';
@@ -8476,6 +8530,7 @@ async function callClaudeChat(systemPrompt, messages, maxTokens) {
   }
 
   const data = await res.json();
+  logApiUsage(featureLabel, model, data.usage);
   return data.choices[0].message.content;
 }
 
@@ -8674,7 +8729,7 @@ PROCESS:
 5. Return ONLY the rewritten text — no commentary, no before/after, no explanations`;
 
 async function humanizeText(text) {
-  return await callClaude(HUMANIZER_SYSTEM_PROMPT, text, 1000);
+  return await callClaude(HUMANIZER_SYSTEM_PROMPT, text, 1000, 'Humanize Text');
 }
 
 function buildDailyPrompt(entry) {
@@ -9030,7 +9085,7 @@ async function startGenerateMeetingPrep(prepId) {
   try {
     const prompt = buildMeetingPrepPrompt(record);
     const systemPrompt = getSystemPrompt() + '\n\nFor this meeting prep, produce a structured response in exactly the format specified. Be specific, reference actual meetings and entries. Never fabricate.';
-    const text = await callClaude(systemPrompt, prompt, 2500);
+    const text = await callClaude(systemPrompt, prompt, 2500, 'Meeting Prep');
     const parsed = parseMeetingPrep(text);
 
     const prep = {
@@ -9210,7 +9265,7 @@ async function startGenerateSynthesis(prepId, reflection) {
   try {
     const prompt = buildSynthesisPrompt(record, meeting, reflection);
     const systemPrompt = getSystemPrompt() + '\n\nSynthesize the post-meeting reflection with the transcript. Be specific, reference actual content. Never fabricate.';
-    const text = await callClaude(systemPrompt, prompt, 1500);
+    const text = await callClaude(systemPrompt, prompt, 1500, 'Meeting Synthesis');
     const parsed = parseSynthesis(text);
 
     const synthId = Date.now();
@@ -9316,7 +9371,7 @@ async function retrySynthesis(prepId, synthIndex) {
   try {
     const prompt = buildSynthesisPrompt(record, meeting, failedSynth.reflection);
     const systemPrompt = getSystemPrompt() + '\n\nSynthesize the post-meeting reflection with the transcript. Be specific, reference actual content. Never fabricate.';
-    const text = await callClaude(systemPrompt, prompt, 1500);
+    const text = await callClaude(systemPrompt, prompt, 1500, 'Meeting Synthesis');
     const parsed = parseSynthesis(text);
 
     failedSynth.synthesis = parsed.synthesis;
@@ -9443,7 +9498,8 @@ async function submitIntention() {
       const refined = await callClaude(
         'You sharpen a rambling weekly intention into a tight checklist. Ruthlessly compress — each item should be a punchy verb phrase (3-8 words). Merge overlapping ideas. Drop filler. Rewrite freely; do not preserve the original wording. Output each item on its own line prefixed with "- [ ] ". Nothing else.',
         `Distill into a checklist:\n"${text}"`,
-        300
+        300,
+        'Intention Refinement'
       );
       const clean = refined.trim().replace(/^["']|["']$/g, '').replace(/\.$/, '');
       if (clean) saveIntention(clean);
@@ -9967,7 +10023,8 @@ async function saveIntentionEdit() {
       const refined = await callClaude(
         'You sharpen a rambling weekly intention into a tight checklist. Ruthlessly compress — each item should be a punchy verb phrase (3-8 words). Merge overlapping ideas. Drop filler. Rewrite freely; do not preserve the original wording. Output each item on its own line prefixed with "- [ ] ". Nothing else.',
         `Distill into a checklist:\n"${text}"`,
-        300
+        300,
+        'Intention Refinement'
       );
       const clean = refined.trim().replace(/^["']|["']$/g, '').replace(/\.$/, '');
       if (clean) saveIntention(clean);
@@ -10517,7 +10574,7 @@ The most significant shift this period — positive or negative.
 One specific, actionable focus for next ${type === 'quarterly' ? 'quarter' : 'month'}, connected to the weakest vector or most urgent observation.`;
 
   try {
-    const text = await callClaude(getSystemPrompt(), prompt, 2000);
+    const text = await callClaude(getSystemPrompt(), prompt, 2000, 'Periodic Reflection');
     const store = type === 'quarterly' ? state.quarterlyReflections : state.monthlyReflections;
     store[periodKey].synthesis = text;
     saveState();
@@ -10772,7 +10829,7 @@ ${rolledList ? 'Carrying forward:\n• [rolled items]' : ''}
 
 Keep it casual, specific, and useful for teammates. Output ONLY the post itself — no preamble, no "Here's a draft:", no commentary before or after.`;
 
-    const text = await callClaude(getSystemPrompt(), prompt, 500);
+    const text = await callClaude(getSystemPrompt(), prompt, 500, 'Weekly Plan');
     setWeeklyPlanContent(text);
   } catch (e) {
     setWeeklyPlanContent('This week I\'m focused on:\n' + itemsList);
@@ -11850,7 +11907,7 @@ Return ONLY a JSON array, no markdown fences, no extra text. Example format:
 
 JSON array:`;
     console.log('Vector setup — calling API. baseUrl:', state.settings.baseUrl, 'model:', state.settings.model, 'prompt length:', prompt.length, 'system prompt length:', getSystemPrompt().length);
-    const text = await callClaude(getSystemPrompt(), prompt, 800);
+    const text = await callClaude(getSystemPrompt(), prompt, 800, 'Vector Setup');
     console.log('Vector setup — API response:', text.substring(0, 300));
 
     // Parse JSON from response — strip markdown fences if present
@@ -12150,7 +12207,8 @@ async function handleSubmit(e) {
       const refined = await callClaude(
         'You distill a rough "plan for tomorrow" into a crisp checklist. Each item: a punchy verb phrase (3-8 words). Merge overlapping ideas. Drop filler. Rewrite freely. IMPORTANT: if a line starts with "@someone", preserve that prefix exactly (e.g. "- @jane Review PR"). Output each item on its own line prefixed with "- ". Nothing else — no preamble, no numbering.',
         `Distill into a checklist:\n"${entry.planTomorrow}"`,
-        300
+        300,
+        'Plan Refinement'
       );
       const clean = refined.trim().replace(/^["']|["']$/g, '').replace(/\.$/, '');
       if (clean) {
@@ -12169,7 +12227,7 @@ async function handleSubmit(e) {
   // Fetch AI reflection
   if (state.settings.baseUrl) {
     try {
-      const reflection = await callClaude(getSystemPrompt(), buildDailyPrompt(entry), 600);
+      const reflection = await callClaude(getSystemPrompt(), buildDailyPrompt(entry), 600, 'Daily Coaching');
       entry.aiReflection = reflection;
       updateCoachingState(reflection, entry.date);
       processObservationEscalations();
@@ -12205,7 +12263,8 @@ async function generateTldr(entry) {
     const result = await callClaude(
       'You compress journal entries into bullet-point TLDRs. For each section, output the section header on its own line, then bullet points below it. Use this exact format:\n\nWork done:\n- bullet 1\n- bullet 2\n\nReflection:\n- bullet 1\n\nWeekly retro:\n- bullet 1\n\nEach bullet: concise verb phrase (3-8 words). Only include sections that were provided. No preamble.',
       sections.join('\n\n'),
-      800
+      800,
+      'Entry TLDR'
     );
     const tldr = {};
     let currentKey = null;
@@ -12237,7 +12296,7 @@ async function retryReflection() {
   aiContainer.innerHTML = `<span class="ai-icon">💬</span><div class="loading-dots"><span>·</span><span>·</span><span>·</span></div>`;
   try {
     const prompt = buildDailyPrompt(entry) + '\n\n[SYSTEM NOTE: This is a reanalysis of TODAY\'S entry only — the previous coaching note for this specific entry had errors or incomplete output. Treat this entry as if you are analyzing it for the first time. Do not mention or infer that this entry was previously analyzed. Previous entries and their coaching notes above are real historical context — use them normally.]';
-    const reflection = await callClaude(getSystemPrompt(), prompt, 800);
+    const reflection = await callClaude(getSystemPrompt(), prompt, 800, 'Daily Coaching');
     entry.aiReflection = reflection;
     saveState();
     aiContainer.innerHTML = `<span class="ai-icon">💬</span><div class="ai-text">${formatCoachingNote(reflection)}</div>`;
@@ -12315,7 +12374,7 @@ async function reanalyzeCoaching(entryId, btn) {
   try {
     const prompt = buildDailyPrompt(entry) + '\n\n[SYSTEM NOTE: This is a reanalysis of TODAY\'S entry only — the previous coaching note for this specific entry had errors or incomplete output. Treat this entry as if you are analyzing it for the first time. Do not mention or infer that this entry was previously analyzed. Previous entries and their coaching notes above are real historical context — use them normally.]';
     console.log('Reanalyze coaching prompt for', entry.date, ':', prompt.substring(0, 200));
-    const reflection = await callClaude(getSystemPrompt(), prompt, 800);
+    const reflection = await callClaude(getSystemPrompt(), prompt, 800, 'Daily Coaching');
     console.log('Reanalyze coaching response:', reflection);
     entry.aiReflection = reflection;
     saveState();
@@ -12542,7 +12601,8 @@ async function handleEditSubmit(entryId) {
       const refined = await callClaude(
         'You distill a rough "plan for tomorrow" into a crisp checklist. Each item: a punchy verb phrase (3-8 words). Merge overlapping ideas. Drop filler. Rewrite freely. IMPORTANT: if a line starts with "@someone", preserve that prefix exactly (e.g. "- @jane Review PR"). Output each item on its own line prefixed with "- ". Nothing else — no preamble, no numbering.',
         `Distill into a checklist:\n"${updated.planTomorrow}"`,
-        300
+        300,
+        'Plan Refinement'
       );
       const clean = refined.trim().replace(/^["']|["']$/g, '').replace(/\.$/, '');
       if (clean) {
@@ -12556,7 +12616,7 @@ async function handleEditSubmit(entryId) {
   // Regenerate coaching note
   if (state.settings.baseUrl) {
     try {
-      const reflection = await callClaude(getSystemPrompt(), buildDailyPrompt(updated), 600);
+      const reflection = await callClaude(getSystemPrompt(), buildDailyPrompt(updated), 600, 'Daily Coaching');
       updated.aiReflection = reflection;
       saveState();
       renderHistory();
@@ -13459,7 +13519,7 @@ Write in third person ("Mo has demonstrated..."). Be specific — use the actual
 Do not inflate or add wins that aren't listed. If the evidence is thin in an area, acknowledge it rather than stretching.`;
 
   try {
-    const text = await callClaude(getSystemPrompt(), prompt, 2000);
+    const text = await callClaude(getSystemPrompt(), prompt, 2000, 'Promotion Brief');
     briefContainer.innerHTML = `
       <div class="brief-section" style="margin-top:var(--space-3xl)">
         <div class="section-header-row">
@@ -13693,7 +13753,7 @@ async function regenerateBrief(weekOf) {
 
   try {
     const systemPrompt = getSystemPrompt() + '\n\nFor this weekly brief, produce a structured response in exactly the format specified below. Do not deviate from the section structure.';
-    const text = await callClaude(systemPrompt, buildWeeklyPrompt(weekEntries), 2000);
+    const text = await callClaude(systemPrompt, buildWeeklyPrompt(weekEntries), 2000, 'Weekly Brief');
     const parsed = parseWeeklyBrief(text);
 
     // Remove existing brief for this week
@@ -13771,7 +13831,7 @@ async function startGenerateBrief() {
 
   try {
     const systemPrompt = getSystemPrompt() + '\n\nFor this weekly brief, produce a structured response in exactly the format specified below. Do not deviate from the section structure.';
-    const text = await callClaude(systemPrompt, buildWeeklyPrompt(weekEntries), 2000);
+    const text = await callClaude(systemPrompt, buildWeeklyPrompt(weekEntries), 2000, 'Weekly Brief');
     const parsed = parseWeeklyBrief(text);
     const monday = getWeekMonday(todayStr());
 
@@ -14868,8 +14928,9 @@ function settingsIntegrationsHtml() {
         <input class="form-input" id="settingApiKey" type="password" value="${state.settings.apiKey}" placeholder="sk-...">
         <div class="form-hint">Sent as <code>Authorization: Bearer</code> header if set. Not needed for mesh-proxied gateways.</div>
       </div>
-      <div class="form-group">
+      <div class="form-group" style="display:flex;gap:var(--space-sm);align-items:center">
         <button class="btn-secondary" id="testConnectionBtn" onclick="testConnection()">Test Connection</button>
+        <button class="btn-secondary" onclick="showApiUsageModal()">API Usage</button>
         <div class="api-status" id="apiStatus"></div>
       </div>
       <div class="form-group">
@@ -15314,7 +15375,8 @@ async function compactInsightsProfile() {
 
 Profile text:
 ${raw}`,
-      1024
+      1024,
+      'Insights Compact'
     );
 
     textarea.value = result;
@@ -15394,7 +15456,7 @@ async function testConnection() {
   status.className = 'api-status checking';
   status.textContent = 'Checking...';
   try {
-    await callClaude('You are helpful.', 'Say hi.', 5);
+    await callClaude('You are helpful.', 'Say hi.', 5, 'Test Connection');
     status.className = 'api-status valid';
     status.textContent = '✓ Connected';
   } catch (err) {
@@ -15406,6 +15468,118 @@ async function testConnection() {
       status.textContent = '✕ Connection failed — check URL and try again';
     }
   }
+}
+
+function showApiUsageModal() {
+  let currentFilter = '7d';
+
+  function fmtTokens(n) {
+    if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
+    if (n >= 1_000) return (n / 1_000).toFixed(1) + 'k';
+    return String(n);
+  }
+  function fmtCost(c) {
+    if (c < 0.01 && c > 0) return '<$0.01';
+    return '$' + c.toFixed(2);
+  }
+
+  function getFilteredLog(filter) {
+    const now = Date.now();
+    const log = state.apiUsageLog || [];
+    if (filter === 'all') return log;
+    let cutoff;
+    if (filter === 'today') {
+      const d = new Date(); d.setHours(0,0,0,0); cutoff = d.getTime();
+    } else if (filter === '7d') {
+      cutoff = now - 7 * 86400000;
+    } else {
+      cutoff = now - 30 * 86400000;
+    }
+    return log.filter(e => e.ts >= cutoff);
+  }
+
+  function renderModalContent() {
+    const filtered = getFilteredLog(currentFilter);
+    const filters = [
+      { key: 'today', label: 'Today' },
+      { key: '7d', label: '7 days' },
+      { key: '30d', label: '30 days' },
+      { key: 'all', label: 'All time' }
+    ];
+
+    const totalCalls = filtered.length;
+    const totalTokens = filtered.reduce((s, e) => s + (e.total_tokens || 0), 0);
+    const totalCost = filtered.reduce((s, e) => s + (e.cost || 0), 0);
+
+    // Group by feature
+    const byFeature = {};
+    for (const e of filtered) {
+      const f = e.feature || 'Unknown';
+      if (!byFeature[f]) byFeature[f] = { calls: 0, input: 0, output: 0, total: 0, cost: 0 };
+      byFeature[f].calls++;
+      byFeature[f].input += e.prompt_tokens || 0;
+      byFeature[f].output += e.completion_tokens || 0;
+      byFeature[f].total += e.total_tokens || 0;
+      byFeature[f].cost += e.cost || 0;
+    }
+    const sorted = Object.entries(byFeature).sort((a, b) => b[1].cost - a[1].cost);
+
+    let tableHtml = '';
+    if (sorted.length === 0) {
+      tableHtml = '<div class="usage-empty">No API calls in this period</div>';
+    } else {
+      tableHtml = `<table class="usage-table">
+        <thead><tr><th>Feature</th><th>Calls</th><th>Input</th><th>Output</th><th>Total</th><th>Cost</th></tr></thead>
+        <tbody>${sorted.map(([name, d]) => `<tr>
+          <td>${escapeHtml(name)}</td>
+          <td>${d.calls}</td>
+          <td>${fmtTokens(d.input)}</td>
+          <td>${fmtTokens(d.output)}</td>
+          <td>${fmtTokens(d.total)}</td>
+          <td>${fmtCost(d.cost)}</td>
+        </tr>`).join('')}</tbody>
+      </table>`;
+    }
+
+    return `
+      <div class="usage-filter-bar">
+        ${filters.map(f => `<button class="usage-filter-btn${f.key === currentFilter ? ' active' : ''}" data-filter="${f.key}">${f.label}</button>`).join('')}
+      </div>
+      <div class="usage-summary">
+        <div class="usage-stat"><div class="usage-stat-value">${totalCalls}</div><div class="usage-stat-label">API Calls</div></div>
+        <div class="usage-stat"><div class="usage-stat-value">${fmtTokens(totalTokens)}</div><div class="usage-stat-label">Tokens</div></div>
+        <div class="usage-stat"><div class="usage-stat-value">${fmtCost(totalCost)}</div><div class="usage-stat-label">Est. Cost</div></div>
+      </div>
+      ${tableHtml}`;
+  }
+
+  // Create backdrop
+  const backdrop = document.createElement('div');
+  backdrop.className = 'reflection-modal-backdrop';
+  backdrop.innerHTML = `<div class="usage-modal">
+    <div class="usage-modal-header">
+      <h3>API Usage</h3>
+      <button class="btn-icon" onclick="this.closest('.reflection-modal-backdrop').remove()" style="font-size:18px">&times;</button>
+    </div>
+    <div class="usage-modal-body" id="usageModalBody">${renderModalContent()}</div>
+  </div>`;
+  document.body.appendChild(backdrop);
+
+  // Click backdrop to close
+  backdrop.addEventListener('click', (e) => { if (e.target === backdrop) backdrop.remove(); });
+
+  // Escape to close
+  const escHandler = (e) => { if (e.key === 'Escape') { backdrop.remove(); document.removeEventListener('keydown', escHandler); } };
+  document.addEventListener('keydown', escHandler);
+
+  // Filter button delegation
+  backdrop.addEventListener('click', (e) => {
+    const btn = e.target.closest('.usage-filter-btn');
+    if (!btn) return;
+    currentFilter = btn.dataset.filter;
+    const body = document.getElementById('usageModalBody');
+    if (body) body.innerHTML = renderModalContent();
+  });
 }
 
 /* ========================================
@@ -15924,7 +16098,8 @@ ${text}`;
     const result = await callClaude(
       'You are a structured data extraction tool. Output only valid JSON arrays. No prose, no markdown code fences.',
       prompt,
-      2000
+      2000,
+      'Slack Import'
     );
 
     // Parse JSON from response
@@ -17169,7 +17344,8 @@ Output only the suggestions, one per line, no numbering, no preamble.`;
     const result = await callClaude(
       'You are a visibility coach for product designers. Be specific and actionable.',
       prompt,
-      500
+      500,
+      'Visibility Suggestions'
     );
     visibSuggestions = result.split('\n').map(s => s.trim()).filter(s => s.length > 0);
     container.innerHTML = visibSuggestions.map((s, i) => `<div class="visib-suggestion-card">
@@ -17217,7 +17393,7 @@ async function startVisibDraft(draftType) {
   try {
     if (!builder) builder = DRAFT_PROMPT_BUILDERS[draftType];
     const { systemPrompt, userPrompt } = builder();
-    const result = await callClaude(systemPrompt, userPrompt, config.maxTokens);
+    const result = await callClaude(systemPrompt, userPrompt, config.maxTokens, 'Visibility Draft');
     visibDraftText = result.trim();
   } catch (e) {
     if (e.message === 'no_key') {
@@ -17370,7 +17546,7 @@ async function regenerateVisibDraft() {
   try {
     if (!builder) builder = DRAFT_PROMPT_BUILDERS[visibDraftType];
     const { systemPrompt, userPrompt } = builder();
-    const result = await callClaude(systemPrompt, userPrompt, config.maxTokens);
+    const result = await callClaude(systemPrompt, userPrompt, config.maxTokens, 'Visibility Draft');
     visibDraftText = result.trim();
   } catch (e) {
     showToast('Failed to regenerate. Check API settings.');
