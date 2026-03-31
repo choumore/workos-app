@@ -3958,10 +3958,10 @@ body {
   letter-spacing: 0.03em;
   padding: var(--space-md) 0 var(--space-xs);
 }
-.todo-add-item {
+.todo-unified-input {
   margin-bottom: var(--space-md);
 }
-.todo-add-item input {
+.todo-add-input {
   width: 100%;
   padding: 8px 12px;
   border: 1px dashed var(--border);
@@ -3972,10 +3972,10 @@ body {
   outline: none;
   font-family: inherit;
 }
-.todo-add-item input::placeholder {
+.todo-add-input::placeholder {
   color: var(--text-muted);
 }
-.todo-add-item input:focus {
+.todo-add-input:focus {
   border-color: var(--accent-300, #f59e0b);
   border-style: solid;
 }
@@ -4667,6 +4667,7 @@ let meetingsInsightsPeriod = 'week'; // 'today' | 'week' | 'month' | 'quarter' |
 let todosFilter = 'inbox'; // 'inbox' | 'today' | 'tomorrow' | 'this-week' | 'backlog' | 'done'
 let todosAgeFilter = 'all'; // 'all' | '1d' | '1w' | '2w' | '1m'
 let todosSearchQuery = '';
+let todosInputMode = 'add'; // 'add' | 'search'
 let newTodoRecurrence = null;
 let chatSubView = 'chat'; // 'chat' | 'history' | 'view'
 let viewingSessionId = null;
@@ -7537,13 +7538,28 @@ function renderTodos() {
   panel.innerHTML = `
     <div style="margin-bottom:var(--space-xl)">
       <div class="sub-nav" style="margin-bottom:0">${filterHtml}</div>
-      <input type="text" class="todo-search" id="todoSearchInput" placeholder="Search all todos..." value="${escapeHtml(todosSearchQuery)}" oninput="todosSearchQuery=this.value;const _c=this.selectionStart;renderTodos();const _s=document.getElementById('todoSearchInput');_s.focus();_s.setSelectionRange(_c,_c)" onkeydown="if(event.key==='Escape'){todosSearchQuery='';renderTodos()}">
       ${triageBtnHtml || slackSyncBtn ? `<div style="margin-top:var(--space-md);display:flex;gap:var(--space-sm);flex-wrap:wrap">${triageBtnHtml}${slackSyncBtn}</div>` : ''}
     </div>
-    ${todosFilter !== 'done' && todosFilter !== 'deleted' ? `<div class="todo-add-item" style="display:flex;gap:var(--space-sm);align-items:center">
-      <input type="text" id="addManualTodoInput" style="flex:1" placeholder="Add a to-do..." onkeydown="if(event.key==='Enter'){addManualTodo();event.preventDefault()}">
-      <button class="todo-add-recurrence${newTodoRecurrence ? ' active' : ''}" onclick="toggleNewTodoRecurrenceMenu(this)">${recurrenceLabel(newTodoRecurrence)}</button>
-    </div>` : ''}
+    <div class="todo-unified-input" style="display:flex;gap:var(--space-sm);align-items:center">
+      ${(todosFilter === 'done' || todosFilter === 'deleted' || todosInputMode === 'search')
+        ? `<input type="text" id="todoUnifiedInput" style="flex:1" class="todo-search"
+            placeholder="Search todos..." value="${escapeHtml(todosSearchQuery)}"
+            oninput="todosSearchQuery=this.value;const _c=this.selectionStart;renderTodos();const _s=document.getElementById('todoUnifiedInput');_s.focus();_s.setSelectionRange(_c,_c)"
+            onkeydown="if(event.key==='Escape'){todosInputMode='add';todosSearchQuery='';renderTodos()}">`
+        : `<input type="text" id="todoUnifiedInput" style="flex:1" class="todo-add-input"
+            placeholder="Add a todo..."
+            onkeydown="if(event.key==='Enter'){addManualTodo();event.preventDefault()}">`
+      }
+      ${todosInputMode === 'add' && todosFilter !== 'done' && todosFilter !== 'deleted'
+        ? `<button class="todo-add-recurrence${newTodoRecurrence ? ' active' : ''}" onclick="toggleNewTodoRecurrenceMenu(this)">${recurrenceLabel(newTodoRecurrence)}</button>`
+        : ''}
+      ${todosFilter !== 'done' && todosFilter !== 'deleted'
+        ? (todosInputMode === 'search'
+          ? `<button class="btn-icon" onclick="todosInputMode='add';todosSearchQuery='';renderTodos()" style="font-size:16px;color:var(--text-muted)" title="Close search">✕</button>`
+          : `<button class="btn-icon" onclick="todosInputMode='search';renderTodos();setTimeout(()=>document.getElementById('todoUnifiedInput')?.focus(),0)" style="font-size:14px;color:var(--text-muted)" title="Search todos">🔍</button>`)
+        : (todosSearchQuery ? `<button class="btn-icon" onclick="todosSearchQuery='';renderTodos()" style="font-size:16px;color:var(--text-muted)" title="Clear search">✕</button>` : '')
+      }
+    </div>
     <div class="todo-list">${listHtml}</div>
   `;
 }
@@ -8347,7 +8363,7 @@ function saveEditTodo(id, newText) {
 }
 
 function addManualTodo() {
-  const input = document.getElementById('addManualTodoInput');
+  const input = document.getElementById('todoUnifiedInput');
   if (!input) return;
   const text = input.value.trim();
   if (!text) return;
