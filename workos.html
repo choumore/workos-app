@@ -7436,15 +7436,18 @@ function renderTodos() {
   const panel = document.getElementById('panel-todos');
   if (!panel) return;
   const counts = getTodoCounts();
-  const filters = [
+  const primaryFilters = [
     { key: 'inbox', label: 'Inbox' },
     { key: 'today', label: 'Today' },
-    { key: 'tomorrow', label: 'Tomorrow' },
+    { key: 'tomorrow', label: 'Next Day' },
     { key: 'this-week', label: 'This Week' },
-    { key: 'backlog', label: 'Backlog' },
+    { key: 'backlog', label: 'Backlog' }
+  ];
+  const overflowFilters = [
     { key: 'done', label: 'Done' },
     { key: 'deleted', label: 'Deleted' }
   ];
+  const filters = [...primaryFilters, ...overflowFilters];
 
   // Search mode: filter across all buckets
   const isSearching = todosSearchQuery.trim().length > 0;
@@ -7475,13 +7478,24 @@ function renderTodos() {
   }
 
   const isMobile = window.innerWidth <= 600;
-  const filterHtml = filters.map(f => {
+  const visibleFilters = isMobile ? primaryFilters : filters;
+  const isOverflowActive = isMobile && overflowFilters.some(f => f.key === todosFilter);
+  let filterHtml = visibleFilters.map(f => {
     const count = !isMobile && counts[f.key] ? ' (' + counts[f.key] + ')' : '';
     return `<button class="sub-nav-btn${todosFilter === f.key ? ' active' : ''}" onclick="todosFilter='${f.key}';todosAgeFilter='all';renderTodos()">${f.label}${count}</button>`;
   }).join('');
+  if (isMobile) {
+    const overflowLabel = isOverflowActive ? overflowFilters.find(f => f.key === todosFilter).label : '···';
+    filterHtml += `<div style="position:relative;display:inline-block">
+      <button class="sub-nav-btn${isOverflowActive ? ' active' : ''}" onclick="this.nextElementSibling.classList.toggle('hidden')">${overflowLabel}</button>
+      <div class="hidden" style="position:absolute;right:0;top:100%;margin-top:4px;background:var(--surface-card);border:1px solid var(--border-default);border-radius:var(--radius-sm);box-shadow:0 4px 12px rgba(0,0,0,.12);z-index:20;min-width:120px">
+        ${overflowFilters.map(f => `<button style="display:block;width:100%;text-align:left;padding:var(--space-sm) var(--space-md);border:none;background:none;font-size:13px;color:var(--text-primary);cursor:pointer" onclick="todosFilter='${f.key}';todosAgeFilter='all';renderTodos()">${f.label}</button>`).join('')}
+      </div>
+    </div>`;
+  }
 
   const triageBtnHtml = todosFilter === 'inbox' && items.length > 0
-    ? `<button class="btn-secondary btn-accent" style="font-size:${isMobile ? '15px' : '12px'};${isMobile ? 'width:100%;padding:var(--space-lg) var(--space-xl);display:flex;justify-content:center;align-items:center' : ''}" onclick="openMobileTriage('inbox')">Triage To-Dos (${items.length})</button>`
+    ? `<button class="btn-secondary btn-accent" style="font-size:${isMobile ? '15px' : '12px'};${isMobile ? 'width:100%;padding:var(--space-lg) var(--space-xl);display:flex;justify-content:center;align-items:center' : ''}" onclick="openMobileTriage('inbox')">Triage Todos (${items.length})</button>`
     : '';
 
   const slackSyncBtn = state.settings.slackToken
