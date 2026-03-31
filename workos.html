@@ -12227,7 +12227,9 @@ function renderLogTab() {
             <div class="ai-text">${formatCoachingNote(entry.aiReflection)}</div>
             <div style="display:flex;gap:var(--space-sm);margin-top:var(--space-sm)">
               <button class="btn-reanalyze" onclick="event.stopPropagation();reanalyzeCoaching(${entry.id}, this)">Reanalyze</button>
-              <button class="btn-reanalyze" onclick="event.stopPropagation();humanizeCoachingNote(${entry.id}, this)">Humanize</button>
+              ${entry.aiReflectionHumanized
+                ? `<button class="btn-reanalyze" style="color:var(--accent-interactive)" disabled>✓ Humanized</button>`
+                : `<button class="btn-reanalyze" onclick="event.stopPropagation();humanizeCoachingNote(${entry.id}, this)">Humanize</button>`}
             </div>
           </div>` : ''}
       </div>
@@ -12571,7 +12573,7 @@ function renderPostSubmit(panel, entry) {
     <div class="card-ai" id="aiReflectionCard">
       <div id="aiReflectionContent">
         ${entry.aiReflection
-          ? `<span class="ai-icon">💬</span><div class="ai-text">${formatCoachingNote(entry.aiReflection)}</div><div style="display:flex;gap:var(--space-sm);margin-top:var(--space-sm)"><button class="btn-reanalyze" onclick="reanalyzeCoaching(${entry.id}, this)">Reanalyze</button><button class="btn-reanalyze" onclick="humanizeCoachingNote(${entry.id}, this)">Humanize</button></div>`
+          ? `<span class="ai-icon">💬</span><div class="ai-text">${formatCoachingNote(entry.aiReflection)}</div><div style="display:flex;gap:var(--space-sm);margin-top:var(--space-sm)"><button class="btn-reanalyze" onclick="reanalyzeCoaching(${entry.id}, this)">Reanalyze</button>${entry.aiReflectionHumanized ? `<button class="btn-reanalyze" style="color:var(--accent-interactive)" disabled>✓ Humanized</button>` : `<button class="btn-reanalyze" onclick="humanizeCoachingNote(${entry.id}, this)">Humanize</button>`}</div>`
           : `<span class="ai-icon">💬</span><div class="loading-dots"><span>·</span><span>·</span><span>·</span></div>`
         }
       </div>
@@ -12610,6 +12612,7 @@ async function reanalyzeCoaching(entryId, btn) {
     const reflection = await callClaude(getSystemPrompt(), prompt, 800, 'Daily Coaching');
     console.log('Reanalyze coaching response:', reflection);
     entry.aiReflection = reflection;
+    entry.aiReflectionHumanized = false;
     saveState();
     showToast('Coaching note regenerated');
     // Re-render after toast so it stays visible
@@ -12639,11 +12642,12 @@ async function humanizeCoachingNote(entryId, btn) {
   btn.textContent = 'Humanizing…';
   try {
     entry.aiReflection = await humanizeText(entry.aiReflection);
+    entry.aiReflectionHumanized = true;
     saveState();
     showToast('Coaching note humanized');
     const aiContainer = document.getElementById('aiReflectionContent');
     if (aiContainer) {
-      aiContainer.innerHTML = `<span class="ai-icon">💬</span><div class="ai-text">${formatCoachingNote(entry.aiReflection)}</div><div style="display:flex;gap:var(--space-sm);margin-top:var(--space-sm)"><button class="btn-reanalyze" onclick="reanalyzeCoaching(${entryId}, this)">Reanalyze</button><button class="btn-reanalyze" onclick="humanizeCoachingNote(${entryId}, this)">Humanize</button></div>`;
+      aiContainer.innerHTML = `<span class="ai-icon">💬</span><div class="ai-text">${formatCoachingNote(entry.aiReflection)}</div><div style="display:flex;gap:var(--space-sm);margin-top:var(--space-sm)"><button class="btn-reanalyze" onclick="reanalyzeCoaching(${entryId}, this)">Reanalyze</button><button class="btn-reanalyze" style="color:var(--accent-interactive)" disabled>✓ Humanized</button></div>`;
     } else {
       renderHistory();
     }
@@ -13003,7 +13007,9 @@ function renderHistory() {
           <div class="ai-text">${formatCoachingNote(entry.aiReflection)}</div>
           <div style="display:flex;gap:var(--space-sm);margin-top:var(--space-sm)">
             <button class="btn-reanalyze" onclick="event.stopPropagation();reanalyzeCoaching(${entry.id}, this)">Reanalyze</button>
-            <button class="btn-reanalyze" onclick="event.stopPropagation();humanizeCoachingNote(${entry.id}, this)">Humanize</button>
+            ${entry.aiReflectionHumanized
+              ? `<button class="btn-reanalyze" style="color:var(--accent-interactive)" disabled>✓ Humanized</button>`
+              : `<button class="btn-reanalyze" onclick="event.stopPropagation();humanizeCoachingNote(${entry.id}, this)">Humanize</button>`}
           </div>
         </div>` : ''}
     </div>
@@ -13811,7 +13817,7 @@ function renderBriefDetail(panel) {
     <div class="brief-section">
       <div class="section-header-row">
         <span class="section-header" style="margin-bottom:0">Patterns</span>
-        <a href="#" class="humanize-link" onclick="event.preventDefault();humanizeBriefSection(${brief.id},'patterns',this)">Humanize</a>
+        ${brief.humanizedSections?.patterns ? `<span class="humanize-link" style="color:var(--accent-interactive);cursor:default">✓ Humanized</span>` : `<a href="#" class="humanize-link" onclick="event.preventDefault();humanizeBriefSection(${brief.id},'patterns',this)">Humanize</a>`}
       </div>
       <div class="card">${formatBriefText(brief.patterns)}</div>
     </div>
@@ -13819,7 +13825,7 @@ function renderBriefDetail(panel) {
     <div class="brief-section">
       <div class="section-header-row">
         <span class="section-header" style="margin-bottom:0">Vectors</span>
-        <a href="#" class="humanize-link" onclick="event.preventDefault();humanizeBriefSection(${brief.id},'vectorCheckIn',this)">Humanize</a>
+        ${brief.humanizedSections?.vectorCheckIn ? `<span class="humanize-link" style="color:var(--accent-interactive);cursor:default">✓ Humanized</span>` : `<a href="#" class="humanize-link" onclick="event.preventDefault();humanizeBriefSection(${brief.id},'vectorCheckIn',this)">Humanize</a>`}
       </div>
       <div class="card">${formatBriefText(brief.vectorCheckIn)}</div>
     </div>
@@ -13857,7 +13863,7 @@ function renderBriefDetail(panel) {
       <div class="section-header-row">
         <span class="section-header" style="margin-bottom:0">1:1 Prep</span>
         <div style="display:flex;gap:var(--space-sm);align-items:center">
-          <a href="#" class="humanize-link" onclick="event.preventDefault();humanizeBriefSection(${brief.id},'oneOnOnePrep',this)">Humanize</a>
+          ${brief.humanizedSections?.oneOnOnePrep ? `<span class="humanize-link" style="color:var(--accent-interactive);cursor:default">✓ Humanized</span>` : `<a href="#" class="humanize-link" onclick="event.preventDefault();humanizeBriefSection(${brief.id},'oneOnOnePrep',this)">Humanize</a>`}
           <button class="btn-icon" onclick="copyPrep()" title="Copy to clipboard">⧉</button>
         </div>
       </div>
@@ -13867,7 +13873,7 @@ function renderBriefDetail(panel) {
     ${brief.vectorProgress ? `<div class="brief-section">
       <div class="section-header-row">
         <span class="section-header" style="margin-bottom:0">Vector Progress</span>
-        <a href="#" class="humanize-link" onclick="event.preventDefault();humanizeBriefSection(${brief.id},'vectorProgress',this)">Humanize</a>
+        ${brief.humanizedSections?.vectorProgress ? `<span class="humanize-link" style="color:var(--accent-interactive);cursor:default">✓ Humanized</span>` : `<a href="#" class="humanize-link" onclick="event.preventDefault();humanizeBriefSection(${brief.id},'vectorProgress',this)">Humanize</a>`}
       </div>
       <div class="card">${formatBriefText(brief.vectorProgress)}</div>
     </div>` : ''}
@@ -13875,7 +13881,7 @@ function renderBriefDetail(panel) {
     ${brief.openLoopsSummary ? `<div class="brief-section">
       <div class="section-header-row">
         <span class="section-header" style="margin-bottom:0">Open Loops</span>
-        <a href="#" class="humanize-link" onclick="event.preventDefault();humanizeBriefSection(${brief.id},'openLoopsSummary',this)">Humanize</a>
+        ${brief.humanizedSections?.openLoopsSummary ? `<span class="humanize-link" style="color:var(--accent-interactive);cursor:default">✓ Humanized</span>` : `<a href="#" class="humanize-link" onclick="event.preventDefault();humanizeBriefSection(${brief.id},'openLoopsSummary',this)">Humanize</a>`}
       </div>
       <div class="card">${formatBriefText(brief.openLoopsSummary)}</div>
     </div>` : ''}
@@ -14040,6 +14046,8 @@ async function humanizeBriefSection(briefId, sectionKey, linkEl) {
   if (linkEl) { linkEl.textContent = 'Humanizing…'; linkEl.style.pointerEvents = 'none'; }
   try {
     brief[sectionKey] = await humanizeText(brief[sectionKey]);
+    if (!brief.humanizedSections) brief.humanizedSections = {};
+    brief.humanizedSections[sectionKey] = true;
     saveState();
     showToast('Section humanized');
   } catch (e) {
@@ -16853,6 +16861,7 @@ let visibLogType = '';
 let visibLogSubtype = '';
 let visibDraftType = null;
 let visibDraftText = '';
+let visibDraftHumanized = false;
 
 function getVisibTypeLabel(id) {
   if (id === 'meeting') return 'Meeting Evidence';
@@ -17639,6 +17648,7 @@ async function startVisibDraft(draftType) {
   }
   visibDraftType = draftType;
   visibDraftText = '';
+  visibDraftHumanized = false;
   visibView = 'draft';
   renderVisibility();
 
@@ -17670,7 +17680,7 @@ function renderVisibDraft(panel) {
     <div style="margin-bottom:var(--space-xl)">
       <button class="btn-ghost" onclick="visibDraftBack()">← Back</button>
     </div>
-    <div style="font-size:15px;font-weight:600;margin-bottom:var(--space-lg)">${escapeHtml(label)} Draft</div>
+    <div style="font-size:15px;font-weight:600;margin-bottom:var(--space-lg)">${escapeHtml(label)} Draft${visibDraftHumanized ? `<span style="display:inline-flex;align-items:center;gap:4px;margin-left:var(--space-sm);font-size:11px;font-weight:600;color:var(--accent-interactive);background:var(--accent-100);padding:2px 8px;border-radius:var(--radius-full);vertical-align:middle">✓ Humanized</span>` : ''}</div>
     ${isLoading
       ? `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--space-md);padding:80px 0;color:var(--text-muted)">
            <span class="spinner dark" style="width:24px;height:24px;border-width:3px"></span>
@@ -17683,7 +17693,10 @@ function renderVisibDraft(panel) {
            <button class="btn-secondary" onclick="saveVisibDraft()" style="color:var(--text-primary);padding-top:var(--space-md);padding-bottom:var(--space-md)">Save & Log</button>
            <button class="btn-secondary" onclick="toggleVisibDraftEdit()" id="visibDraftEditBtn" style="color:var(--text-primary);padding-top:var(--space-md);padding-bottom:var(--space-md)">Edit</button>
            <button class="btn-secondary" onclick="regenerateVisibDraft()" style="color:var(--text-primary);padding-top:var(--space-md);padding-bottom:var(--space-md)">Regenerate</button>
-           <button class="btn-secondary" id="humanizeVisibBtn" onclick="humanizeVisibDraft()" style="color:var(--text-primary);padding-top:var(--space-md);padding-bottom:var(--space-md)">Humanize</button>
+           ${visibDraftHumanized
+             ? `<button class="btn-secondary" id="humanizeVisibBtn" onclick="humanizeVisibDraft()" style="color:var(--accent-interactive);border-color:var(--accent-interactive);padding-top:var(--space-md);padding-bottom:var(--space-md)">✓ Humanized</button>`
+             : `<button class="btn-secondary" id="humanizeVisibBtn" onclick="humanizeVisibDraft()" style="color:var(--text-primary);padding-top:var(--space-md);padding-bottom:var(--space-md)">Humanize</button>`
+           }
          </div>`
     }`;
 }
@@ -17772,6 +17785,7 @@ function saveVisibDraft() {
 
   visibDraftType = null;
   visibDraftText = '';
+  visibDraftHumanized = false;
   visibView = 'dashboard';
   renderVisibility();
   showToast('Draft saved & activity logged');
@@ -17780,6 +17794,7 @@ function saveVisibDraft() {
 function visibDraftBack() {
   visibDraftType = null;
   visibDraftText = '';
+  visibDraftHumanized = false;
   visibView = 'dashboard';
   renderVisibility();
 }
@@ -17794,6 +17809,7 @@ async function regenerateVisibDraft() {
   }
   if (!config) return;
   visibDraftText = '';
+  visibDraftHumanized = false;
   renderVisibility();
   try {
     if (!builder) builder = DRAFT_PROMPT_BUILDERS[visibDraftType];
@@ -17815,6 +17831,7 @@ async function humanizeVisibDraft() {
   if (btn) { btn.disabled = true; btn.textContent = 'Humanizing…'; }
   try {
     visibDraftText = await humanizeText(currentText);
+    visibDraftHumanized = true;
     showToast('Draft humanized');
   } catch (e) {
     showToast('Failed to humanize. Check API settings.');
