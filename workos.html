@@ -16796,40 +16796,40 @@ function buildTop3Prompt() {
     systemPrompt: DRAFT_SYSTEM_PROMPT,
     userPrompt: `Write a "Weekly Top 3" Slack post using EXACTLY this format. Follow the example closely — match the tone, spacing, and structure:
 
-Week's emoji: :[relevant_slack_emoji_name]:
+**Week's emoji:** :[relevant_slack_emoji_name]:
 
-What are your 3 focus areas this week?
+**What are your 3 focus areas this week?**
 
-[item 1 — casual one-liner]
-[item 2 — casual one-liner]
-[item 3 — casual one-liner]
+- [item 1 — casual one-liner]
+- [item 2 — casual one-liner]
+- [item 3 — casual one-liner]
 
-What would make this week a win for you?
+**What would make this week a win for you?**
 
 [1-2 casual sentences aligned with the top priority]
 
-Anything fun from the weekend?
+**Anything fun from the weekend?**
 
 [leave this completely blank — I fill it in manually]
 
 Here is a real example of the tone and format:
 
-Week's emoji: :typing_panda:
+**Week's emoji:** :typing_panda:
 
-What are your 3 focus areas this week?
+**What are your 3 focus areas this week?**
 
-Unblock all short-term projects for Content Atlas
-Do a product demo with stakeholders for Content Atlas and get feedback
-Finish off designs for sample calculator for Content Research app
+- Unblock all short-term projects for Content Atlas
+- Do a product demo with stakeholders for Content Atlas and get feedback
+- Finish off designs for sample calculator for Content Research app
 
-What would make this week a win for you?
+**What would make this week a win for you?**
 
 Catch up on all the outstanding design tasks for Content Atlas!
 
-Anything fun from the weekend?
+**Anything fun from the weekend?**
 
 Rules:
-- NO markdown bold, no bullet dashes, no formatting. Plain text only.
+- Section labels are bold markdown. Focus items use bullet dashes.
 - Each focus item is one casual line. No problem/context/solution/impact framework.
 - Use Slack emoji format :[name]: for the emoji (e.g. :rocket:, :art:, :hammer_and_wrench:).
 - The "win" should reflect the highest-priority current goal. Keep it casual and energetic.
