@@ -16788,9 +16788,35 @@ function buildTop3Prompt() {
   const entries = getCurrentWeekEntries();
   const recent = getRecentEntries(5);
   const all = [...entries, ...recent.filter(r => !entries.find(e => e.date === r.date))];
+  const vectorCtx = (state.vectors || []).map(v => {
+    const sc = state.vectorScoreCache[v.id];
+    return `- ${v.name}${sc ? ` (tier: ${sc.tier}, score: ${sc.score})` : ''}`;
+  }).join('\n');
   return {
     systemPrompt: DRAFT_SYSTEM_PROMPT,
-    userPrompt: `Write a "Weekly Top 3" Slack post — 3 items, each following the Problem → Context → Design Solution → Impact structure. Keep each item compact (a few sentences total).\n\nJournal entries:\n${formatEntriesForPrompt(all)}`
+    userPrompt: `Write a "Weekly Top 3" Slack post using EXACTLY this format:
+
+**[emoji]** (choose ONE relevant emoji based on the week's theme)
+
+**What are your 3 focus areas this week?**
+- [item 1 — one-liner, no extra context]
+- [item 2 — one-liner]
+- [item 3 — one-liner]
+(optionally 4-5 items if the week is packed, but prefer 3)
+
+**What would make this week a win for you?**
+[1-2 sentences aligned with the top priority vector]
+
+**Anything fun from the weekend?**
+[leave this section blank — just the header]
+
+Rules:
+- Each focus item is a single concise line. No problem/context/solution/impact framework.
+- The "win" should reflect the highest-priority vector goal.
+- Do NOT fill in the weekend section — leave it empty for manual entry.
+- Keep the whole post short and scannable.
+
+${vectorCtx ? `Current vectors (use for "win" alignment):\n${vectorCtx}\n\n` : ''}Journal entries:\n${formatEntriesForPrompt(all)}`
   };
 }
 
