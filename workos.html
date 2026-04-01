@@ -7650,7 +7650,7 @@ function renderTodoItem(todo) {
           ${!isManual && todo.meetingDate ? `<span class="todo-date">${(todo.meetingDate || '').substring(0, 10)}</span>` : ''}
           <span class="todo-age">${todoAge(todo.createdAt)}</span>
           ${recurrenceMeta}
-          ${isDismissed ? '' : `<button class="todo-star${todo.starred ? ' starred' : ''}" onclick="toggleTodoStar('${todo.id}')" title="${todo.starred ? 'Unstar' : 'Star'}">${todo.starred ? '★' : '☆'}</button>`}
+          ${isDismissed ? '' : `<button class="todo-star${todo.starred ? ' starred' : ''}" onclick="toggleTodoStar('${todo.id}')" title="${todo.starred ? 'Unstar' : 'Star'}">${todo.starred ? '★ Starred' : '☆ Star'}</button>`}
           ${rescheduleBtn}
           ${addSubtaskBtn}
           ${nestBtn}
