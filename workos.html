@@ -9368,9 +9368,12 @@ async function startGenerateMeetingPrep(prepId) {
     console.warn('Meeting prep generation failed:', e);
     meetingPrepView = 'detail';
     renderBriefs();
-    const reason = e.message === 'invalid_key' ? 'invalid API key' :
-                   e.message === 'rate_limited' ? 'rate limited' :
-                   e.message === 'no_key' ? 'no API configured' : 'generation failed';
+    const msg = e.message || '';
+    const reason = msg === 'invalid_key' ? 'invalid API key' :
+                   msg === 'rate_limited' ? 'rate limited — try again' :
+                   msg === 'no_key' ? 'no API configured' :
+                   msg.startsWith('api_error') ? msg :
+                   'generation failed: ' + msg;
     showToast('Meeting prep failed: ' + reason);
   }
 }
