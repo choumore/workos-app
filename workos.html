@@ -3869,6 +3869,8 @@ body {
 }
 .triage-mobile-btn:hover { background: color-mix(in srgb, var(--surface-card) 85%, var(--text-primary)); }
 .triage-mobile-btn:active { transform: scale(0.96); }
+.triage-key { display:inline-block;font-size:10px;font-weight:600;background:var(--bg-primary);border-radius:3px;padding:1px 5px;margin-right:4px;opacity:0.5; }
+@media (max-width: 600px) { .triage-key { display: none; } }
 .triage-mobile-btn.flash-today { background: rgba(45,138,78,0.15); border-color: #2d8a4e; }
 .triage-mobile-btn.flash-tomorrow { background: rgba(59,130,246,0.15); border-color: #3b82f6; }
 .triage-mobile-btn.flash-week { background: rgba(184,138,45,0.15); border-color: #b88a2d; }
@@ -11214,6 +11216,9 @@ function openMobileTriage(mode) {
   triageCounts = { today: 0, tomorrow: 0, 'this-week': 0, backlog: 0, deleted: 0 };
   saveTriageProgress();
 
+  document.removeEventListener('keydown', handleTriageKeydown);
+  document.addEventListener('keydown', handleTriageKeydown);
+
   if (!document.getElementById('mobileTriage')) {
     const overlay = document.createElement('div');
     overlay.className = 'triage-mobile';
@@ -11377,10 +11382,10 @@ function renderTriageCard() {
     </div>
     <div class="triage-mobile-undo">${undoHtml}</div>
     <div class="triage-mobile-actions">
-      <button class="triage-mobile-btn" id="triBtn-today" onclick="triageMobileAction('today')">Today</button>
-      <button class="triage-mobile-btn" id="triBtn-tomorrow" onclick="triageMobileAction('tomorrow')">Next Weekday</button>
-      <button class="triage-mobile-btn" id="triBtn-this-week" onclick="triageMobileAction('this-week')">This Week</button>
-      <button class="triage-mobile-btn" id="triBtn-backlog" onclick="triageMobileAction('backlog')">Backlog</button>
+      <button class="triage-mobile-btn" id="triBtn-today" onclick="triageMobileAction('today')"><span class="triage-key">1</span> Today</button>
+      <button class="triage-mobile-btn" id="triBtn-tomorrow" onclick="triageMobileAction('tomorrow')"><span class="triage-key">2</span> Next Weekday</button>
+      <button class="triage-mobile-btn" id="triBtn-this-week" onclick="triageMobileAction('this-week')"><span class="triage-key">3</span> This Week</button>
+      <button class="triage-mobile-btn" id="triBtn-backlog" onclick="triageMobileAction('backlog')"><span class="triage-key">4</span> Backlog</button>
     </div>
     <div style="text-align:center;margin-top:var(--space-sm);padding-bottom:var(--space-xl)"><button style="font:14px var(--font-family);color:var(--text-muted);background:none;border:none;cursor:pointer;padding:var(--space-sm) var(--space-lg)" onclick="triageSkip()">Skip — decide later</button></div>`;
 
@@ -11571,7 +11576,31 @@ function triageUndo() {
   renderTriageCard();
 }
 
+function handleTriageKeydown(e) {
+  // Skip if user is editing text
+  if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+  const overlay = document.getElementById('mobileTriage');
+  if (!overlay) return;
+  const item = triageQueue[triageIndex];
+  if (!item || triageIndex >= triageQueue.length) return;
+  switch (e.key.toLowerCase()) {
+    case '1': triageMobileAction('today'); break;
+    case '2': triageMobileAction('tomorrow'); break;
+    case '3': triageMobileAction('this-week'); break;
+    case '4': triageMobileAction('backlog'); break;
+    case '5': triageSkip(); break;
+    case 's': toggleTodoStar(item.id); renderTriageCard(); break;
+    case 'r': toggleTriageRecurrenceMenu(item.id, overlay.querySelector('.btn-secondary[onclick*="toggleTriageRecurrenceMenu"]')); break;
+    case 'd': triageMobileAction('done'); break;
+    case 'x': triageMobileAction('delete'); break;
+    case 'z': if (e.metaKey || e.ctrlKey) { triageUndo(); e.preventDefault(); } break;
+    default: return;
+  }
+  e.preventDefault();
+}
+
 function closeMobileTriage() {
+  document.removeEventListener('keydown', handleTriageKeydown);
   const overlay = document.getElementById('mobileTriage');
   if (overlay) overlay.remove();
   renderDashboard();
