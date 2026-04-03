@@ -6152,7 +6152,7 @@ Return JSON with this structure:
   "type": "<type-id>",
   "confidence": <0.0-1.0>,
   "summary": "<2-3 sentence career-focused summary — what happened that matters for this person's trajectory>",
-  "actionItems": "<bullet list of action items, or empty string>",
+  "actionItems": "<bullet list of DEDUPLICATED action items, or empty string. Each action item must be unique — never list the same task twice even if it was mentioned multiple times in the transcript. Consolidate overlapping items into one.>",
   "insights": { <type-specific fields as described below> }
 }
 
@@ -6470,6 +6470,9 @@ async function reanalyzeMeeting(meetingId, btn) {
 /* ========================================
    To-Do Parsing
    ======================================== */
+function normTodoText(t) {
+  return t.substring(0, 50).toLowerCase().replace(/\s+/g, ' ').replace(/[^a-z0-9 ]/g, '');
+}
 function parseActionItemsToTodos(meeting) {
   if (!meeting || !meeting.actionItems) return;
   const lines = meeting.actionItems.split('\n')
@@ -6477,11 +6480,17 @@ function parseActionItemsToTodos(meeting) {
     .filter(l => l.length >= 5);
   if (!lines.length) return;
 
-  const existing = (state.todos || []).filter(t => t.meetingId === meeting.id);
-  const existingNorms = new Set(existing.map(t => t.text.substring(0, 40).toLowerCase().replace(/\s+/g, ' ')));
+  // Check against ALL open todos from the same meeting date (not just same meetingId)
+  // This catches duplicates when AI phrases the same action item differently
+  const meetingDate = (meeting.date || '').substring(0, 10);
+  const existing = (state.todos || []).filter(t =>
+    t.meetingId === meeting.id ||
+    (meetingDate && t.meetingDate && t.meetingDate.substring(0, 10) === meetingDate && t.meetingTitle === (meeting.title || 'Untitled'))
+  );
+  const existingNorms = new Set(existing.map(t => normTodoText(t.text)));
 
   for (const line of lines) {
-    const norm = line.substring(0, 40).toLowerCase().replace(/\s+/g, ' ');
+    const norm = normTodoText(line);
     if (existingNorms.has(norm)) continue;
     existingNorms.add(norm);
     const id = 'todo_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
