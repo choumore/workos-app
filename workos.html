@@ -9217,8 +9217,8 @@ function buildMeetingPrepPrompt(record) {
       if (m.summary) text += `\nSummary: ${m.summary}`;
       if (m.actionItems) text += `\nAction items: ${m.actionItems}`;
       if (m.insights) {
-        const insightEntries = Object.entries(m.insights).filter(([k, v]) => v && v.trim());
-        if (insightEntries.length > 0) text += '\nInsights: ' + insightEntries.map(([k, v]) => `${k}: ${v}`).join(' | ');
+        const insightEntries = Object.entries(m.insights).filter(([k, v]) => v && typeof v === 'string' && v.trim());
+        if (insightEntries.length > 0) text += '\nInsights: ' + insightEntries.map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join(' | ');
       }
       if (m.transcript) text += `\nTranscript excerpt:\n${m.transcript.substring(0, 8000)}`;
       return text;
