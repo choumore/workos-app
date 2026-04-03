@@ -4232,6 +4232,7 @@ body {
   transition: background var(--duration-fast), color var(--duration-fast);
 }
 .todo-recurrence-btn:hover { background: var(--accent-200); }
+.todo-recurrence-btn.todo-starred-btn { color: #d4a017; }
 .todo-recurrence-menu {
   position: absolute;
   z-index: 100;
@@ -7677,7 +7678,7 @@ function renderTodoItem(todo) {
           ${!isManual && todo.meetingDate ? `<span class="todo-date">${(todo.meetingDate || '').substring(0, 10)}</span>` : ''}
           <span class="todo-age">${todoAge(todo.createdAt)}</span>
           ${recurrenceMeta}
-          ${isDismissed ? '' : `<button class="todo-star${todo.starred ? ' starred' : ''}" onclick="toggleTodoStar('${todo.id}')" title="${todo.starred ? 'Unstar' : 'Star'}">${todo.starred ? '★ Starred' : '☆ Star'}</button>`}
+          ${isDismissed ? '' : `<button class="todo-recurrence-btn${todo.starred ? ' todo-starred-btn' : ''}" onclick="toggleTodoStar('${todo.id}')" title="${todo.starred ? 'Unstar' : 'Star'}">${todo.starred ? '★ Starred' : '☆ Star'}</button>`}
           ${rescheduleBtn}
           ${addSubtaskBtn}
           ${nestBtn}
