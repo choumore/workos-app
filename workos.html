@@ -11615,6 +11615,8 @@ function closeMobileTriage() {
   if (overlay) overlay.remove();
   saveState();
   syncPush(); // Force immediate push so remote state is up-to-date
+  renderTabNav();
+  renderTodos();
   renderDashboard();
 }
 
