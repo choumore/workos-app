@@ -11209,7 +11209,7 @@ function isTodayFocusConfirmed() {
    ======================================== */
 let triageQueue = [];
 let triageIndex = 0;
-let triageLastAction = null;
+let triageUndoStack = [];
 let triageLastPriority = 'today';
 let triageCounts = { today: 0, tomorrow: 0, 'this-week': 0, backlog: 0, deleted: 0 };
 let mobileMode = 'inbox'; // 'inbox' | 'today' | 'this-week' | 'backlog'
@@ -11222,7 +11222,7 @@ function openMobileTriage(mode) {
     if (triageQueue.length === 0 && mode === 'inbox') { mobileMode = 'today'; } // auto-switch if inbox empty
   }
   triageIndex = 0;
-  triageLastAction = null;
+  triageUndoStack = [];
   triageCounts = { today: 0, tomorrow: 0, 'this-week': 0, backlog: 0, deleted: 0 };
   saveTriageProgress();
 
@@ -11365,8 +11365,9 @@ function renderTriageCard() {
   const recurrenceBtnHtml = item.recurrence
     ? `<button class="btn-secondary" style="color:var(--accent-interactive)" onclick="toggleTriageRecurrenceMenu('${item.id}', this)">🔄 ${recurrenceLabel(item.recurrence)}</button>`
     : `<button class="btn-secondary" style="color:var(--text-primary)" onclick="toggleTriageRecurrenceMenu('${item.id}', this)">🔄 Set Recurring</button>`;
-  const undoHtml = triageLastAction
-    ? `<button onclick="triageUndo()">↩ Undo: "${escapeHtml((triageLastAction.text || '').substring(0, 30))}" → ${triageLastAction.priority}</button>`
+  const lastAction = triageUndoStack.length > 0 ? triageUndoStack[triageUndoStack.length - 1] : null;
+  const undoHtml = lastAction
+    ? `<button onclick="triageUndo()">↩ Undo: "${escapeHtml((lastAction.text || '').substring(0, 30))}" → ${lastAction.priority}</button>`
     : '';
 
   overlay.innerHTML = `
@@ -11468,7 +11469,7 @@ function triageMobileAction(priority) {
   if (card) card.className = 'triage-mobile-card triage-card-exit';
 
   // Store for undo
-  triageLastAction = { todoId: item.id, text: item.text, priority: priority === 'delete' ? 'deleted' : priority, previousPriority: item.priority };
+  triageUndoStack.push({ todoId: item.id, text: item.text, priority: priority === 'delete' ? 'deleted' : priority, previousPriority: item.priority });
   if (priority !== 'delete') triageLastPriority = priority;
 
   // Apply action
@@ -11546,16 +11547,14 @@ function triageSkip() {
 }
 
 function triageUndo() {
-  if (!triageLastAction) return;
-  const { todoId, previousPriority } = triageLastAction;
+  if (triageUndoStack.length === 0) return;
+  const action = triageUndoStack.pop();
+  const { todoId } = action;
 
-  if (triageLastAction.priority === 'deleted') {
-    // Can't undo delete if todo was removed — re-create it
-    // Actually the todo was spliced from state.todos, we need to re-add
-    // For simplicity, we stored the text — recreate
+  if (action.priority === 'deleted') {
     state.todos.push({
       id: todoId,
-      text: triageLastAction.text,
+      text: action.text,
       status: 'open',
       priority: 'inbox',
       source: 'manual',
@@ -11563,24 +11562,31 @@ function triageUndo() {
       deferCount: 0
     });
     triageCounts.deleted--;
+  } else if (action.priority === 'done') {
+    const todo = state.todos.find(t => t.id === todoId);
+    if (todo) {
+      todo.status = 'open';
+      todo.completedAt = null;
+      todo.priority = 'inbox';
+      todo.triagedAt = null;
+    }
+    triageCounts.done = Math.max(0, (triageCounts.done || 0) - 1);
   } else {
     const todo = state.todos.find(t => t.id === todoId);
     if (todo) {
       todo.priority = 'inbox';
       todo.triagedAt = null;
     }
-    triageCounts[triageLastAction.priority] = Math.max(0, (triageCounts[triageLastAction.priority] || 0) - 1);
+    triageCounts[action.priority] = Math.max(0, (triageCounts[action.priority] || 0) - 1);
   }
 
   triageIndex = Math.max(0, triageIndex - 1);
-  // Re-insert item at current position in queue
   const existingIdx = triageQueue.findIndex(t => t.id === todoId);
   if (existingIdx === -1) {
     const restored = state.todos.find(t => t.id === todoId);
     if (restored) triageQueue.splice(triageIndex, 0, restored);
   }
 
-  triageLastAction = null;
   saveState();
   saveTriageProgress();
   renderTriageCard();
