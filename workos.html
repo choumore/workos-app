@@ -9505,7 +9505,7 @@ async function startGenerateSynthesis(prepId, reflection) {
     });
     // Add action items to todos inbox
     if (parsed.actionItems) {
-      parseActionItemsToTodos({ id: 'synth-' + synthId, actionItems: parsed.actionItems, title: meeting.title || 'Untitled', date: meeting.date });
+      parseActionItemsToTodos({ id: meeting.id, actionItems: parsed.actionItems, title: meeting.title || 'Untitled', date: meeting.date });
     }
     selectedSynthesisMeetingId = null;
     synthesisLoadingForPrepId = null;
@@ -9604,7 +9604,7 @@ async function retrySynthesis(prepId, synthIndex) {
 
     // Add action items to todos inbox
     if (parsed.actionItems) {
-      parseActionItemsToTodos({ id: 'synth-' + failedSynth.id, actionItems: parsed.actionItems, title: meeting.title || 'Untitled', date: meeting.date });
+      parseActionItemsToTodos({ id: meeting.id, actionItems: parsed.actionItems, title: meeting.title || 'Untitled', date: meeting.date });
     }
 
     synthesisLoadingForPrepId = null;
