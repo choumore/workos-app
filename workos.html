@@ -6218,6 +6218,24 @@ async function fetchMeetings() {
         const meeting = JSON.parse(file.content);
         if (!meeting.id) continue;
         if ((state.deletedMeetingIds || []).includes(meeting.id)) continue;
+        // Dedup: skip if we already have a meeting with the same title + date (Zapier can fire twice with different IDs)
+        const meetingDateStr = (meeting.date || '').substring(0, 10);
+        const meetingTitleNorm = (meeting.title || '').trim().toLowerCase();
+        const isDupeByContent = meetingDateStr && meetingTitleNorm && state.meetings.some(m =>
+          m.id !== meeting.id &&
+          (m.date || '').substring(0, 10) === meetingDateStr &&
+          (m.title || '').trim().toLowerCase() === meetingTitleNorm
+        );
+        if (isDupeByContent) {
+          // Still restore transcript/link on the existing copy if needed
+          const existing = state.meetings.find(m =>
+            (m.date || '').substring(0, 10) === meetingDateStr &&
+            (m.title || '').trim().toLowerCase() === meetingTitleNorm
+          );
+          if (existing && !existing.transcript && meeting.transcript) existing.transcript = meeting.transcript;
+          if (existing && !existing.link && meeting.link) existing.link = meeting.link;
+          continue;
+        }
         if (!existingIds.has(meeting.id)) {
           state.meetings.push(meeting);
           existingIds.add(meeting.id);
