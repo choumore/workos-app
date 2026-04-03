@@ -5818,11 +5818,21 @@ async function syncPull() {
       }
       state.meetingPreps = [...localPrepsById.values()];
     }
-    // Merge todos: remote wins by ID
+    // Merge todos: latest-wins by ID (compare timestamps to avoid overwriting local triage)
     if (remote.todos) {
       const localTodosById = new Map((state.todos || []).map(t => [t.id, t]));
       for (const rt of remote.todos) {
-        localTodosById.set(rt.id, rt); // remote wins
+        const local = localTodosById.get(rt.id);
+        if (!local) {
+          localTodosById.set(rt.id, rt);
+        } else {
+          // Keep whichever was modified more recently
+          const localTs = local.triagedAt || local.completedAt || local.createdAt || '';
+          const remoteTs = rt.triagedAt || rt.completedAt || rt.createdAt || '';
+          if (remoteTs >= localTs) {
+            localTodosById.set(rt.id, rt);
+          }
+        }
       }
       state.todos = [...localTodosById.values()];
     }
@@ -11603,6 +11613,8 @@ function closeMobileTriage() {
   document.removeEventListener('keydown', handleTriageKeydown);
   const overlay = document.getElementById('mobileTriage');
   if (overlay) overlay.remove();
+  saveState();
+  syncPush(); // Force immediate push so remote state is up-to-date
   renderDashboard();
 }
 
