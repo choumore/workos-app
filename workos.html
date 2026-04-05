@@ -2000,7 +2000,6 @@ body {
 }
 #panel-log .streak-badge {
   font-family: Times, serif;
-  font-style: italic;
   font-size: 15px;
   font-weight: 600;
 }
@@ -2123,7 +2122,6 @@ body {
   line-height: 1.75;
 }
 #panel-log .entry-reflection {
-  font-style: italic;
   border-left: 2px solid var(--border-muted);
   padding-left: var(--space-lg);
   color: var(--text-secondary);
@@ -2169,7 +2167,6 @@ body {
   font-family: Times, serif;
 }
 .intention-screen .form-textarea::placeholder {
-  font-style: italic;
   color: var(--text-muted);
 }
 .intention-screen .form-textarea:focus {
@@ -6719,7 +6716,7 @@ function renderMeetingCompactRow(m) {
   } else if (m.summary) {
     oneLiner = m.summary.replace(/\n/g, ' ').replace(/<[^>]*>/g, '').replace(/^[-•*]\s*/, '').substring(0, 120);
   } else {
-    oneLiner = '<span style="color:var(--text-muted);font-style:italic">Not yet analyzed</span>';
+    oneLiner = '<span style="color:var(--text-muted)">Not yet analyzed</span>';
   }
 
   return `<div class="meeting-compact-row" id="meeting-compact-${escapeHtml(m.id)}" data-meeting-id="${escapeHtml(m.id)}" onclick="toggleMeetingExpand('${escapeHtml(m.id)}')">
@@ -15986,7 +15983,7 @@ function formatInlineMarkdown(text) {
   return escapeHtml(text)
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/__(.+?)__/g, '<strong>$1</strong>')
-    .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
+    .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '$1')
     .replace(/`(.+?)`/g, '<code style="background:var(--bg-primary);padding:1px 4px;border-radius:2px;font-size:0.9em">$1</code>')
     .replace(/&gt;\s?(.+)/g, '<span style="border-left:2px solid var(--border-default);padding-left:var(--space-sm);color:var(--text-muted)">$1</span>');
 }
