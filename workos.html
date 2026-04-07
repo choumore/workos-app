@@ -4527,6 +4527,9 @@ body {
 .chat-input-bar button { background: var(--surface-ai); color: var(--accent-interactive); border: none; border-radius: var(--radius-sm); padding: 8px 16px; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; height: 40px; transition: background var(--duration-fast), color var(--duration-fast); }
 .chat-input-bar button:hover { background: var(--accent-200); color: var(--accent-interactive); }
 .chat-input-bar button:disabled { opacity: 0.5; cursor: not-allowed; }
+.mempalace-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); flex-shrink: 0; align-self: center; transition: background 0.3s; }
+.mempalace-dot.connected { background: var(--accent-green, #22c55e); }
+.mempalace-dot.disconnected { background: var(--text-muted); }
 .chat-quick-prompts { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--space-lg); text-align: center; }
 .chat-quick-prompts h2 { font-size: 20px; font-weight: 600; margin: 0 0 var(--space-xs) 0; }
 .chat-quick-prompts p { color: var(--text-muted); font-size: 13px; margin: 0 0 var(--space-lg) 0; }
@@ -4608,7 +4611,7 @@ body {
    State
    ======================================== */
 let state = {
-  settings: { name: '', role: '', baseUrl: '', projectId: '', apiKey: '', model: 'sonnet', slackWebhook: '', slackToken: '', promotionNotes: '', insightsProfile: '', insightsProfileRaw: '', ghToken: '', ghGistId: '', googleClientId: '', meetingsGistId: '', features: { contributions: true, visibility: true, meetings: true, todos: true } },
+  settings: { name: '', role: '', baseUrl: '', projectId: '', apiKey: '', model: 'sonnet', slackWebhook: '', slackToken: '', promotionNotes: '', insightsProfile: '', insightsProfileRaw: '', ghToken: '', ghGistId: '', googleClientId: '', meetingsGistId: '', mempalaceServerUrl: 'http://localhost:8091', obsidianVaultPath: '', obsidianExportEnabled: false, features: { contributions: true, visibility: true, meetings: true, todos: true } },
   entries: [],
   wins: [],
   weeklyBriefs: [],
@@ -4801,6 +4804,7 @@ function saveState() {
   try { computeVectorScores(); } catch (e) { console.warn('Score computation error:', e); }
   try { buildCompressedSnapshot(); } catch (e) { console.warn('Snapshot error:', e); }
   debouncedSyncPush();
+  try { debouncedObsidianExport(); } catch (e) { console.warn('[obsidian] Export hook error:', e); }
 }
 
 /* ========================================
@@ -5675,6 +5679,158 @@ function runMigrations() {
   }
 
   if (changed) saveState();
+}
+
+/* ========================================
+   Obsidian Export Engine
+   ======================================== */
+let obsidianExportTimer = null;
+const obsidianExportedHashes = {}; // path → content hash, tracks what's already exported this session
+
+function debouncedObsidianExport() {
+  if (!state.settings.obsidianExportEnabled || !state.settings.obsidianVaultPath) return;
+  if (obsidianExportTimer) clearTimeout(obsidianExportTimer);
+  obsidianExportTimer = setTimeout(() => obsidianExport(), 5000);
+}
+
+async function obsidianExport() {
+  if (!state.settings.obsidianExportEnabled || !state.settings.obsidianVaultPath) return;
+  try {
+    const candidates = [];
+    const today = todayStr();
+    // Export today's entry if it exists
+    const todayEntry = (state.entries || []).find(e => e.date === today);
+    if (todayEntry) {
+      candidates.push({ path: 'entries/' + today + '.md', content: entryToMarkdown(todayEntry) });
+    }
+    // Export meetings modified recently (have transcript or were updated today)
+    for (const m of (state.meetings || [])) {
+      const mDate = meetingDateStr(m);
+      if (mDate === today || m.transcript) {
+        const slug = (m.title || 'meeting').toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 40);
+        const idSuffix = m.id ? '-' + String(m.id).slice(-4) : '';
+        candidates.push({ path: 'meetings/' + mDate + '-' + slug + idSuffix + '.md', content: meetingToMarkdown(m) });
+      }
+    }
+    // Filter to only changed files (simple length-based hash to avoid re-exporting unchanged content)
+    const files = candidates.filter(f => {
+      const hash = f.path + ':' + f.content.length + ':' + f.content.substring(0, 100);
+      if (obsidianExportedHashes[f.path] === hash) return false;
+      obsidianExportedHashes[f.path] = hash;
+      return true;
+    });
+    if (files.length === 0) return;
+    const url = (state.settings.mempalaceServerUrl || 'http://localhost:8091').replace(/\/$/, '');
+    await fetch(url + '/export', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vault_path: state.settings.obsidianVaultPath, files }),
+      signal: AbortSignal.timeout(10000)
+    });
+    console.log('[obsidian] Exported', files.length, 'files (skipped', candidates.length - files.length, 'unchanged)');
+  } catch (e) {
+    console.warn('[obsidian] Export failed:', e.message);
+  }
+}
+
+function entryToMarkdown(entry) {
+  const vectorNames = (entry.vectors || []).map(vid => {
+    const v = (state.vectors || []).find(vec => vec.id === vid);
+    return v ? v.name : vid;
+  });
+  let md = '---\n';
+  md += `date: ${entry.date || 'unknown'}\n`;
+  md += `type: entry\n`;
+  if (entry.mood) md += `mood: ${entry.mood}\n`;
+  if (entry.energy != null) md += `energy: ${entry.energy}\n`;
+  if (vectorNames.length > 0) md += `vectors: [${vectorNames.join(', ')}]\n`;
+  md += '---\n\n';
+  if (entry.workDone) md += `## Work Done\n${entry.workDone}\n\n`;
+  if (entry.reflection) md += `## Reflection\n${entry.reflection}\n\n`;
+  if (entry.tldr) {
+    if (entry.tldr.workDone && entry.tldr.workDone !== entry.workDone) md += `## AI Summary — Work\n${entry.tldr.workDone}\n\n`;
+    if (entry.tldr.reflection && entry.tldr.reflection !== entry.reflection) md += `## AI Summary — Reflection\n${entry.tldr.reflection}\n\n`;
+    if (entry.tldr.coaching) md += `## AI Coaching Note\n${entry.tldr.coaching}\n\n`;
+  }
+  return md;
+}
+
+function meetingToMarkdown(meeting, cleanedTranscript) {
+  const mDate = meetingDateStr(meeting);
+  let md = '---\n';
+  md += `date: ${mDate}\n`;
+  md += `type: meeting\n`;
+  if (meeting.type) md += `meeting_type: ${meeting.type}\n`;
+  md += `title: "${(meeting.title || 'Untitled').replace(/"/g, '\\"')}"\n`;
+  if (meeting.participants) md += `participants: [${meeting.participants}]\n`;
+  md += '---\n\n';
+  if (meeting.summary) md += `## Summary\n${meeting.summary}\n\n`;
+  if (meeting.actionItems) md += `## Action Items\n${meeting.actionItems}\n\n`;
+  if (meeting.notes) md += `## Notes\n${meeting.notes}\n\n`;
+  if (meeting.insights && typeof meeting.insights === 'object') {
+    const insightEntries = Object.entries(meeting.insights).filter(([, v]) => v && typeof v === 'string');
+    if (insightEntries.length > 0) {
+      md += `## Insights\n`;
+      for (const [key, val] of insightEntries) {
+        md += `### ${key.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase()).trim()}\n${val}\n\n`;
+      }
+    }
+  }
+  if (meeting.feedback) md += `## Feedback\n${meeting.feedback}\n\n`;
+  const transcript = cleanedTranscript || meeting.transcript;
+  if (transcript) md += `## Transcript\n${transcript}\n`;
+  return md;
+}
+
+function briefToMarkdown(brief) {
+  let md = '---\n';
+  md += `week_of: ${brief.weekOf || 'unknown'}\n`;
+  md += `type: brief\n`;
+  md += `generated_at: ${brief.generatedAt || ''}\n`;
+  md += '---\n\n';
+  if (brief.patterns) md += `## Patterns\n${brief.humanizedSections?.patterns || brief.patterns}\n\n`;
+  if (brief.vectorCheckIn) md += `## Vector Check-In\n${brief.humanizedSections?.vectorCheckIn || brief.vectorCheckIn}\n\n`;
+  if (brief.winsDetected && brief.winsDetected.length > 0) {
+    md += `## Wins Detected\n`;
+    for (const w of brief.winsDetected) {
+      md += `- ${typeof w === 'string' ? w : w.description || JSON.stringify(w)}\n`;
+    }
+    md += '\n';
+  }
+  if (brief.oneOnOnePrep) md += `## 1:1 Prep\n${brief.humanizedSections?.oneOnOnePrep || brief.oneOnOnePrep}\n\n`;
+  if (brief.vectorProgress) md += `## Vector Progress\n${brief.humanizedSections?.vectorProgress || brief.vectorProgress}\n\n`;
+  if (brief.openLoopsSummary) md += `## Open Loops\n${brief.humanizedSections?.openLoopsSummary || brief.openLoopsSummary}\n\n`;
+  return md;
+}
+
+async function cleanTranscriptForExport(transcript, meetingTitle) {
+  // Post-process transcript via Claude for readability:
+  // - Remove filler words, improve fluency
+  // - Consolidate interrupted speech (don't split one person's speech across sections due to failed interruptions)
+  // - Keep all substantive content, just make it easier to read
+  if (!transcript || transcript.length < 100) return transcript;
+  try {
+    const cleaned = await callClaude(
+      `You are a transcript editor. Clean up the following meeting transcript for archival readability.
+
+Rules:
+- Remove filler words (um, uh, like, you know, sort of, kind of) and false starts
+- Consolidate consecutive speech by the same speaker — if someone was briefly interrupted but continued their thought, merge it into one block
+- Improve grammar and fluency without changing meaning
+- Keep the speaker labels (e.g., "Sarah:", "Mo:")
+- Preserve all substantive content — never remove real information
+- Do NOT summarize or shorten — output the full cleaned transcript
+- Keep chronological order
+- Output the cleaned transcript only, no preamble`,
+      `Meeting: ${meetingTitle || 'Untitled'}\n\nRaw transcript:\n${transcript.substring(0, 100000)}`,
+      4000,
+      'Transcript Cleanup'
+    );
+    return cleaned || transcript;
+  } catch (e) {
+    console.warn('[obsidian] Transcript cleanup failed, using raw:', e.message);
+    return transcript;
+  }
 }
 
 /* ========================================
@@ -7307,12 +7463,15 @@ function renderChat() {
       <div class="chat-quick-prompts">
         <h2>Career Chat</h2>
         <p>Ask anything about your work, vectors, feedback, or career trajectory.</p>
+        ${state.settings.mempalaceServerUrl && !state.settings.obsidianVaultPath ? `<p style="font-size:12px;color:var(--text-muted);margin-top:var(--space-sm)">Tip: Set your Obsidian Vault Path in Settings → Integrations → MemPalace to enable deep memory search with <code>@memory</code>.</p>` : ''}
+        ${state.settings.mempalaceServerUrl && state.settings.obsidianVaultPath ? `<p style="font-size:12px;color:var(--text-muted);margin-top:var(--space-sm)">Use <code>@memory</code> to search your full work history — e.g. <code>@memory what did Sarah say about the component API?</code></p>` : ''}
         <div class="chat-prompt-grid">
           ${quickPrompts.map(p => `<button class="chat-prompt-chip" onclick="sendChatFromPrompt(this.textContent)">${escapeHtml(p)}</button>`).join('')}
         </div>
       </div>
       <div class="chat-input-bar">
-        <textarea placeholder="Ask about your career, vectors, wins, meetings..." rows="1" onkeydown="handleChatKeydown(event)" oninput="autoResizeChatInput(this)" id="chatInput"></textarea>
+        <textarea placeholder="Ask about your career, vectors, wins, meetings... Use @memory for deep search" rows="1" onkeydown="handleChatKeydown(event)" oninput="autoResizeChatInput(this)" id="chatInput"></textarea>
+        ${state.settings.mempalaceServerUrl ? '<span class="mempalace-dot" id="mempalaceDot" title="MemPalace"></span>' : ''}
         <button onclick="sendChatMessage()" id="chatSendBtn">Send</button>
       </div>
     </div>`;
@@ -7347,13 +7506,22 @@ function renderChat() {
       ${typingHtml}
     </div>
     <div class="chat-input-bar">
-      <textarea placeholder="Follow up..." rows="1" onkeydown="handleChatKeydown(event)" oninput="autoResizeChatInput(this)" id="chatInput"${chatLoading ? ' disabled' : ''}></textarea>
+      <textarea placeholder="Follow up... Use @memory for deep search" rows="1" onkeydown="handleChatKeydown(event)" oninput="autoResizeChatInput(this)" id="chatInput"${chatLoading ? ' disabled' : ''}></textarea>
+      ${state.settings.mempalaceServerUrl ? '<span class="mempalace-dot" id="mempalaceDot" title="MemPalace"></span>' : ''}
       <button onclick="sendChatMessage()" id="chatSendBtn"${chatLoading ? ' disabled' : ''}>Send</button>
     </div>
   </div>`;
 
   const scrollEl = document.getElementById('chatMessagesScroll');
   if (scrollEl) scrollEl.scrollTop = scrollEl.scrollHeight;
+
+  // Update MemPalace status dot
+  const dot = document.getElementById('mempalaceDot');
+  if (dot && state.settings.mempalaceServerUrl) {
+    fetch(state.settings.mempalaceServerUrl.replace(/\/$/, '') + '/status', { signal: AbortSignal.timeout(1500) })
+      .then(r => r.ok ? dot.classList.add('connected') : dot.classList.add('disconnected'))
+      .catch(() => dot.classList.add('disconnected'));
+  }
 }
 
 function renderChatHistory() {
@@ -7465,7 +7633,7 @@ async function sendChatMessage() {
   try {
     const systemPrompt = buildChatSystemPrompt();
     const messages = getChatMessages();
-    const tier2 = buildChatTier2Context(text);
+    const tier2 = await buildChatTier2Context(text);
     const apiMessages = messages.map((m, i) => {
       if (i === messages.length - 1 && m.role === 'user' && tier2) {
         return { role: m.role, content: m.content + tier2 };
@@ -8976,9 +9144,18 @@ Guidelines:
 - If asked about a person, reference past meetings and interactions.`;
 }
 
-function buildChatTier2Context(userMessage) {
+async function buildChatTier2Context(userMessage) {
   const msg = userMessage.toLowerCase();
   let extra = [];
+
+  // @memory trigger — query MemPalace for deep context
+  if (msg.startsWith('@memory ') || msg.startsWith('@memory:')) {
+    const query = userMessage.replace(/^@memory[:\s]+/i, '').trim();
+    if (query) {
+      const memResults = await queryMemPalace(query);
+      if (memResults) extra.push(memResults);
+    }
+  }
 
   // Feedback / meeting feedback
   if (msg.includes('feedback')) {
@@ -9056,6 +9233,27 @@ function buildChatTier2Context(userMessage) {
   }
 
   return extra.length > 0 ? '\n\n[Additional context for this message]\n' + extra.join('\n\n') : '';
+}
+
+async function queryMemPalace(query) {
+  if (!state.settings.mempalaceServerUrl) return null;
+  try {
+    const url = state.settings.mempalaceServerUrl.replace(/\/$/, '');
+    const resp = await fetch(url + '/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, limit: 5 }),
+      signal: AbortSignal.timeout(2000)
+    });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (!data.results || data.results.length === 0) return null;
+    const lines = data.results.map(r => `[${r.source || 'unknown'}] (score: ${(r.score || 0).toFixed(2)})\n${(r.content || '').substring(0, 500)}`).join('\n\n');
+    return '<memory_context>\n' + lines + '\n</memory_context>';
+  } catch (e) {
+    // Graceful fallback — server down or timeout, chat works normally
+    return null;
+  }
 }
 
 function findMentionedPerson(msg) {
@@ -15494,7 +15692,33 @@ function settingsIntegrationsHtml() {
       </div>
       `}
       </div>
-    </div>`;
+    </div>
+    ${settingsCardWrap('MemPalace + Obsidian', `
+      <div class="form-hint" style="margin-bottom:var(--space-lg)">Export journal entries, meetings, and briefs to an Obsidian vault. Use MemPalace for semantic search in Career Chat.</div>
+      <div class="form-group">
+        <label class="form-label">MemPalace Server URL</label>
+        <input class="form-input" id="settingMempalaceUrl" value="${escapeHtml(state.settings.mempalaceServerUrl)}" placeholder="http://localhost:8091">
+        <div class="form-hint">Python companion server. Start with: <code>cd workos-mempalace-server && python server.py</code></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Obsidian Vault Path</label>
+        <input class="form-input" id="settingObsidianVault" value="${escapeHtml(state.settings.obsidianVaultPath)}" placeholder="~/obsidian/WorkOS">
+        <div class="form-hint">Absolute path to your WorkOS Obsidian vault folder.</div>
+      </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:var(--space-sm);cursor:pointer">
+          <input type="checkbox" id="settingObsidianAutoExport" ${state.settings.obsidianExportEnabled ? 'checked' : ''}>
+          <span class="form-label" style="margin:0">Auto-export on save</span>
+        </label>
+        <div class="form-hint">Automatically export new entries and meetings to Obsidian when you save.</div>
+      </div>
+      <div class="form-group" style="display:flex;gap:var(--space-sm);align-items:center;flex-wrap:wrap">
+        <button class="btn-secondary" onclick="testMempalaceConnection()">Test Connection</button>
+        <button class="btn-secondary" onclick="triggerMempalaceMine()">Mine Vault</button>
+        <button class="btn-secondary" onclick="exportAllToObsidian()">Export All</button>
+        <div class="api-status" id="mempalaceStatus"></div>
+      </div>
+    `)}`;
 }
 
 function settingsDataHtml() {
@@ -15809,10 +16033,120 @@ function attachSettingsListeners() {
 
     const gcalBtn = document.getElementById('connectGcalBtn');
     if (gcalBtn) gcalBtn.addEventListener('click', () => connectGoogleCalendar());
+
+    // MemPalace + Obsidian
+    saveField('settingMempalaceUrl', 'mempalaceServerUrl');
+    saveField('settingObsidianVault', 'obsidianVaultPath');
+    const autoExportEl = document.getElementById('settingObsidianAutoExport');
+    if (autoExportEl) autoExportEl.addEventListener('change', (e) => { state.settings.obsidianExportEnabled = e.target.checked; saveState(); });
   }
 
   if (settingsSubTab === 'meetings') {
     attachMeetingsListeners();
+  }
+}
+
+/* MemPalace + Obsidian Settings Functions */
+
+async function testMempalaceConnection() {
+  const statusEl = document.getElementById('mempalaceStatus');
+  if (statusEl) statusEl.innerHTML = '<span style="color:var(--text-muted)">Testing...</span>';
+  try {
+    const url = (state.settings.mempalaceServerUrl || 'http://localhost:8091').replace(/\/$/, '');
+    const resp = await fetch(url + '/status', { signal: AbortSignal.timeout(3000) });
+    const data = await resp.json();
+    if (statusEl) statusEl.innerHTML = `<span class="valid">Connected${data.mempalace_initialized ? ' — MemPalace ready' : ' — MemPalace not initialized'}</span>`;
+  } catch (e) {
+    if (statusEl) statusEl.innerHTML = '<span class="invalid">Cannot reach server</span>';
+  }
+}
+
+async function triggerMempalaceMine() {
+  const vaultPath = state.settings.obsidianVaultPath;
+  if (!vaultPath) { showToast('Set Obsidian Vault Path first'); return; }
+  const statusEl = document.getElementById('mempalaceStatus');
+  if (statusEl) statusEl.innerHTML = '<span style="color:var(--text-muted)">Mining started...</span>';
+  try {
+    const url = (state.settings.mempalaceServerUrl || 'http://localhost:8091').replace(/\/$/, '');
+    const resp = await fetch(url + '/mine', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vault_path: vaultPath }),
+      signal: AbortSignal.timeout(5000)
+    });
+    const data = await resp.json();
+    if (resp.ok) {
+      if (statusEl) statusEl.innerHTML = '<span class="valid">Mining in progress (background)</span>';
+      showToast('Vault mining started');
+    } else {
+      if (statusEl) statusEl.innerHTML = `<span class="invalid">${escapeHtml(data.detail || 'Mine failed')}</span>`;
+    }
+  } catch (e) {
+    if (statusEl) statusEl.innerHTML = '<span class="invalid">Cannot reach server</span>';
+  }
+}
+
+async function exportAllToObsidian() {
+  const vaultPath = state.settings.obsidianVaultPath;
+  if (!vaultPath) { showToast('Set Obsidian Vault Path first'); return; }
+  const statusEl = document.getElementById('mempalaceStatus');
+  // Disable all export buttons during operation
+  const btns = document.querySelectorAll('.settings-card button');
+  btns.forEach(b => { if (b.textContent.includes('Export') || b.textContent.includes('Mine')) b.disabled = true; });
+  if (statusEl) statusEl.innerHTML = '<span style="color:var(--text-muted)">Preparing export...</span>';
+  try {
+    const files = [];
+    for (const entry of (state.entries || [])) {
+      files.push({ path: 'entries/' + (entry.date || 'unknown') + '.md', content: entryToMarkdown(entry) });
+    }
+    // Clean transcripts in parallel with concurrency limit of 3
+    const meetingsToClean = (state.meetings || []).filter(m => m.transcript && m.transcript.length > 100);
+    const meetingsNoClean = (state.meetings || []).filter(m => !m.transcript || m.transcript.length <= 100);
+    let cleaned = 0;
+    const totalToClean = meetingsToClean.length;
+    // Process in chunks of 3 for parallel cleaning
+    for (let i = 0; i < meetingsToClean.length; i += 3) {
+      const chunk = meetingsToClean.slice(i, i + 3);
+      if (statusEl) statusEl.innerHTML = `<span style="color:var(--text-muted)">Cleaning transcripts ${cleaned + 1}–${Math.min(cleaned + chunk.length, totalToClean)} of ${totalToClean}...</span>`;
+      const results = await Promise.all(chunk.map(m =>
+        cleanTranscriptForExport(m.transcript, m.title).then(ct => {
+          const slug = (m.title || 'meeting').toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 40);
+          const idSuffix = m.id ? '-' + String(m.id).slice(-4) : '';
+          return { path: 'meetings/' + meetingDateStr(m) + '-' + slug + idSuffix + '.md', content: meetingToMarkdown(m, ct) };
+        })
+      ));
+      files.push(...results);
+      cleaned += chunk.length;
+    }
+    // Add meetings without transcripts (no cleaning needed)
+    for (const m of meetingsNoClean) {
+      const slug = (m.title || 'meeting').toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 40);
+      const idSuffix = m.id ? '-' + String(m.id).slice(-4) : '';
+      files.push({ path: 'meetings/' + meetingDateStr(m) + '-' + slug + idSuffix + '.md', content: meetingToMarkdown(m) });
+    }
+    for (const brief of (state.weeklyBriefs || [])) {
+      files.push({ path: 'briefs/' + (brief.id || brief.weekId || 'brief') + '.md', content: briefToMarkdown(brief) });
+    }
+    if (files.length === 0) { showToast('Nothing to export'); return; }
+    if (statusEl) statusEl.innerHTML = `<span style="color:var(--text-muted)">Writing ${files.length} files...</span>`;
+    const url = (state.settings.mempalaceServerUrl || 'http://localhost:8091').replace(/\/$/, '');
+    const resp = await fetch(url + '/export', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vault_path: vaultPath, files }),
+      signal: AbortSignal.timeout(30000)
+    });
+    const data = await resp.json();
+    if (resp.ok) {
+      if (statusEl) statusEl.innerHTML = `<span class="valid">Exported ${data.count} files</span>`;
+      showToast(`Exported ${data.count} files to Obsidian`);
+    } else {
+      if (statusEl) statusEl.innerHTML = `<span class="invalid">${escapeHtml(data.detail || 'Export failed')}</span>`;
+    }
+  } catch (e) {
+    if (statusEl) statusEl.innerHTML = '<span class="invalid">Export failed: ' + escapeHtml(e.message) + '</span>';
+  } finally {
+    btns.forEach(b => b.disabled = false);
   }
 }
 
