@@ -14135,11 +14135,24 @@ async function humanizeBriefSection(briefId, sectionKey, linkEl) {
 }
 
 async function startGenerateBrief() {
-  const weekEntries = getCurrentWeekEntries();
+  let weekEntries = getCurrentWeekEntries();
+  let monday = getWeekMonday(todayStr());
+
+  // If no entries this week, try last week
   if (weekEntries.length === 0) {
-    showToast('No entries this week to analyze.');
-    return;
+    const lastMonday = new Date(monday + 'T00:00:00');
+    lastMonday.setDate(lastMonday.getDate() - 7);
+    const lastMondayStr = lastMonday.toISOString().slice(0, 10);
+    const lastWeekDates = getWeekDates(lastMondayStr);
+    const lastWeekEntries = state.entries.filter(e => lastWeekDates.includes(e.date)).sort((a, b) => a.date.localeCompare(b.date));
+    if (lastWeekEntries.length === 0) {
+      showToast('No entries this week or last week to analyze.');
+      return;
+    }
+    weekEntries = lastWeekEntries;
+    monday = lastMondayStr;
   }
+
   if (weekEntries.length < 3 && !confirm(`Briefs work best with 3+ entries. You have ${weekEntries.length} so far. Generate anyway?`)) {
     return;
   }
@@ -14152,7 +14165,6 @@ async function startGenerateBrief() {
     const systemPrompt = getSystemPrompt() + '\n\nFor this weekly brief, produce a structured response in exactly the format specified below. Do not deviate from the section structure.';
     const text = await callClaude(systemPrompt, buildWeeklyPrompt(weekEntries), 2000, 'Weekly Brief');
     const parsed = parseWeeklyBrief(text);
-    const monday = getWeekMonday(todayStr());
 
     // Remove existing brief for this week
     state.weeklyBriefs = state.weeklyBriefs.filter(b => b.weekOf !== monday);
