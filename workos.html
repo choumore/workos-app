@@ -5802,14 +5802,64 @@ async function syncPull() {
     state.settings.ghToken = localToken;
     state.settings.ghGistId = localGistId;
     state.settings.meetingsGistId = localMeetingsGistId;
-    state.entries = remote.entries || [];
-    state.wins = remote.wins || [];
-    state.weeklyBriefs = remote.weeklyBriefs || [];
-    state.intentions = remote.intentions || {};
-    state.dayPriorities = remote.dayPriorities || {};
-    state.dayPlanChecked = remote.dayPlanChecked || {};
-    state.contributions = remote.contributions || [];
-    state.visibilityActivities = remote.visibilityActivities || [];
+    // Merge entries by date (latest-modified wins, keep local-only)
+    if (remote.entries) {
+      const localByDate = new Map((state.entries || []).map(e => [e.date, e]));
+      for (const re of remote.entries) {
+        const local = localByDate.get(re.date);
+        if (!local) {
+          localByDate.set(re.date, re);
+        } else {
+          const localTs = local.updatedAt || local.date || '';
+          const remoteTs = re.updatedAt || re.date || '';
+          if (remoteTs > localTs) localByDate.set(re.date, re);
+        }
+      }
+      state.entries = [...localByDate.values()];
+    }
+    // Merge wins by description+sourceBriefId (keep local-only)
+    if (remote.wins) {
+      const winKey = w => (w.sourceBriefId || '') + '::' + (w.description || '');
+      const localByKey = new Map((state.wins || []).map(w => [winKey(w), w]));
+      for (const rw of remote.wins) {
+        const k = winKey(rw);
+        if (!localByKey.has(k)) localByKey.set(k, rw);
+        // If both exist, keep the one with a confirmed/dismissed status over suggested
+        else {
+          const local = localByKey.get(k);
+          if (rw.status !== 'suggested' && local.status === 'suggested') localByKey.set(k, rw);
+        }
+      }
+      state.wins = [...localByKey.values()];
+    }
+    // Merge weeklyBriefs by weekOf (keep local-only, latest wins by generatedAt)
+    if (remote.weeklyBriefs) {
+      const localByWeek = new Map((state.weeklyBriefs || []).map(b => [b.weekOf, b]));
+      for (const rb of remote.weeklyBriefs) {
+        const local = localByWeek.get(rb.weekOf);
+        if (!local) {
+          localByWeek.set(rb.weekOf, rb);
+        } else {
+          if ((rb.generatedAt || '') > (local.generatedAt || '')) localByWeek.set(rb.weekOf, rb);
+        }
+      }
+      state.weeklyBriefs = [...localByWeek.values()];
+    }
+    state.intentions = { ...state.intentions, ...(remote.intentions || {}) };
+    state.dayPriorities = { ...state.dayPriorities, ...(remote.dayPriorities || {}) };
+    state.dayPlanChecked = { ...state.dayPlanChecked, ...(remote.dayPlanChecked || {}) };
+    // Merge contributions by id (keep local-only)
+    if (remote.contributions) {
+      const localById = new Map((state.contributions || []).map(c => [c.id, c]));
+      for (const rc of remote.contributions) { localById.set(rc.id, rc); }
+      state.contributions = [...localById.values()];
+    }
+    // Merge visibilityActivities by id (keep local-only)
+    if (remote.visibilityActivities) {
+      const localById = new Map((state.visibilityActivities || []).map(a => [String(a.id), a]));
+      for (const ra of remote.visibilityActivities) { localById.set(String(ra.id), ra); }
+      state.visibilityActivities = [...localById.values()];
+    }
     // Merge meeting preps by ID: remote wins, but keep local-only records
     if (remote.meetingPreps) {
       const localPrepsById = new Map((state.meetingPreps || []).map(mp => [mp.id, mp]));
@@ -12503,6 +12553,7 @@ async function handleSubmit(e) {
     aiReflection: null
   };
 
+  entry.updatedAt = new Date().toISOString();
   // Update or create entry
   const existingIdx = state.entries.findIndex(e => e.date === entryDate);
   if (existingIdx >= 0) {
