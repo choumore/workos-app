@@ -5966,10 +5966,21 @@ async function syncPull() {
     // Remove meetings that were previously deleted
     const deletedSet = new Set(state.deletedMeetingIds);
     state.meetings = state.meetings.filter(m => !deletedSet.has(m.id));
-    localStorage.setItem('workos_state', JSON.stringify(state));
+    saveState();
+    // Force immediate push so remote matches local after merge
+    syncPush();
     return 'ok';
   } catch (e) {
     console.error('Sync pull failed:', e);
+    // Restore pre-sync snapshot if merge failed
+    try {
+      const preSyncData = localStorage.getItem('workos_state_pre_sync');
+      if (preSyncData) {
+        localStorage.setItem('workos_state', preSyncData);
+        const restored = JSON.parse(preSyncData);
+        Object.assign(state, restored);
+      }
+    } catch (_) {}
     return 'error';
   }
 }
@@ -14270,6 +14281,7 @@ async function startGenerateBrief() {
     });
 
     saveState();
+    syncPush(); // Immediate push so remote has the brief before potential refresh
     briefsView = 'detail';
     currentBriefId = brief.id;
     renderBriefs();
