@@ -4748,6 +4748,16 @@ function saveState() {
     const current = localStorage.getItem('workos_state');
     if (current) localStorage.setItem('workos_state_backup', current);
   } catch (_) {}
+  // Deep backup: save once per hour so catastrophic data loss can be recovered
+  try {
+    const lastDeep = localStorage.getItem('workos_deep_backup_at');
+    const now = Date.now();
+    if (!lastDeep || now - parseInt(lastDeep) > 3600000) {
+      const current = localStorage.getItem('workos_state');
+      if (current) localStorage.setItem('workos_state_deep_backup', current);
+      localStorage.setItem('workos_deep_backup_at', String(now));
+    }
+  } catch (_) {}
   try {
     // Strip transcripts (only for gist-backed meetings) and raw AI responses to stay within ~5MB limit
     const toSave = {
@@ -5783,6 +5793,11 @@ async function syncPush() {
 
 async function syncPull() {
   if (!state.settings.ghToken || !state.settings.ghGistId) return 'no_config';
+  // Snapshot local state before sync so we never lose data
+  try {
+    const current = localStorage.getItem('workos_state');
+    if (current) localStorage.setItem('workos_state_pre_sync', current);
+  } catch (_) {}
   try {
     const res = await fetch('https://api.github.com/gists/' + state.settings.ghGistId, {
       headers: { 'Authorization': 'token ' + state.settings.ghToken }
