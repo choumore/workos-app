@@ -13716,7 +13716,10 @@ function renderWinsArchive(container) {
   }
 
   container.innerHTML = `
-    <div class="wins-header">Wins Archive · ${allWins.length} win${allWins.length !== 1 ? 's' : ''}</div>
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div class="wins-header">Wins Archive · ${allWins.length} win${allWins.length !== 1 ? 's' : ''}</div>
+      <button class="todo-recurrence-btn" onclick="addManualWin()">+ Add Win</button>
+    </div>
 
     <div class="wins-toolbar">
       <select class="wins-filter" id="winsVectorFilter" onchange="filterWins()">
@@ -13974,7 +13977,10 @@ function renderBriefDetail(panel) {
     </div>
 
     <div class="brief-section">
-      <div class="section-header">Wins Detected</div>
+      <div class="section-header-row">
+        <span class="section-header" style="margin-bottom:0">Wins Detected</span>
+        <button class="todo-recurrence-btn" onclick="addManualWin(${brief.id})">+ Add Win</button>
+      </div>
       ${briefWins.length === 0
         ? `<div class="card" style="color:var(--text-secondary)">${formatBriefText(brief.winsRaw || 'No wins detected this week.')}</div>`
         : briefWins.map((w, i) => {
@@ -14277,6 +14283,41 @@ async function startGenerateBrief() {
       showToast('Failed to generate brief. Check your gateway settings and try again.');
     }
   }
+}
+
+function addManualWin(briefId) {
+  const description = prompt('What did you accomplish?');
+  if (!description || !description.trim()) return;
+  const impact = prompt('What was the impact?') || '';
+  const vectorNames = (state.vectors || []).map(v => v.name);
+  let vector = '';
+  if (vectorNames.length > 0) {
+    const choice = prompt('Which vector? (' + vectorNames.join(', ') + ')');
+    if (choice && vectorNames.some(v => v.toLowerCase() === choice.trim().toLowerCase())) {
+      vector = vectorNames.find(v => v.toLowerCase() === choice.trim().toLowerCase());
+    }
+  }
+  const brief = briefId ? state.weeklyBriefs.find(b => b.id === briefId) : null;
+  const win = {
+    id: Date.now() + Math.random(),
+    date: todayStr(),
+    sourceWeek: brief ? brief.weekOf : getWeekMonday(todayStr()),
+    sourceBriefId: briefId || null,
+    description: description.trim(),
+    impact: impact.trim(),
+    vector,
+    vectors: vector ? [vector] : [],
+    status: 'confirmed'
+  };
+  state.wins.push(win);
+  // Also add to brief's winsDetected so it shows inline
+  if (brief) {
+    if (!brief.winsDetected) brief.winsDetected = [];
+    brief.winsDetected.push({ description: win.description, impact: win.impact, vector: win.vector });
+  }
+  saveState();
+  renderBriefs();
+  showToast('Win added');
 }
 
 function keepWin(briefId, winIdx) {
