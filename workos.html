@@ -13874,7 +13874,6 @@ function renderBriefDetail(panel) {
   const brief = state.weeklyBriefs.find(b => b.id === currentBriefId);
   if (!brief) { briefsView = 'list'; renderBriefs(); return; }
 
-  const isCurrentWeek = brief.weekOf === getWeekMonday(todayStr());
   const briefWins = brief.winsDetected || [];
   // Get win statuses from state.wins
   const winStatuses = briefWins.map((w, i) => {
@@ -13916,21 +13915,19 @@ function renderBriefDetail(panel) {
           const ws = winStatuses[i];
           const isKept = ws.status === 'confirmed';
           const isDismissed = ws.status === 'dismissed';
-          if (isDismissed && !isCurrentWeek) return '';
+          if (isDismissed) return '';
           return `
-            <div class="win-card${isKept ? ' kept' : ''}${isDismissed ? ' dismissing' : ''}" id="win-${i}" data-brief="${brief.id}" data-win-idx="${i}">
+            <div class="win-card${isKept ? ' kept' : ''}" id="win-${i}" data-brief="${brief.id}" data-win-idx="${i}">
               <div class="win-description">${escapeHtml(w.description)}</div>
               <div class="win-meta-label">Impact</div>
               <div class="win-meta-value">${escapeHtml(w.impact)}</div>
               <div class="win-meta-label">Vector</div>
               <div class="win-meta-value vector">${escapeHtml(ws.vector || w.vector)}</div>
               ${isKept ? '<div class="win-kept-badge">✓ Kept</div>'
-                : isDismissed ? ''
-                : isCurrentWeek ? `
-                <div class="win-actions">
+                : `<div class="win-actions">
                   <button class="btn-positive" onclick="keepWin(${brief.id}, ${i})">✓ Keep</button>
                   <button class="btn-dismiss" onclick="dismissWin(${brief.id}, ${i})">✕ Dismiss</button>
-                </div>` : '<div class="win-kept-badge" style="color:var(--text-muted)">Not reviewed</div>'
+                </div>`
               }
             </div>`;
         }).join('')
