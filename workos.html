@@ -8578,8 +8578,29 @@ document.getElementById('tabNav').addEventListener('click', (e) => {
 /* ========================================
    API Integration
    ======================================== */
-const WORKOS_VERSION = '2.5.0';
+const WORKOS_VERSION = '2.6.0';
 const WORKOS_CHANGELOG = [
+  { version: '2.6.0', date: '2026-04-07', changes: [
+    'Todos: unified search + add input — single bar replaces two stacked inputs',
+    'Todos: star button moved to meta row, unified style with other CTAs',
+    'Todos: checkbox vertical alignment fix for mobile',
+    'Humanize: persistent ✓ Humanized state across all surfaces (drafts, coaching, briefs)',
+    'Weekly Top 3: new format — emoji, one-liner focus items, vector-aligned win, blank weekend',
+    'Triage: keyboard shortcuts (1-4 for buckets, S/R/D/X for actions, Cmd+Z undo)',
+    'Triage: multi-undo support via undo stack',
+    'Triage: closing triage now refreshes Todos tab and nav counts',
+    'Briefs: generate brief for previous week when current week is empty',
+    'Briefs: win review (Keep/Dismiss) works on any week, not just current',
+    'Briefs: manual + Add Win button in brief detail and wins archive',
+    'Meeting prep: fix crash on non-string insight values (v.trim error)',
+    'Meeting prep: surface actual API error in toast instead of generic message',
+    'Fix: duplicate todos from same meeting — synthesis dedup, AI prompt dedup, fuzzy text match',
+    'Fix: duplicate meetings from Zapier double-fires — title+date dedup at ingestion',
+    'Fix: triaged todos reverting to inbox on refresh — sync merge now uses latest-wins',
+    'Fix: syncPull overwrote local entries/wins/briefs — now merges by ID with timestamps',
+    'Fix: syncPull localStorage write bypassed saveState, could silently fail on quota',
+    'Data safety: deep backup (hourly), pre-sync snapshot, 3-layer backup system',
+  ]},
   { version: '2.5.0', date: '2026-03-30', changes: [
     'Career Chat tab: multi-turn AI chat with full WorkOS context',
     'Humanize AI output: rewrite buttons across all AI surfaces',
