@@ -58,8 +58,15 @@ def validate_file_path(vault_root: Path, relative_path: str) -> Path:
     if not re.match(r'^[a-zA-Z0-9_-]+(/[a-zA-Z0-9_.@:\s-]+){0,3}\.md$', relative_path):
         raise HTTPException(400, f"Invalid file path format: {relative_path}")
     full = (vault_root / relative_path).resolve()
-    if not str(full).startswith(str(vault_root)):
+    # Use trailing separator to prevent /vault2 matching /vault prefix
+    vault_prefix = str(vault_root) + os.sep
+    if not (str(full) + os.sep).startswith(vault_prefix):
         raise HTTPException(400, f"Path traversal rejected: {relative_path}")
+    # Reject symlinks that resolve outside vault
+    if full.is_symlink():
+        real = full.resolve()
+        if not (str(real) + os.sep).startswith(vault_prefix):
+            raise HTTPException(400, f"Symlink escape rejected: {relative_path}")
     return full
 
 # ---------- MemPalace helpers ----------
@@ -137,8 +144,8 @@ def mine(req: MineRequest):
     try:
         proc = subprocess.Popen(
             ["mempalace", "mine", str(vault_root), "--mode", req.mode],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
         return {"status": "started", "pid": proc.pid, "vault_path": str(vault_root)}
     except FileNotFoundError:

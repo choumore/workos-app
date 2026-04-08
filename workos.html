@@ -5716,17 +5716,21 @@ async function obsidianExport() {
     const files = candidates.filter(f => {
       const hash = f.path + ':' + f.content.length + ':' + f.content.substring(0, 100);
       if (obsidianExportedHashes[f.path] === hash) return false;
-      obsidianExportedHashes[f.path] = hash;
       return true;
     });
     if (files.length === 0) return;
     const url = (state.settings.mempalaceServerUrl || 'http://localhost:8091').replace(/\/$/, '');
-    await fetch(url + '/export', {
+    const resp = await fetch(url + '/export', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ vault_path: state.settings.obsidianVaultPath, files }),
       signal: AbortSignal.timeout(10000)
     });
+    if (!resp.ok) throw new Error('Export server returned ' + resp.status);
+    // Only cache hashes after confirmed successful export
+    for (const f of files) {
+      obsidianExportedHashes[f.path] = f.path + ':' + f.content.length + ':' + f.content.substring(0, 100);
+    }
     console.log('[obsidian] Exported', files.length, 'files (skipped', candidates.length - files.length, 'unchanged)');
   } catch (e) {
     console.warn('[obsidian] Export failed:', e.message);
@@ -7536,8 +7540,9 @@ function renderChat() {
   // Update MemPalace status dot
   const dot = document.getElementById('mempalaceDot');
   if (dot && state.settings.mempalaceServerUrl) {
+    dot.classList.remove('connected', 'disconnected');
     fetch(state.settings.mempalaceServerUrl.replace(/\/$/, '') + '/status', { signal: AbortSignal.timeout(1500) })
-      .then(r => r.ok ? dot.classList.add('connected') : dot.classList.add('disconnected'))
+      .then(r => { dot.classList.add(r.ok ? 'connected' : 'disconnected'); })
       .catch(() => dot.classList.add('disconnected'));
   }
 }
