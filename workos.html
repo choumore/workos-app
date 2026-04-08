@@ -5965,15 +5965,26 @@ async function syncPull() {
     const file = data.files['workos-state.json'];
     if (!file) return 'empty';
     const remote = JSON.parse(file.content);
-    // Merge: use remote data but keep local-only settings
-    const localToken = state.settings.ghToken;
-    const localGistId = state.settings.ghGistId;
-    const localMeetingsGistId = state.settings.meetingsGistId;
+    // Merge: use remote data but keep local-only settings (tokens, local server config)
+    const localOnly = {
+      ghToken: state.settings.ghToken,
+      ghGistId: state.settings.ghGistId,
+      meetingsGistId: state.settings.meetingsGistId,
+      apiKey: state.settings.apiKey,
+      slackToken: state.settings.slackToken,
+      googleClientId: state.settings.googleClientId,
+      mempalaceServerUrl: state.settings.mempalaceServerUrl,
+      obsidianVaultPath: state.settings.obsidianVaultPath,
+      obsidianExportEnabled: state.settings.obsidianExportEnabled,
+    };
+    const localFeatures = { ...state.settings.features };
     state.settings = { ...state.settings, ...remote.settings };
-    state.settings.ghToken = localToken;
-    state.settings.ghGistId = localGistId;
-    state.settings.meetingsGistId = localMeetingsGistId;
+    Object.assign(state.settings, localOnly);
+    // Restore features with defaults (remote may have subset without newer feature flags)
+    state.settings.features = { contributions: true, visibility: true, meetings: true, todos: true, ...localFeatures, ...(remote.settings?.features || {}) };
     // Merge entries by date (latest-modified wins, keep local-only)
+    const premergeEntryCount = (state.entries || []).length;
+    const premergeEntryDates = new Set((state.entries || []).map(e => e.date));
     if (remote.entries) {
       const localByDate = new Map((state.entries || []).map(e => [e.date, e]));
       for (const re of remote.entries) {
@@ -5987,6 +5998,13 @@ async function syncPull() {
         }
       }
       state.entries = [...localByDate.values()];
+    }
+    // Safety: detect entry loss after merge
+    const postmergeEntryDates = new Set((state.entries || []).map(e => e.date));
+    const lostDates = [...premergeEntryDates].filter(d => !postmergeEntryDates.has(d));
+    if (lostDates.length > 0) {
+      console.error('[SYNC SAFETY] Entries lost during merge for dates:', lostDates);
+      showToast('⚠ Sync warning: ' + lostDates.length + ' entries may have been lost. Check Settings → Data → Restore Backup.');
     }
     // Merge wins by description+sourceBriefId (keep local-only)
     if (remote.wins) {
@@ -18596,10 +18614,55 @@ async function backfillTldrs() {
   }
 }
 
+function diagnoseEntryHealth() {
+  // Check all backup layers for entries that might be missing from primary state
+  const layers = ['workos_state', 'workos_state_backup', 'workos_state_deep_backup', 'workos_state_pre_sync'];
+  const allDates = new Set();
+  const dateCounts = {};
+  for (const key of layers) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw);
+      const dates = (parsed.entries || []).map(e => e.date);
+      dateCounts[key] = dates.length;
+      dates.forEach(d => allDates.add(d));
+    } catch (_) {}
+  }
+  const primaryDates = new Set((state.entries || []).map(e => e.date));
+  const missingFromPrimary = [...allDates].filter(d => !primaryDates.has(d)).sort();
+  if (missingFromPrimary.length > 0) {
+    console.warn('[ENTRY HEALTH] Entries found in backups but missing from primary state:', missingFromPrimary);
+    console.warn('[ENTRY HEALTH] Entry counts per layer:', dateCounts);
+    // Auto-recover: merge missing entries from backup layers
+    let recovered = 0;
+    for (const key of layers.slice(1)) { // skip primary
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        const parsed = JSON.parse(raw);
+        for (const entry of (parsed.entries || [])) {
+          if (entry.date && !primaryDates.has(entry.date)) {
+            state.entries.push(entry);
+            primaryDates.add(entry.date);
+            recovered++;
+          }
+        }
+      } catch (_) {}
+    }
+    if (recovered > 0) {
+      console.warn('[ENTRY HEALTH] Auto-recovered', recovered, 'entries from backup layers');
+      saveState();
+      showToast('Recovered ' + recovered + ' missing entries from backups');
+    }
+  }
+}
+
 async function init() {
   loadState();
   loadTriageProgress();
   runMigrations();
+  diagnoseEntryHealth();
 
   const today = todayStr();
   const todayEntry = getEntryForDate(today);
