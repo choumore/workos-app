@@ -8746,8 +8746,21 @@ document.getElementById('tabNav').addEventListener('click', (e) => {
 /* ========================================
    API Integration
    ======================================== */
-const WORKOS_VERSION = '2.6.0';
+const WORKOS_VERSION = '3.0.0';
 const WORKOS_CHANGELOG = [
+  { version: '3.0.0', date: '2026-04-08', changes: [
+    'MemPalace companion server (Python/FastAPI, port 8091) — bridges Obsidian vault + semantic search',
+    'Obsidian export: auto-exports entries, meetings, and briefs as markdown with YAML frontmatter on save',
+    'Obsidian export: incremental — skips unchanged files via content hash tracking',
+    'Obsidian export: Export All with parallel transcript cleaning (batches of 3), progress counter',
+    'Transcript cleaning: Claude polishes raw transcripts — removes filler, consolidates interrupted speech, improves readability',
+    'Chat: @memory trigger queries MemPalace for deep historical context (2s timeout, graceful fallback)',
+    'Chat: MemPalace status dot shows connection state near input',
+    'Chat: cold start hints guide setup when MemPalace is configured but vault is empty',
+    'Settings: MemPalace + Obsidian card — server URL, vault path, auto-export toggle, Test/Mine/Export buttons',
+    'Meeting filenames include ID suffix to prevent collisions for same-day similar titles',
+    'Server: path traversal protection, vault root validation, nested directory support',
+  ]},
   { version: '2.6.0', date: '2026-04-07', changes: [
     'Todos: unified search + add input — single bar replaces two stacked inputs',
     'Todos: star button moved to meta row, unified style with other CTAs',
