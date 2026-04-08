@@ -4761,6 +4761,19 @@ function saveState() {
       localStorage.setItem('workos_deep_backup_at', String(now));
     }
   } catch (_) {}
+  // Capture meetings with transcripts BEFORE stripping — for Obsidian export
+  try {
+    if (state.settings.obsidianExportEnabled && state.settings.obsidianVaultPath) {
+      for (const m of (state.meetings || [])) {
+        if (m.transcript && m.transcript.length > 100 && m.insights && !obsidianExportedMeetingIds.has(m.id)) {
+          // Meeting has transcript AND has been processed (has insights) — capture for export
+          pendingMeetingExports.push({ ...m });
+          obsidianExportedMeetingIds.add(m.id);
+        }
+      }
+      if (pendingMeetingExports.length > 0) debouncedMeetingExport();
+    }
+  } catch (e) { console.warn('[obsidian] Meeting capture error:', e); }
   try {
     // Strip transcripts (only for gist-backed meetings) and raw AI responses to stay within ~5MB limit
     const toSave = {
@@ -5686,6 +5699,57 @@ function runMigrations() {
    ======================================== */
 let obsidianExportTimer = null;
 const obsidianExportedHashes = {}; // path → content hash, tracks what's already exported this session
+const obsidianExportedMeetingIds = new Set(); // meetings whose transcripts have been exported (cleaned)
+let pendingMeetingExports = []; // meetings with transcripts awaiting export (captured before strip)
+let meetingExportTimer = null;
+
+function debouncedMeetingExport() {
+  if (meetingExportTimer) clearTimeout(meetingExportTimer);
+  meetingExportTimer = setTimeout(() => exportMeetingsWithTranscripts(), 3000);
+}
+
+async function exportMeetingsWithTranscripts() {
+  if (!state.settings.obsidianExportEnabled || !state.settings.obsidianVaultPath) {
+    // Settings changed during debounce, put meetings back for retry
+    return;
+  }
+  const meetings = pendingMeetingExports.splice(0); // drain the queue
+  if (meetings.length === 0) return;
+  try {
+    const files = [];
+    for (const m of meetings) {
+      const slug = (m.title || 'meeting').toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 40);
+      const idSuffix = m.id ? '-' + String(m.id).slice(-4) : '';
+      const mDate = meetingDateStr(m);
+      // Clean transcript via Claude for readability
+      let cleanedTranscript = m.transcript;
+      try {
+        cleanedTranscript = await cleanTranscriptForExport(m.transcript, m.title);
+      } catch (e) { console.warn('[obsidian] Transcript cleanup failed, using raw:', e.message); }
+      files.push({ path: 'meetings/' + mDate + '-' + slug + idSuffix + '.md', content: meetingToMarkdown(m, cleanedTranscript) });
+      console.log('[obsidian] Prepared meeting with transcript:', m.title);
+    }
+    if (files.length === 0) return;
+    const url = (state.settings.mempalaceServerUrl || 'http://localhost:8091').replace(/\/$/, '');
+    const resp = await fetch(url + '/export', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vault_path: state.settings.obsidianVaultPath, files }),
+      signal: AbortSignal.timeout(30000)
+    });
+    if (resp.ok) {
+      console.log('[obsidian] Exported', files.length, 'meetings with cleaned transcripts');
+    } else {
+      console.warn('[obsidian] Meeting export failed:', resp.status);
+      // Put them back for retry on next save
+      for (const m of meetings) obsidianExportedMeetingIds.delete(m.id);
+    }
+  } catch (e) {
+    console.warn('[obsidian] Meeting export error:', e.message);
+    // Put them back for retry
+    for (const m of meetings) obsidianExportedMeetingIds.delete(m.id);
+  }
+}
 
 function debouncedObsidianExport() {
   if (!state.settings.obsidianExportEnabled || !state.settings.obsidianVaultPath) return;
@@ -5706,7 +5770,7 @@ async function obsidianExport() {
     // Export meetings modified recently (have transcript or were updated today)
     for (const m of (state.meetings || [])) {
       const mDate = meetingDateStr(m);
-      if (mDate === today || m.transcript) {
+      if ((mDate === today || m.transcript) && !obsidianExportedMeetingIds.has(m.id)) {
         const slug = (m.title || 'meeting').toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 40);
         const idSuffix = m.id ? '-' + String(m.id).slice(-4) : '';
         candidates.push({ path: 'meetings/' + mDate + '-' + slug + idSuffix + '.md', content: meetingToMarkdown(m) });
