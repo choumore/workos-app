@@ -197,7 +197,7 @@ class CORSProxy(http.server.BaseHTTPRequestHandler):
         print(f"[proxy] {fmt % args}")
 
 if __name__ == "__main__":
-    server = http.server.HTTPServer(("0.0.0.0", PORT), CORSProxy)
+    server = http.server.ThreadingHTTPServer(("0.0.0.0", PORT), CORSProxy)
     print(f"CORS proxy running on http://localhost:{PORT}")
     print(f"Forwarding to {UPSTREAM}")
     print(f"Google Calendar proxy: /gcal/* → {GOOGLE_CALENDAR_API}")
