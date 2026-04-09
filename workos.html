@@ -5893,22 +5893,9 @@ Rules:
   const CHUNK_CHAR_LIMIT = 40000; // ~10K tokens input per chunk
 
   try {
-    // For shorter transcripts, single pass with dynamic max_tokens
-    if (transcript.length <= CHUNK_CHAR_LIMIT) {
-      // Cleaned output is ~80-90% of input length; 1 token ≈ 3.5 chars
-      const maxTokens = Math.max(4000, Math.ceil(transcript.length / 3));
-      const cleaned = await callClaude(
-        CLEANUP_SYSTEM,
-        `Meeting: ${meetingTitle || 'Untitled'}\n\nRaw transcript:\n${transcript}`,
-        maxTokens,
-        'Transcript Cleanup'
-      );
-      return cleaned || transcript;
-    }
-
-    // For long transcripts, split into chunks at speaker boundaries and clean each
-    console.log(`[obsidian] Long transcript (${transcript.length} chars), chunking for cleanup...`);
+    // Split into chunks for processing (single chunk if short enough)
     const chunks = splitTranscriptIntoChunks(transcript, CHUNK_CHAR_LIMIT);
+    if (chunks.length > 1) console.log(`[obsidian] Long transcript (${transcript.length} chars), chunking into ${chunks.length} parts...`);
     const cleanedChunks = [];
     for (let i = 0; i < chunks.length; i++) {
       const maxTokens = Math.max(4000, Math.ceil(chunks[i].length / 3));
@@ -5919,7 +5906,14 @@ Rules:
         maxTokens,
         'Transcript Cleanup'
       );
-      cleanedChunks.push(cleaned || chunks[i]);
+      // Truncation detection: if cleaned output is < 60% of raw input, the API likely
+      // capped max_tokens — fall back to raw chunk to avoid losing content
+      if (cleaned && cleaned.length < chunks[i].length * 0.6) {
+        console.warn(`[obsidian] Chunk ${i + 1} likely truncated (${cleaned.length} vs ${chunks[i].length} raw chars), using raw`);
+        cleanedChunks.push(chunks[i]);
+      } else {
+        cleanedChunks.push(cleaned || chunks[i]);
+      }
     }
     return cleanedChunks.join('\n\n');
   } catch (e) {
@@ -16354,21 +16348,13 @@ async function reexportMeetingsFromGist() {
       if (statusEl) statusEl.innerHTML = '<span class="invalid">No matching meetings to re-export</span>';
       return;
     }
-    // Step 3: Clean and export with the improved chunked cleaner
+    // Step 3: Export with raw transcripts (no Claude cleaning — avoids API token caps that cause truncation)
+    if (statusEl) statusEl.innerHTML = `<span style="color:var(--text-muted)">Preparing ${meetingsWithTranscripts.length} meetings...</span>`;
     const files = [];
-    let cleaned = 0;
-    for (let i = 0; i < meetingsWithTranscripts.length; i += 3) {
-      const chunk = meetingsWithTranscripts.slice(i, i + 3);
-      if (statusEl) statusEl.innerHTML = `<span style="color:var(--text-muted)">Cleaning transcripts ${cleaned + 1}–${Math.min(cleaned + chunk.length, meetingsWithTranscripts.length)} of ${meetingsWithTranscripts.length}...</span>`;
-      const results = await Promise.all(chunk.map(m =>
-        cleanTranscriptForExport(m.transcript, m.title).then(ct => {
-          const slug = (m.title || 'meeting').toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 40);
-          const idSuffix = m.id ? '-' + String(m.id).slice(-4) : '';
-          return { path: 'meetings/' + meetingDateStr(m) + '-' + slug + idSuffix + '.md', content: meetingToMarkdown(m, ct) };
-        })
-      ));
-      files.push(...results);
-      cleaned += chunk.length;
+    for (const m of meetingsWithTranscripts) {
+      const slug = (m.title || 'meeting').toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 40);
+      const idSuffix = m.id ? '-' + String(m.id).slice(-4) : '';
+      files.push({ path: 'meetings/' + meetingDateStr(m) + '-' + slug + idSuffix + '.md', content: meetingToMarkdown(m, m.transcript) });
     }
     if (statusEl) statusEl.innerHTML = `<span style="color:var(--text-muted)">Writing ${files.length} meeting files...</span>`;
     const url = (state.settings.mempalaceServerUrl || 'http://localhost:8091').replace(/\/$/, '');
