@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&display=swap" rel="stylesheet">
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 <title>WorkOS</title>
 <style>
 /* ========================================
@@ -4611,7 +4610,7 @@ body {
    State
    ======================================== */
 let state = {
-  settings: { name: '', role: '', baseUrl: '', projectId: '', apiKey: '', model: 'sonnet', slackWebhook: '', slackToken: '', promotionNotes: '', insightsProfile: '', insightsProfileRaw: '', ghToken: '', ghGistId: '', googleClientId: '', meetingsGistId: '', mempalaceServerUrl: 'http://localhost:8091', obsidianVaultPath: '', obsidianExportEnabled: false, features: { contributions: true, visibility: true, meetings: true, todos: true } },
+  settings: { name: '', role: '', baseUrl: '', projectId: '', apiKey: '', model: 'sonnet', slackWebhook: '', slackToken: '', promotionNotes: '', insightsProfile: '', insightsProfileRaw: '', ghToken: '', ghGistId: '', meetingsGistId: '', gcalAutoSync: false, mempalaceServerUrl: 'http://localhost:8091', obsidianVaultPath: '', obsidianExportEnabled: false, features: { contributions: true, visibility: true, meetings: true, todos: true } },
   entries: [],
   wins: [],
   weeklyBriefs: [],
@@ -4663,7 +4662,7 @@ let meetingPrepFormTones = []; // temp for form input — multi-select array
 let selectedSynthesisMeetingId = null; // tracks which meeting user confirmed for synthesis
 let pendingFormData = null;
 let settingsSubTab = 'profile';
-let googleToken = null; // In-memory only — not persisted for security
+let gcalStatus = null; // null = unknown, true = connected, false = disconnected
 let meetingsSubTab = 'entries'; // 'entries' | 'insights'
 let meetingsTypeFilter = null; // null = all, or a MEETING_TYPES key
 let meetingsSearchQuery = '';
@@ -5992,7 +5991,7 @@ async function syncPush() {
       dayPlanChecked: state.dayPlanChecked,
       contributions: state.contributions,
       visibilityActivities: state.visibilityActivities,
-      meetings: (state.meetings || []).map(m => {
+      meetings: (state.meetings || []).filter(m => m.source !== 'calendar').map(m => {
         const { transcript, ...rest } = m;
         return rest;
       }),
@@ -6092,7 +6091,7 @@ async function syncPull() {
       meetingsGistId: state.settings.meetingsGistId,
       apiKey: state.settings.apiKey,
       slackToken: state.settings.slackToken,
-      googleClientId: state.settings.googleClientId,
+      gcalAutoSync: state.settings.gcalAutoSync,
       mempalaceServerUrl: state.settings.mempalaceServerUrl,
       obsidianVaultPath: state.settings.obsidianVaultPath,
       obsidianExportEnabled: state.settings.obsidianExportEnabled,
@@ -14769,7 +14768,7 @@ function copyPrep() {
    ======================================== */
 function renderMeetings() {
   const panel = document.getElementById('panel-meetings');
-  const entryBtns = meetingsSubTab === 'entries' ? `<div style="display:flex;gap:var(--space-sm);margin-left:auto;align-items:center"><button class="btn-secondary" id="importMeetingsBtn" style="font-size:12px">Import</button>${state.settings.meetingsGistId ? `<button class="btn-secondary btn-accent" id="fetchMeetingsBtnEntries" style="font-size:12px">Fetch</button>` : ''}</div>` : '';
+  const entryBtns = meetingsSubTab === 'entries' ? `<div style="display:flex;gap:var(--space-sm);margin-left:auto;align-items:center"><button class="btn-secondary" id="importMeetingsBtn" style="font-size:12px">Import</button>${state.settings.meetingsGistId ? `<button class="btn-secondary btn-accent" id="fetchMeetingsBtnEntries" style="font-size:12px">Fetch</button>` : ''}<button class="btn-secondary" onclick="fetchCalendarEvents(true)" style="font-size:12px">Sync Cal</button></div>` : '';
   const subNav = `<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:var(--space-xl);gap:var(--space-sm)">
     <div class="sub-nav" style="margin-bottom:0">
       <button class="sub-nav-btn${meetingsSubTab === 'entries' ? ' active' : ''}" onclick="meetingsSubTab='entries';renderMeetings()">Entries</button>
@@ -15279,6 +15278,10 @@ function meetingsEntriesHtml() {
     </div>`;
   }
 
+  // Day summary banner
+  const daySummary = calendarDaySummary();
+  const daySummaryHtml = daySummary ? `<div style="padding:var(--space-sm) var(--space-md);background:var(--bg-card);border-radius:var(--radius-sm);margin-bottom:var(--space-lg);font-size:13px;color:var(--text-secondary)">${escapeHtml(daySummary)}</div>` : '';
+
   // Count types present for chips
   const typeCounts = {};
   state.meetings.forEach(m => {
@@ -15361,7 +15364,7 @@ function meetingsEntriesHtml() {
     }
   }
 
-  return `<div class="settings-section">${filterBar}${html}</div>`;
+  return `<div class="settings-section">${daySummaryHtml}${filterBar}${html}</div>`;
 }
 
 function meetingsSettingsHtml() {
@@ -15822,27 +15825,27 @@ function settingsIntegrationsHtml() {
         <span class="settings-card-chevron">▾</span>
       </div>
       <div class="settings-card-body">
-      <div class="form-hint" style="margin-bottom:var(--space-lg)">Connect Google Calendar to test the Meeting Intelligence Pipeline. Token is session-only — not synced or persisted.</div>
+      <div class="form-hint" style="margin-bottom:var(--space-lg)">Calendar events are synced via the local proxy using the Google Workspace MCP wrapper's Keychain token. No browser OAuth needed.</div>
       <div class="form-group">
-        <label class="form-label">OAuth Client ID</label>
-        <input class="form-input" id="settingGoogleClientId" value="${escapeHtml(state.settings.googleClientId)}" placeholder="xxxx.apps.googleusercontent.com">
-        <div class="form-hint">Create at Google Cloud Console → APIs &amp; Services → Credentials. Enable Calendar API first.</div>
+        <div class="api-status ${gcalStatus === true ? 'valid' : gcalStatus === false ? 'invalid' : ''}" id="gcalConnectionStatus">
+          ${gcalStatus === true ? 'Connected — proxy has calendar access' : gcalStatus === false ? 'Not connected — run a Google Calendar tool in Claude Code to authorize' : 'Checking proxy connection...'}
+        </div>
       </div>
-      ${googleToken ? `
       <div class="form-group">
-        <div class="api-status valid" style="margin-bottom:var(--space-sm)">Connected${googleToken.email ? ' as ' + escapeHtml(googleToken.email) : ''}</div>
+        <label style="display:flex;align-items:center;gap:var(--space-sm);cursor:pointer">
+          <input type="checkbox" id="settingGcalAutoSync" ${state.settings.gcalAutoSync ? 'checked' : ''}>
+          <span class="form-label" style="margin:0">Auto-sync calendar on page load</span>
+        </label>
+        <div class="form-hint">Fetches upcoming week's events from Google Calendar when WorkOS loads.</div>
+      </div>
+      <div class="form-group">
         <div style="display:flex;gap:var(--space-sm)">
+          <button class="btn-secondary" onclick="checkGcalStatus()">Check Connection</button>
           <button class="btn-secondary" onclick="testGoogleCalendar()">Test: Fetch Today's Events</button>
-          <button class="btn-secondary" onclick="disconnectGoogleCalendar()">Disconnect</button>
+          <button class="btn-secondary btn-accent" onclick="fetchCalendarEvents(true)">Sync Calendar</button>
         </div>
         <div id="gcalTestResult" style="margin-top:var(--space-sm)"></div>
       </div>
-      ` : `
-      <div class="form-group">
-        <button class="btn-secondary" id="connectGcalBtn" ${!state.settings.googleClientId ? 'disabled' : ''}>Connect Google Calendar</button>
-        <div class="api-status" id="gcalStatus"></div>
-      </div>
-      `}
       </div>
     </div>
     ${settingsCardWrap('MemPalace + Obsidian', `
@@ -16055,72 +16058,37 @@ async function syncSlackReactions() {
   }
 }
 
-function connectGoogleCalendar() {
-  if (!state.settings.googleClientId) {
-    showToast('Enter your OAuth Client ID first');
-    return;
-  }
-  if (typeof google === 'undefined' || !google.accounts) {
-    showToast('Google Identity Services library not loaded. Check your network connection.');
-    return;
-  }
-  const statusEl = document.getElementById('gcalStatus');
-  if (statusEl) { statusEl.className = 'api-status'; statusEl.textContent = 'Opening consent screen...'; }
-  const tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: state.settings.googleClientId,
-    scope: 'https://www.googleapis.com/auth/calendar.readonly',
-    callback: async (response) => {
-      if (response.error) {
-        if (statusEl) { statusEl.className = 'api-status invalid'; statusEl.textContent = 'Auth failed: ' + response.error; }
-        return;
-      }
-      googleToken = { access_token: response.access_token };
-      // Fetch user email to display
-      try {
-        const info = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: { 'Authorization': 'Bearer ' + response.access_token }
-        });
-        if (info.ok) {
-          const data = await info.json();
-          googleToken.email = data.email;
-        }
-      } catch (e) { /* email display is optional */ }
-      showToast('Google Calendar connected');
-      renderSettings();
+async function checkGcalStatus() {
+  const statusEl = document.getElementById('gcalConnectionStatus');
+  if (statusEl) { statusEl.className = 'api-status'; statusEl.textContent = 'Checking proxy connection...'; }
+  try {
+    const res = await fetch('http://localhost:8090/gcal/status');
+    if (!res.ok) throw new Error('Proxy returned ' + res.status);
+    const data = await res.json();
+    gcalStatus = data.connected;
+    if (statusEl) {
+      statusEl.className = 'api-status ' + (gcalStatus ? 'valid' : 'invalid');
+      statusEl.textContent = gcalStatus ? 'Connected — proxy has calendar access' : 'Not connected — run a Google Calendar tool in Claude Code to authorize';
     }
-  });
-  tokenClient.requestAccessToken({ prompt: 'consent' });
-}
-
-function disconnectGoogleCalendar() {
-  if (googleToken && googleToken.access_token) {
-    google.accounts.oauth2.revoke(googleToken.access_token, () => {});
+  } catch (e) {
+    gcalStatus = false;
+    if (statusEl) { statusEl.className = 'api-status invalid'; statusEl.textContent = 'Proxy not running — start with: python proxy.py'; }
   }
-  googleToken = null;
-  showToast('Google Calendar disconnected');
-  renderSettings();
 }
 
 async function testGoogleCalendar() {
   const resultEl = document.getElementById('gcalTestResult');
   if (!resultEl) return;
-  if (!googleToken || !googleToken.access_token) {
-    resultEl.innerHTML = '<div class="api-status invalid">Not connected</div>';
-    return;
-  }
-  resultEl.innerHTML = '<div class="api-status">Fetching today\'s events...</div>';
+  resultEl.innerHTML = '<div class="api-status">Fetching today\'s events via proxy...</div>';
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
   const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
-  const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(start)}&timeMax=${encodeURIComponent(end)}&singleEvents=true&orderBy=startTime`;
   try {
-    const res = await fetch(url, {
-      headers: { 'Authorization': 'Bearer ' + googleToken.access_token }
-    });
+    const res = await fetch(`http://localhost:8090/gcal/calendars/primary/events?timeMin=${encodeURIComponent(start)}&timeMax=${encodeURIComponent(end)}&singleEvents=true&orderBy=startTime`);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      if (res.status === 403 || res.status === 401) {
-        resultEl.innerHTML = `<div class="api-status invalid">Access denied (${res.status}). Your Google Workspace admin may be blocking this app. This means the Calendar pipeline won't work without admin approval.</div>`;
+      if (res.status === 401) {
+        resultEl.innerHTML = '<div class="api-status invalid">Token expired — open Claude Code and use any Calendar tool to refresh.</div>';
       } else {
         resultEl.innerHTML = `<div class="api-status invalid">Error ${res.status}: ${err.error?.message || 'Unknown error'}</div>`;
       }
@@ -16135,7 +16103,7 @@ async function testGoogleCalendar() {
       resultEl.innerHTML = `<div class="api-status valid">Success! ${events.length} event${events.length === 1 ? '' : 's'} today:</div><ul style="margin:var(--space-xs) 0 0 var(--space-lg);color:var(--text-secondary);font-size:0.92rem">${list}</ul>`;
     }
   } catch (e) {
-    resultEl.innerHTML = `<div class="api-status invalid">Network error: ${e.message}</div>`;
+    resultEl.innerHTML = '<div class="api-status invalid">Proxy not running — start with: python proxy.py</div>';
   }
 }
 
@@ -16145,6 +16113,105 @@ function formatEventTime(event) {
     return t.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   }
   return 'all day';
+}
+
+async function fetchCalendarEvents(manual = false) {
+  if (!manual && !state.settings.gcalAutoSync) return;
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  let allEvents = [];
+  let pageToken = null;
+  let pages = 0;
+  try {
+    do {
+      let url = `http://localhost:8090/gcal/calendars/primary/events?timeMin=${encodeURIComponent(start)}&timeMax=${encodeURIComponent(end)}&singleEvents=true&orderBy=startTime&maxResults=250`;
+      if (pageToken) url += `&pageToken=${encodeURIComponent(pageToken)}`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        if (manual) showToast('Calendar sync failed (' + res.status + ')');
+        return;
+      }
+      const data = await res.json();
+      const events = (data.items || []).filter(e => e.status !== 'cancelled');
+      allEvents = allEvents.concat(events);
+      pageToken = data.nextPageToken;
+      pages++;
+    } while (pageToken && pages < 5 && allEvents.length < 250);
+    mergeCalendarEvents(allEvents);
+    if (manual) showToast(allEvents.length + ' calendar event' + (allEvents.length !== 1 ? 's' : '') + ' synced');
+  } catch (e) {
+    if (manual) showToast('Calendar sync failed — is proxy running?');
+  }
+}
+
+function mergeCalendarEvents(events) {
+  let added = 0;
+  for (const event of events) {
+    const calId = event.id;
+    // Skip if we already have this calendar event
+    const existing = state.meetings.find(m => m.calendarEventId === calId);
+    if (existing) {
+      // Update title/time if changed, but don't overwrite transcript/insights
+      if (!existing.transcript) {
+        existing.title = event.summary || '(no title)';
+        existing.date = event.start?.dateTime || event.start?.date || existing.date;
+        existing.participants = (event.attendees || []).map(a => a.displayName || a.email).join(', ');
+        existing.link = event.htmlLink || existing.link;
+      }
+      continue;
+    }
+    // Create new meeting from calendar event
+    const startDt = event.start?.dateTime || event.start?.date;
+    let endDt = event.end?.dateTime || event.end?.date;
+    state.meetings.push({
+      id: 'cal_' + calId,
+      date: startDt || new Date().toISOString(),
+      endDate: endDt || null,
+      title: event.summary || '(no title)',
+      participants: (event.attendees || []).map(a => a.displayName || a.email).join(', '),
+      transcript: '',
+      link: event.htmlLink || '',
+      source: 'calendar',
+      calendarEventId: calId,
+      type: 'other',
+      summary: '',
+      actionItems: '',
+      insights: {}
+    });
+    added++;
+  }
+  if (added > 0) {
+    // Sort by date descending (newest first)
+    state.meetings.sort((a, b) => new Date(b.date) - new Date(a.date));
+    saveState();
+    if (typeof renderMeetings === 'function') renderMeetings();
+  }
+}
+
+function calendarDaySummary() {
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  const todayMeetings = state.meetings.filter(m => {
+    if (!m.date) return false;
+    const mDate = m.date.slice(0, 10);
+    return mDate === todayStr;
+  });
+  if (todayMeetings.length === 0) return '';
+  // Sum duration in hours
+  let totalMinutes = 0;
+  todayMeetings.forEach(m => {
+    if (m.date && m.endDate) {
+      const start = new Date(m.date);
+      const end = new Date(m.endDate);
+      const diff = (end - start) / 60000;
+      if (diff > 0 && diff < 720) totalMinutes += diff;
+    }
+  });
+  const hours = totalMinutes > 0 ? (totalMinutes / 60).toFixed(1).replace(/\.0$/, '') : null;
+  const parts = [todayMeetings.length + ' meeting' + (todayMeetings.length !== 1 ? 's' : '') + ' today'];
+  if (hours) parts.push(hours + ' hour' + (hours === '1' ? '' : 's'));
+  return parts.join(', ');
 }
 
 function attachSettingsListeners() {
@@ -16181,10 +16248,9 @@ function attachSettingsListeners() {
     const gistIdEl = document.getElementById('settingGistId');
     if (gistIdEl) gistIdEl.addEventListener('blur', (e) => { state.settings.ghGistId = e.target.value.trim(); saveState(); });
 
-    saveField('settingGoogleClientId', 'googleClientId');
-
-    const gcalBtn = document.getElementById('connectGcalBtn');
-    if (gcalBtn) gcalBtn.addEventListener('click', () => connectGoogleCalendar());
+    const gcalAutoSyncEl = document.getElementById('settingGcalAutoSync');
+    if (gcalAutoSyncEl) gcalAutoSyncEl.addEventListener('change', (e) => { state.settings.gcalAutoSync = e.target.checked; saveState(); });
+    checkGcalStatus();
 
     // MemPalace + Obsidian
     saveField('settingMempalaceUrl', 'mempalaceServerUrl');
@@ -18828,6 +18894,9 @@ async function init() {
       if (state.settings.features.meetings !== false && state.settings.ghToken && state.settings.meetingsGistId) fetchMeetings();
     }, 15 * 60 * 1000);
   }
+
+  // Auto-sync Google Calendar events on load
+  fetchCalendarEvents();
 }
 
 init();
