@@ -3380,7 +3380,7 @@ body {
   font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
-  width: 28px;
+  min-width: 28px;
   text-align: right;
   flex-shrink: 0;
 }
@@ -6340,7 +6340,7 @@ const MEETING_TYPES = {
   'design-review': {
     label: 'Design Review',
     color: { bg: '#f3e8fd', text: '#7c3aad' },
-    signals: ['design review', 'design crit', 'crit', 'hawkins', 'design sync'],
+    signals: ['design review', 'design crit', 'crit', 'design sync'],
     extractionPrompt: 'Extract: "whatPresented" (what was shown and by whom), "decisions" (design decisions made), "feedbackOnWork" (feedback on your work or others\' — specify whose), "openQuestions" (unresolved design questions). End with "careerRelevance" — one sentence connecting this to promotion context. Format all fields as concise bullet points, not prose paragraphs.'
   },
   'team-standup': {
@@ -6666,6 +6666,7 @@ async function fetchMeetings() {
           );
           const parsed = parseMeetingJson(result);
           meeting.type = parsed.type && MEETING_TYPES[parsed.type] ? parsed.type : 'other';
+          meeting.classificationSource = 'ai';
           meeting.typeConfidence = parsed.confidence || 0;
           meeting.summary = parsed.summary || '';
           meeting.actionItems = parsed.actionItems || '';
@@ -9905,6 +9906,14 @@ function openNudgeReflection(prepId, meetingId) {
   renderBriefs();
 }
 
+function openPrepNudge(prepId) {
+  currentMeetingPrepId = prepId;
+  meetingPrepView = 'detail';
+  briefsSubView = 'meeting-prep';
+  switchTab('briefs');
+  renderBriefs();
+}
+
 function openReflectionModal(prepId) {
   const record = state.meetingPreps.find(p => p.id === prepId);
   if (!record) { showToast('Prep record not found'); return; }
@@ -10046,6 +10055,55 @@ function getMeetingNudges() {
     }
   }
   return nudges.sort((a, b) => meetingDateStr(b.meeting).localeCompare(meetingDateStr(a.meeting))).slice(0, 3);
+}
+
+function getUpcomingPrepNudges() {
+  const now = new Date();
+  const todayStr2 = todayStr();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+  const nudges = [];
+  for (const record of (state.meetingPreps || [])) {
+    const titleMatch = record.recurringTitle ? record.recurringTitle.trim().toLowerCase() : '';
+    if (!titleMatch) continue;
+    const stakeholderNames = record.stakeholders.map(s => s.name.trim().toLowerCase());
+    // Check if most recent prep was generated within 7 days
+    const preps = record.preps || [];
+    if (preps.length > 0) {
+      const latestGenAt = preps.reduce((latest, p) => {
+        const g = p.generatedAt || '';
+        return g > latest ? g : latest;
+      }, '');
+      if (latestGenAt) {
+        const daysSince = (now - new Date(latestGenAt)) / 86400000;
+        if (daysSince < 7) continue;
+      }
+    }
+    // Find matching calendar events today or tomorrow
+    const upcoming = state.meetings.filter(m => {
+      if (m.source !== 'calendar') return false;
+      const md = meetingDateStr(m);
+      if (md !== todayStr2 && md !== tomorrowStr) return false;
+      // Skip past events for today
+      if (md === todayStr2 && m.date) {
+        const eventTime = new Date(m.date);
+        if (eventTime < now) return false;
+      }
+      const mt = (m.title || '').toLowerCase();
+      if (mt.includes(titleMatch) || titleMatch.includes(mt)) return true;
+      if (stakeholderNames.some(n => mt.includes(n))) return true;
+      // Also check participant overlap
+      const participants = (m.participants || '').toLowerCase();
+      if (stakeholderNames.some(n => participants.includes(n))) return true;
+      return false;
+    });
+    for (const m of upcoming) {
+      if (dismissedNudges.has('prep_' + m.id)) continue;
+      nudges.push({ meeting: m, record });
+    }
+  }
+  return nudges.sort((a, b) => (a.meeting.date || '').localeCompare(b.meeting.date || '')).slice(0, 3);
 }
 
 function renderMeetingNudgeBanners() {
@@ -12296,6 +12354,17 @@ function renderDashboard() {
     weekItems.push(...nudges.map(n => {
       const ds = new Date(meetingDateStr(n.meeting) + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       return `<div class="dash-week-item" onclick='openNudgeReflection(${n.record.id}, ${escapeHtml(JSON.stringify(n.meeting.id))})'>Post-meeting reflection: ${escapeHtml(n.meeting.title || 'Untitled')} · ${ds} →</div>`;
+    }));
+  }
+  const prepNudges = getUpcomingPrepNudges();
+  if (prepNudges.length > 0) {
+    weekItems.push(...prepNudges.map(pn => {
+      const eventDate = new Date(pn.meeting.date);
+      const isToday = meetingDateStr(pn.meeting) === todayStr();
+      const timeStr = eventDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      const dayLabel = isToday ? 'today' : 'tomorrow';
+      const meetingIdEsc = escapeHtml(JSON.stringify(pn.meeting.id));
+      return `<div class="dash-week-item" onclick='dismissedNudges.add("prep_" + ${meetingIdEsc}); openPrepNudge(${pn.record.id})'>Prep for ${escapeHtml(pn.meeting.title || 'Untitled')} · ${dayLabel} at ${timeStr} →</div>`;
     }));
   }
   if (weekItems.length > 0) {
@@ -14866,7 +14935,23 @@ function buildInsightsPeriodFilter(hidden) {
   ).join('')}</div>`;
 }
 
-function meetingDuration(m) { return parseInt(m.duration, 10) || 0; }
+function meetingDuration(m) {
+  // Calendar-sourced: always compute from date/endDate (authoritative)
+  if (m.source === 'calendar' && m.date && m.endDate) {
+    const diff = (new Date(m.endDate) - new Date(m.date)) / 1000;
+    if (diff > 0 && diff < 43200) return Math.round(diff);
+    return 0;
+  }
+  // Transcript-sourced: prefer explicit duration field
+  const d = parseInt(m.duration, 10);
+  if (d > 0) return d;
+  // Fallback: compute from dates if available
+  if (m.date && m.endDate) {
+    const diff = (new Date(m.endDate) - new Date(m.date)) / 1000;
+    if (diff > 0 && diff < 43200) return Math.round(diff);
+  }
+  return 0;
+}
 
 function computeParticipation(m) {
   if (!m.transcript || !state.settings.name) return null;
@@ -14997,6 +15082,63 @@ function buildMeetingTypeBreakdown(meetings) {
         <div class="mi-type-label">${escapeHtml(info.label)}</div>
         <div class="mi-type-track"><div class="mi-type-fill" style="width:${pct}%;background:${info.color.text}"></div></div>
         <div class="mi-type-count">${count}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function buildTimeAllocationByType(meetings) {
+  const hoursByType = {};
+  meetings.forEach(m => {
+    const t = m.type || 'other';
+    const sec = meetingDuration(m);
+    if (sec > 0) hoursByType[t] = (hoursByType[t] || 0) + sec / 3600;
+  });
+  const sorted = Object.entries(hoursByType).sort((a, b) => b[1] - a[1]);
+  if (sorted.length === 0) return '';
+  const totalHours = sorted.reduce((s, [, h]) => s + h, 0);
+  const maxHours = sorted[0][1];
+  return `<div class="mi-section">
+    <div class="mi-section-label">Time Allocation by Type</div>
+    ${sorted.map(([typeId, hours]) => {
+      const info = MEETING_TYPES[typeId] || MEETING_TYPES['other'];
+      const pct = totalHours > 0 ? Math.round(hours / totalHours * 100) : 0;
+      const barPct = (hours / maxHours * 100).toFixed(1);
+      return `<div class="mi-type-row">
+        <div class="mi-type-label">${escapeHtml(info.label)}</div>
+        <div class="mi-type-track"><div class="mi-type-fill" style="width:${barPct}%;background:${info.color.text}"></div></div>
+        <div class="mi-type-count">${hours.toFixed(1)}h ${pct}%</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function buildTopPeopleInsights(meetings) {
+  const peopleMap = {};
+  const myName = (state.settings.name || '').toLowerCase().trim();
+  meetings.forEach(m => {
+    if (!m.participants) return;
+    const sec = meetingDuration(m);
+    const names = m.participants.split(',').map(n => n.trim()).filter(n => n);
+    names.forEach(name => {
+      if (name.toLowerCase() === myName) return;
+      if (!peopleMap[name]) peopleMap[name] = { count: 0, hours: 0 };
+      peopleMap[name].count++;
+      if (sec > 0) peopleMap[name].hours += sec / 3600;
+    });
+  });
+  const sorted = Object.entries(peopleMap).sort((a, b) => b[1].count - a[1].count).slice(0, 10);
+  if (sorted.length === 0) return '';
+  const maxCount = sorted[0][1].count;
+  return `<div class="mi-section">
+    <div class="mi-section-label">Top People</div>
+    ${sorted.map(([name, data]) => {
+      const barPct = (data.count / maxCount * 100).toFixed(1);
+      const hoursStr = data.hours > 0 ? ` · ${data.hours.toFixed(1)}h` : '';
+      return `<div class="mi-type-row">
+        <div class="mi-type-label">${escapeHtml(name)}</div>
+        <div class="mi-type-track"><div class="mi-type-fill" style="width:${barPct}%;background:var(--text-muted)"></div></div>
+        <div class="mi-type-count">${data.count}${hoursStr}</div>
       </div>`;
     }).join('')}
   </div>`;
@@ -15206,6 +15348,8 @@ function meetingsInsightsHtml() {
   return `<div class="settings-section">
     ${buildInsightsSummaryStats(meetings)}
     ${buildMeetingTypeBreakdown(meetings)}
+    ${buildTimeAllocationByType(meetings)}
+    ${buildTopPeopleInsights(meetings)}
     ${buildParticipationInsights(meetings)}
     ${buildMeetingLoadChart(bucketInfo)}
     ${buildMeetingDurationChart(bucketInfo)}
@@ -16145,6 +16289,15 @@ async function fetchCalendarEvents(manual = false) {
   }
 }
 
+function classifyMeetingByTitle(title) {
+  const lower = (title || '').toLowerCase();
+  for (const [typeId, info] of Object.entries(MEETING_TYPES)) {
+    if (typeId === 'other') continue;
+    if (info.signals.some(s => lower.includes(s))) return typeId;
+  }
+  return 'other';
+}
+
 function mergeCalendarEvents(events) {
   let added = 0;
   for (const event of events) {
@@ -16152,29 +16305,37 @@ function mergeCalendarEvents(events) {
     // Skip if we already have this calendar event
     const existing = state.meetings.find(m => m.calendarEventId === calId);
     if (existing) {
-      // Update title/time if changed, but don't overwrite transcript/insights
+      // Update title/time/endDate if changed, but don't overwrite transcript/insights
       if (!existing.transcript) {
         existing.title = event.summary || '(no title)';
         existing.date = event.start?.dateTime || event.start?.date || existing.date;
+        existing.endDate = event.end?.dateTime || event.end?.date || existing.endDate;
         existing.participants = (event.attendees || []).map(a => a.displayName || a.email).join(', ');
         existing.link = event.htmlLink || existing.link;
+        // Re-classify if still title-based or unclassified
+        if (existing.type === 'other' || existing.classificationSource === 'title') {
+          existing.type = classifyMeetingByTitle(existing.title);
+          existing.classificationSource = 'title';
+        }
       }
       continue;
     }
     // Create new meeting from calendar event
     const startDt = event.start?.dateTime || event.start?.date;
     let endDt = event.end?.dateTime || event.end?.date;
+    const title = event.summary || '(no title)';
     state.meetings.push({
       id: 'cal_' + calId,
       date: startDt || new Date().toISOString(),
       endDate: endDt || null,
-      title: event.summary || '(no title)',
+      title: title,
       participants: (event.attendees || []).map(a => a.displayName || a.email).join(', '),
       transcript: '',
       link: event.htmlLink || '',
       source: 'calendar',
       calendarEventId: calId,
-      type: 'other',
+      type: classifyMeetingByTitle(title),
+      classificationSource: 'title',
       summary: '',
       actionItems: '',
       insights: {}
@@ -16198,17 +16359,9 @@ function calendarDaySummary() {
     return mDate === todayStr;
   });
   if (todayMeetings.length === 0) return '';
-  // Sum duration in hours
-  let totalMinutes = 0;
-  todayMeetings.forEach(m => {
-    if (m.date && m.endDate) {
-      const start = new Date(m.date);
-      const end = new Date(m.endDate);
-      const diff = (end - start) / 60000;
-      if (diff > 0 && diff < 720) totalMinutes += diff;
-    }
-  });
-  const hours = totalMinutes > 0 ? (totalMinutes / 60).toFixed(1).replace(/\.0$/, '') : null;
+  // Sum duration using meetingDuration() (source-aware)
+  const totalSec = todayMeetings.reduce((s, m) => s + meetingDuration(m), 0);
+  const hours = totalSec > 0 ? (totalSec / 3600).toFixed(1).replace(/\.0$/, '') : null;
   const parts = [todayMeetings.length + ' meeting' + (todayMeetings.length !== 1 ? 's' : '') + ' today'];
   if (hours) parts.push(hours + ' hour' + (hours === '1' ? '' : 's'));
   return parts.join(', ');
