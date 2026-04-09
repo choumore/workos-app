@@ -15119,7 +15119,7 @@ function buildTopPeopleInsights(meetings) {
   meetings.forEach(m => {
     if (!m.participants) return;
     const sec = meetingDuration(m);
-    const names = m.participants.split(',').map(n => n.trim()).filter(n => n);
+    const names = m.participants.split(',').map(n => n.trim().replace(/^\d+\)\s*/, '')).filter(n => n);
     names.forEach(name => {
       if (name.toLowerCase() === myName) return;
       if (!peopleMap[name]) peopleMap[name] = { count: 0, hours: 0 };
