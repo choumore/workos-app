@@ -5735,7 +5735,7 @@ async function exportMeetingsWithTranscripts() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ vault_path: state.settings.obsidianVaultPath, files }),
-      signal: AbortSignal.timeout(30000)
+      signal: AbortSignal.timeout(120000)
     });
     if (resp.ok) {
       console.log('[obsidian] Exported', files.length, 'meetings with cleaned transcripts');
@@ -5877,9 +5877,8 @@ async function cleanTranscriptForExport(transcript, meetingTitle) {
   // - Consolidate interrupted speech (don't split one person's speech across sections due to failed interruptions)
   // - Keep all substantive content, just make it easier to read
   if (!transcript || transcript.length < 100) return transcript;
-  try {
-    const cleaned = await callClaude(
-      `You are a transcript editor. Clean up the following meeting transcript for archival readability.
+
+  const CLEANUP_SYSTEM = `You are a transcript editor. Clean up the following meeting transcript for archival readability.
 
 Rules:
 - Remove filler words (um, uh, like, you know, sort of, kind of) and false starts
@@ -5889,16 +5888,75 @@ Rules:
 - Preserve all substantive content — never remove real information
 - Do NOT summarize or shorten — output the full cleaned transcript
 - Keep chronological order
-- Output the cleaned transcript only, no preamble`,
-      `Meeting: ${meetingTitle || 'Untitled'}\n\nRaw transcript:\n${transcript.substring(0, 100000)}`,
-      4000,
-      'Transcript Cleanup'
-    );
-    return cleaned || transcript;
+- Output the cleaned transcript only, no preamble`;
+
+  const CHUNK_CHAR_LIMIT = 40000; // ~10K tokens input per chunk
+
+  try {
+    // For shorter transcripts, single pass with dynamic max_tokens
+    if (transcript.length <= CHUNK_CHAR_LIMIT) {
+      // Cleaned output is ~80-90% of input length; 1 token ≈ 3.5 chars
+      const maxTokens = Math.max(4000, Math.ceil(transcript.length / 3));
+      const cleaned = await callClaude(
+        CLEANUP_SYSTEM,
+        `Meeting: ${meetingTitle || 'Untitled'}\n\nRaw transcript:\n${transcript}`,
+        maxTokens,
+        'Transcript Cleanup'
+      );
+      return cleaned || transcript;
+    }
+
+    // For long transcripts, split into chunks at speaker boundaries and clean each
+    console.log(`[obsidian] Long transcript (${transcript.length} chars), chunking for cleanup...`);
+    const chunks = splitTranscriptIntoChunks(transcript, CHUNK_CHAR_LIMIT);
+    const cleanedChunks = [];
+    for (let i = 0; i < chunks.length; i++) {
+      const maxTokens = Math.max(4000, Math.ceil(chunks[i].length / 3));
+      const chunkLabel = chunks.length > 1 ? ` (part ${i + 1}/${chunks.length})` : '';
+      const cleaned = await callClaude(
+        CLEANUP_SYSTEM,
+        `Meeting: ${meetingTitle || 'Untitled'}${chunkLabel}\n\nRaw transcript:\n${chunks[i]}`,
+        maxTokens,
+        'Transcript Cleanup'
+      );
+      cleanedChunks.push(cleaned || chunks[i]);
+    }
+    return cleanedChunks.join('\n\n');
   } catch (e) {
     console.warn('[obsidian] Transcript cleanup failed, using raw:', e.message);
     return transcript;
   }
+}
+
+function splitTranscriptIntoChunks(transcript, maxChars) {
+  if (transcript.length <= maxChars) return [transcript];
+  const chunks = [];
+  let remaining = transcript;
+  while (remaining.length > 0) {
+    if (remaining.length <= maxChars) {
+      chunks.push(remaining);
+      break;
+    }
+    // Find a speaker boundary near the limit to split cleanly
+    let splitAt = maxChars;
+    // Look for a speaker label pattern (e.g., "\nMo:" or "\n**Mo:**") within last 20% of chunk
+    const searchStart = Math.floor(maxChars * 0.8);
+    const searchRegion = remaining.substring(searchStart, maxChars);
+    const speakerMatch = searchRegion.match(/\n(?:\*\*)?[A-Z][a-zA-Z\s\-]+(?:\*\*)?:\s/g);
+    if (speakerMatch) {
+      // Use the last speaker boundary found in the search region
+      const lastMatch = speakerMatch[speakerMatch.length - 1];
+      const idx = searchRegion.lastIndexOf(lastMatch);
+      if (idx >= 0) splitAt = searchStart + idx;
+    } else {
+      // Fallback: split at last newline
+      const lastNewline = remaining.lastIndexOf('\n', maxChars);
+      if (lastNewline > maxChars * 0.5) splitAt = lastNewline;
+    }
+    chunks.push(remaining.substring(0, splitAt));
+    remaining = remaining.substring(splitAt);
+  }
+  return chunks;
 }
 
 /* ========================================
@@ -15816,6 +15874,7 @@ function settingsIntegrationsHtml() {
         <button class="btn-secondary" onclick="testMempalaceConnection()">Test Connection</button>
         <button class="btn-secondary" onclick="triggerMempalaceMine()">Mine Vault</button>
         <button class="btn-secondary" onclick="exportAllToObsidian()">Export All</button>
+        <button class="btn-secondary" onclick="reexportMeetingsFromGist()" title="Fetch raw transcripts from Gist and re-export with full cleaned transcripts">Re-export Meetings</button>
         <div class="api-status" id="mempalaceStatus"></div>
       </div>
     `)}`;
@@ -16234,7 +16293,7 @@ async function exportAllToObsidian() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ vault_path: vaultPath, files }),
-      signal: AbortSignal.timeout(30000)
+      signal: AbortSignal.timeout(120000)
     });
     const data = await resp.json();
     if (resp.ok) {
@@ -16245,6 +16304,89 @@ async function exportAllToObsidian() {
     }
   } catch (e) {
     if (statusEl) statusEl.innerHTML = '<span class="invalid">Export failed: ' + escapeHtml(e.message) + '</span>';
+  } finally {
+    btns.forEach(b => b.disabled = false);
+  }
+}
+
+async function reexportMeetingsFromGist() {
+  const vaultPath = state.settings.obsidianVaultPath;
+  if (!vaultPath) { showToast('Set Obsidian Vault Path first'); return; }
+  if (!state.settings.ghToken || !state.settings.meetingsGistId) {
+    showToast('Set up meetings gist first (GitHub token + Meetings Gist ID)');
+    return;
+  }
+  const statusEl = document.getElementById('mempalaceStatus');
+  const btns = document.querySelectorAll('.settings-card button');
+  btns.forEach(b => b.disabled = true);
+  if (statusEl) statusEl.innerHTML = '<span style="color:var(--text-muted)">Fetching raw transcripts from Gist...</span>';
+  try {
+    // Step 1: Fetch raw transcripts from gist
+    const res = await fetch('https://api.github.com/gists/' + state.settings.meetingsGistId, {
+      headers: { 'Authorization': 'token ' + state.settings.ghToken }
+    });
+    if (!res.ok) throw new Error('Gist fetch failed: ' + res.status);
+    const data = await res.json();
+    // Build a map of meeting ID → raw transcript from gist
+    const gistTranscripts = new Map();
+    for (const [filename, file] of Object.entries(data.files)) {
+      if (!filename.startsWith('meeting-') || !filename.endsWith('.json')) continue;
+      try {
+        const meeting = JSON.parse(file.content);
+        if (meeting.id && meeting.transcript && meeting.transcript.length > 100) {
+          gistTranscripts.set(meeting.id, meeting.transcript);
+        }
+      } catch (_) {}
+    }
+    if (gistTranscripts.size === 0) {
+      if (statusEl) statusEl.innerHTML = '<span class="invalid">No meetings with transcripts found in gist</span>';
+      return;
+    }
+    // Step 2: Restore raw transcripts to state (temporarily for export)
+    const meetingsWithTranscripts = [];
+    for (const m of state.meetings) {
+      const rawTranscript = gistTranscripts.get(m.id);
+      if (rawTranscript) {
+        meetingsWithTranscripts.push({ ...m, transcript: rawTranscript });
+      }
+    }
+    if (meetingsWithTranscripts.length === 0) {
+      if (statusEl) statusEl.innerHTML = '<span class="invalid">No matching meetings to re-export</span>';
+      return;
+    }
+    // Step 3: Clean and export with the improved chunked cleaner
+    const files = [];
+    let cleaned = 0;
+    for (let i = 0; i < meetingsWithTranscripts.length; i += 3) {
+      const chunk = meetingsWithTranscripts.slice(i, i + 3);
+      if (statusEl) statusEl.innerHTML = `<span style="color:var(--text-muted)">Cleaning transcripts ${cleaned + 1}–${Math.min(cleaned + chunk.length, meetingsWithTranscripts.length)} of ${meetingsWithTranscripts.length}...</span>`;
+      const results = await Promise.all(chunk.map(m =>
+        cleanTranscriptForExport(m.transcript, m.title).then(ct => {
+          const slug = (m.title || 'meeting').toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 40);
+          const idSuffix = m.id ? '-' + String(m.id).slice(-4) : '';
+          return { path: 'meetings/' + meetingDateStr(m) + '-' + slug + idSuffix + '.md', content: meetingToMarkdown(m, ct) };
+        })
+      ));
+      files.push(...results);
+      cleaned += chunk.length;
+    }
+    if (statusEl) statusEl.innerHTML = `<span style="color:var(--text-muted)">Writing ${files.length} meeting files...</span>`;
+    const url = (state.settings.mempalaceServerUrl || 'http://localhost:8091').replace(/\/$/, '');
+    const resp = await fetch(url + '/export', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vault_path: vaultPath, files }),
+      signal: AbortSignal.timeout(120000) // 2 min for many meetings
+    });
+    const result = await resp.json();
+    if (resp.ok) {
+      if (statusEl) statusEl.innerHTML = `<span class="valid">Re-exported ${result.count} meetings with full transcripts</span>`;
+      showToast(`Re-exported ${result.count} meetings with full transcripts`);
+    } else {
+      if (statusEl) statusEl.innerHTML = `<span class="invalid">${escapeHtml(result.detail || 'Export failed')}</span>`;
+    }
+  } catch (e) {
+    if (statusEl) statusEl.innerHTML = '<span class="invalid">Re-export failed: ' + escapeHtml(e.message) + '</span>';
   } finally {
     btns.forEach(b => b.disabled = false);
   }
