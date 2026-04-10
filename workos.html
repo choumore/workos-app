@@ -5705,6 +5705,35 @@ function runMigrations() {
     changed = true;
   }
 
+  if (state.dataVersion < 12) {
+    // Merge duplicate calendar stubs into existing Tactiq entries by title+date
+    const toRemove = new Set();
+    for (const calM of state.meetings.filter(m => m.source === 'calendar' && !m.transcript)) {
+      const dateStr = (calM.date || '').substring(0, 10);
+      const titleNorm = (calM.title || '').trim().toLowerCase();
+      if (!dateStr || !titleNorm) continue;
+      const tactiq = state.meetings.find(m =>
+        m !== calM && m.transcript &&
+        (m.date || '').substring(0, 10) === dateStr &&
+        (m.title || '').trim().toLowerCase() === titleNorm
+      );
+      if (tactiq) {
+        // Enrich Tactiq entry with calendar metadata
+        tactiq.calendarEventId = tactiq.calendarEventId || calM.calendarEventId;
+        tactiq.endDate = tactiq.endDate || calM.endDate;
+        if (!tactiq.participants && calM.participants) tactiq.participants = calM.participants;
+        if (!tactiq.link && calM.link) tactiq.link = calM.link;
+        toRemove.add(calM.id);
+      }
+    }
+    if (toRemove.size > 0) {
+      state.meetings = state.meetings.filter(m => !toRemove.has(m.id));
+      console.log(`Migration v12: merged ${toRemove.size} calendar duplicates into Tactiq entries`);
+    }
+    state.dataVersion = 12;
+    changed = true;
+  }
+
   if (changed) saveState();
 }
 
@@ -16439,8 +16468,26 @@ function mergeCalendarEvents(events) {
       }
       continue;
     }
-    // Create new meeting from calendar event
+    // Try to match an existing Tactiq/gist meeting by title + date
     const startDt = event.start?.dateTime || event.start?.date;
+    const eventDateStr = (startDt || '').substring(0, 10);
+    const eventTitleNorm = (event.summary || '').trim().toLowerCase();
+    if (eventDateStr && eventTitleNorm) {
+      const tactiqMatch = state.meetings.find(m =>
+        !m.calendarEventId &&
+        (m.date || '').substring(0, 10) === eventDateStr &&
+        (m.title || '').trim().toLowerCase() === eventTitleNorm
+      );
+      if (tactiqMatch) {
+        // Enrich the existing Tactiq entry with calendar metadata
+        tactiqMatch.calendarEventId = calId;
+        tactiqMatch.endDate = tactiqMatch.endDate || (event.end?.dateTime || event.end?.date || null);
+        if (!tactiqMatch.participants) tactiqMatch.participants = (event.attendees || []).map(a => a.displayName || a.email).join(', ');
+        if (!tactiqMatch.link) tactiqMatch.link = event.htmlLink || '';
+        continue;
+      }
+    }
+    // Create new meeting from calendar event
     let endDt = event.end?.dateTime || event.end?.date;
     const title = event.summary || '(no title)';
     state.meetings.push({
