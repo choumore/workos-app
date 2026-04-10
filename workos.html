@@ -13648,6 +13648,11 @@ function renderBriefs() {
     return;
   }
 
+  if (briefsView === 'week-select') {
+    renderWeekSelector(panel);
+    return;
+  }
+
   if (briefsSubView === 'meeting-prep' && meetingPrepView === 'loading') {
     const record = state.meetingPreps.find(p => p.id === currentMeetingPrepId);
     const names = record ? record.stakeholders.map(s => s.name).join(', ') : 'stakeholder';
@@ -14566,8 +14571,9 @@ function backToBriefsList() {
 }
 
 function confirmRegenerate() {
+  const monday = getWeekMonday(todayStr());
   if (confirm('This will replace your existing brief for this week. Continue?')) {
-    startGenerateBrief();
+    generateBriefForWeek(monday);
   }
 }
 
@@ -14632,7 +14638,15 @@ async function regenerateBrief(weekOf) {
     showToast('Brief regenerated');
   } catch (err) {
     console.error('Regenerate brief error:', err);
-    showToast('Failed to regenerate brief');
+    if (err.message === 'no_key') {
+      showToast('Set up your AI gateway in Settings first.');
+    } else if (err.message === 'invalid_key') {
+      showToast('API key rejected (401/403). Check your gateway credentials in Settings.');
+    } else if (err.message === 'rate_limited') {
+      showToast('Rate limited by the API. Wait a moment and try again.');
+    } else {
+      showToast('Brief generation failed: ' + (err.message || 'Unknown error'));
+    }
     renderBriefs();
   }
 }
@@ -14653,26 +14667,86 @@ async function humanizeBriefSection(briefId, sectionKey, linkEl) {
   renderBriefs();
 }
 
-async function startGenerateBrief() {
-  let weekEntries = getCurrentWeekEntries();
-  let monday = getWeekMonday(todayStr());
+function getEligibleBriefWeeks() {
+  // Find all weeks that have entries, sorted newest first
+  const weekMap = {};
+  for (const entry of state.entries) {
+    if (!entry.date) continue;
+    const monday = getWeekMonday(entry.date);
+    if (!weekMap[monday]) weekMap[monday] = 0;
+    weekMap[monday]++;
+  }
+  const existingBriefWeeks = new Set(state.weeklyBriefs.map(b => b.weekOf));
+  return Object.entries(weekMap)
+    .map(([monday, count]) => ({ monday, count, hasBrief: existingBriefWeeks.has(monday) }))
+    .sort((a, b) => b.monday.localeCompare(a.monday));
+}
 
-  // If no entries this week, try last week
-  if (weekEntries.length === 0) {
-    const lastMonday = new Date(monday + 'T00:00:00');
-    lastMonday.setDate(lastMonday.getDate() - 7);
-    const lastMondayStr = lastMonday.toISOString().slice(0, 10);
-    const lastWeekDates = getWeekDates(lastMondayStr);
-    const lastWeekEntries = state.entries.filter(e => lastWeekDates.includes(e.date)).sort((a, b) => a.date.localeCompare(b.date));
-    if (lastWeekEntries.length === 0) {
-      showToast('No entries this week or last week to analyze.');
-      return;
-    }
-    weekEntries = lastWeekEntries;
-    monday = lastMondayStr;
+function startGenerateBrief() {
+  const weeks = getEligibleBriefWeeks();
+  const eligible = weeks.filter(w => !w.hasBrief && w.count >= 3);
+  const partial = weeks.filter(w => !w.hasBrief && w.count > 0 && w.count < 3);
+
+  if (eligible.length === 0 && partial.length === 0) {
+    showToast('No weeks with entries available for brief generation.');
+    return;
   }
 
-  if (weekEntries.length < 3 && !confirm(`Briefs work best with 3+ entries. You have ${weekEntries.length} so far. Generate anyway?`)) {
+  // If only one eligible week, go straight to generation
+  if (eligible.length === 1 && partial.length === 0) {
+    generateBriefForWeek(eligible[0].monday);
+    return;
+  }
+
+  // Show week selector
+  switchTab('briefs');
+  briefsView = 'week-select';
+  renderBriefs();
+}
+
+function renderWeekSelector(container) {
+  const weeks = getEligibleBriefWeeks();
+  const eligible = weeks.filter(w => !w.hasBrief && w.count >= 3);
+  const partial = weeks.filter(w => !w.hasBrief && w.count > 0 && w.count < 3);
+
+  let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-lg)">
+    <div style="font-weight:600">Generate Brief</div>
+    <button class="btn-secondary" onclick="briefsView='list';renderBriefs()">Cancel</button>
+  </div>
+  <div style="color:var(--text-muted);font-size:13px;margin-bottom:var(--space-lg)">Select a week to generate a brief for.</div>`;
+
+  if (eligible.length > 0) {
+    html += eligible.map(w => `
+      <div class="past-brief-row" onclick="generateBriefForWeek('${w.monday}')" style="cursor:pointer">
+        <div class="past-brief-info">
+          <div class="past-brief-week">${formatWeekRange(w.monday)}</div>
+          <div class="past-brief-meta">${w.count} entries</div>
+        </div>
+        <div class="past-brief-wins" style="color:var(--accent)">Generate →</div>
+      </div>`).join('');
+  }
+
+  if (partial.length > 0) {
+    html += `<div style="color:var(--text-muted);font-size:12px;margin-top:var(--space-lg);margin-bottom:var(--space-sm)">Fewer than 3 entries (briefs work best with 3+)</div>`;
+    html += partial.map(w => `
+      <div class="past-brief-row" onclick="if(confirm('This week has only ${w.count} ${w.count === 1 ? 'entry' : 'entries'}. Briefs work best with 3+. Generate anyway?')) generateBriefForWeek('${w.monday}')" style="cursor:pointer;opacity:0.7">
+        <div class="past-brief-info">
+          <div class="past-brief-week">${formatWeekRange(w.monday)}</div>
+          <div class="past-brief-meta">${w.count} ${w.count === 1 ? 'entry' : 'entries'}</div>
+        </div>
+        <div class="past-brief-wins" style="color:var(--text-muted)">Generate →</div>
+      </div>`).join('');
+  }
+
+  container.innerHTML = html;
+}
+
+async function generateBriefForWeek(monday) {
+  const weekDates = getWeekDates(monday);
+  const weekEntries = state.entries.filter(e => weekDates.includes(e.date)).sort((a, b) => a.date.localeCompare(b.date));
+
+  if (weekEntries.length === 0) {
+    showToast('No entries found for this week.');
     return;
   }
 
@@ -14730,8 +14804,13 @@ async function startGenerateBrief() {
     renderBriefs();
     if (err.message === 'no_key') {
       showToast('Set up your AI gateway in Settings first.');
+    } else if (err.message === 'invalid_key') {
+      showToast('API key rejected (401/403). Check your gateway credentials in Settings.');
+    } else if (err.message === 'rate_limited') {
+      showToast('Rate limited by the API. Wait a moment and try again.');
     } else {
-      showToast('Failed to generate brief. Check your gateway settings and try again.');
+      console.error('Brief generation failed:', err);
+      showToast('Brief generation failed: ' + (err.message || 'Unknown error'));
     }
   }
 }
@@ -19036,7 +19115,7 @@ async function init() {
     const existingBrief = state.weeklyBriefs.find(b => b.weekOf === monday);
     const weekEntries = getCurrentWeekEntries();
     if (!existingBrief && weekEntries.length >= 3) {
-      startGenerateBrief();
+      generateBriefForWeek(monday);
     }
   }
 
