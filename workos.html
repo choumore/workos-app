@@ -5690,6 +5690,21 @@ function runMigrations() {
     changed = true;
   }
 
+  if (state.dataVersion < 11) {
+    // Remove non-meeting calendar stubs (Reclaim blocks etc.) that were already synced
+    const before = state.meetings.length;
+    state.meetings = state.meetings.filter(m => {
+      if (m.source !== 'calendar' || m.transcript) return true;
+      const title = (m.title || '').toLowerCase();
+      return !CALENDAR_BLOCK_PATTERNS.some(p => title.includes(p));
+    });
+    if (state.meetings.length < before) {
+      console.log(`Migration v11: removed ${before - state.meetings.length} non-meeting calendar stubs`);
+    }
+    state.dataVersion = 11;
+    changed = true;
+  }
+
   if (changed) saveState();
 }
 
@@ -6427,6 +6442,27 @@ function getMeetingTypePrompt(typeId) {
   const overrides = state.settings.meetingTypePrompts || {};
   if (overrides[typeId] !== undefined) return overrides[typeId];
   return MEETING_TYPES[typeId]?.extractionPrompt || '';
+}
+
+const CALENDAR_BLOCK_PATTERNS = [
+  'focus time', 'lunch', 'travel time', 'break', 'personal time', 'buffer',
+  'commute', 'decompression', 'catch up', 'no meetings', 'busy', 'do not book',
+  'dnb', 'blocked', 'out of office', 'heads down', 'deep work', 'maker time'
+];
+
+function isNonMeetingEvent(event) {
+  const title = (event.summary || '').toLowerCase();
+  if (CALENDAR_BLOCK_PATTERNS.some(p => title.includes(p))) return true;
+  // All-day event (only date, no dateTime)
+  if (event.start?.date && !event.start?.dateTime) return true;
+  // Self declined
+  const self = (event.attendees || []).find(a => a.self);
+  if (self && self.responseStatus === 'declined') return true;
+  return false;
+}
+
+function isFutureCalendarStub(m) {
+  return m.source === 'calendar' && !m.transcript && meetingDateStr(m) > todayStr();
 }
 
 function parseMeetingJson(raw) {
@@ -14965,7 +15001,7 @@ function getPreviousPeriodRange(period) {
 }
 
 function filterMeetingsByRange(range) {
-  if (!range) return state.meetings;
+  if (!range) return state.meetings.filter(m => !isFutureCalendarStub(m));
   return state.meetings.filter(m => {
     if (!m.date) return false;
     const d = new Date(m.date);
@@ -15505,9 +15541,10 @@ function meetingsEntriesHtml() {
   const daySummary = calendarDaySummary();
   const daySummaryHtml = daySummary ? `<div style="padding:var(--space-sm) var(--space-md);background:var(--bg-card);border-radius:var(--radius-sm);margin-bottom:var(--space-lg);font-size:13px;color:var(--text-secondary)">${escapeHtml(daySummary)}</div>` : '';
 
-  // Count types present for chips
+  // Count types present for chips (exclude future stubs)
+  const visibleMeetings = state.meetings.filter(m => !isFutureCalendarStub(m));
   const typeCounts = {};
-  state.meetings.forEach(m => {
+  visibleMeetings.forEach(m => {
     const t = m.type || 'other';
     typeCounts[t] = (typeCounts[t] || 0) + 1;
   });
@@ -15528,6 +15565,7 @@ function meetingsEntriesHtml() {
 
   // Apply filters
   let filtered = [...state.meetings];
+  filtered = filtered.filter(m => !isFutureCalendarStub(m));
   if (meetingsTypeFilter) filtered = filtered.filter(m => (m.type || 'other') === meetingsTypeFilter);
   if (meetingsSearchQuery) filtered = filtered.filter(m => meetingMatchesSearch(m, meetingsSearchQuery));
 
@@ -16341,7 +16379,7 @@ function formatEventTime(event) {
 async function fetchCalendarEvents(manual = false) {
   if (!manual && !state.settings.gcalAutoSync) return;
   const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
   let allEvents = [];
   let pageToken = null;
@@ -16380,6 +16418,7 @@ function classifyMeetingByTitle(title) {
 function mergeCalendarEvents(events) {
   let added = 0;
   for (const event of events) {
+    if (isNonMeetingEvent(event)) continue;
     const calId = event.id;
     // Skip if we already have this calendar event
     const existing = state.meetings.find(m => m.calendarEventId === calId);
