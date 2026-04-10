@@ -111,7 +111,7 @@ class CORSProxy(http.server.BaseHTTPRequestHandler):
             for k, v in headers.items():
                 req.add_header(k, v)
         try:
-            with urllib.request.urlopen(req, context=SSL_CTX, timeout=15) as resp:
+            with urllib.request.urlopen(req, context=SSL_CTX, timeout=120) as resp:
                 data = resp.read()
                 self.send_response(resp.status)
                 if use_gcal_cors:
