@@ -196,8 +196,12 @@ class CORSProxy(http.server.BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         print(f"[proxy] {fmt % args}")
 
+class ReusableThreadingHTTPServer(http.server.ThreadingHTTPServer):
+    allow_reuse_address = True
+    allow_reuse_port = True
+
 if __name__ == "__main__":
-    server = http.server.ThreadingHTTPServer(("0.0.0.0", PORT), CORSProxy)
+    server = ReusableThreadingHTTPServer(("0.0.0.0", PORT), CORSProxy)
     print(f"CORS proxy running on http://localhost:{PORT}")
     print(f"Forwarding to {UPSTREAM}")
     print(f"Google Calendar proxy: /gcal/* → {GOOGLE_CALENDAR_API}")
