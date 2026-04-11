@@ -5734,6 +5734,43 @@ function runMigrations() {
     changed = true;
   }
 
+  if (state.dataVersion < 13) {
+    // Re-run block pattern cleanup (v11 ran before pickup/dropoff/decompress were added)
+    const beforeBlocks = state.meetings.length;
+    state.meetings = state.meetings.filter(m => {
+      if (m.source !== 'calendar' || m.transcript) return true;
+      const title = (m.title || '').toLowerCase();
+      return !CALENDAR_BLOCK_PATTERNS.some(p => title.includes(p));
+    });
+    // Re-run duplicate merge with fuzzy title matching (strip emojis + normalize whitespace)
+    const normTitle = t => (t || '').replace(/[\u{1F000}-\u{1FFFF}]/gu, '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const toRemove = new Set();
+    for (const calM of state.meetings.filter(m => m.source === 'calendar' && !m.transcript)) {
+      const dateStr = (calM.date || '').substring(0, 10);
+      const calTitle = normTitle(calM.title);
+      if (!dateStr || !calTitle) continue;
+      const match = state.meetings.find(m =>
+        m !== calM && m.transcript &&
+        (m.date || '').substring(0, 10) === dateStr &&
+        normTitle(m.title) === calTitle
+      );
+      if (match) {
+        match.calendarEventId = match.calendarEventId || calM.calendarEventId;
+        match.endDate = match.endDate || calM.endDate;
+        if (!match.participants && calM.participants) match.participants = calM.participants;
+        if (!match.link && calM.link) match.link = calM.link;
+        toRemove.add(calM.id);
+      }
+    }
+    if (toRemove.size > 0) {
+      state.meetings = state.meetings.filter(m => !toRemove.has(m.id));
+    }
+    const removed = (beforeBlocks - state.meetings.length + toRemove.size);
+    if (removed > 0) console.log(`Migration v13: cleaned ${removed} calendar entries (blocks + duplicates)`);
+    state.dataVersion = 13;
+    changed = true;
+  }
+
   if (changed) saveState();
 }
 
@@ -16471,12 +16508,13 @@ function mergeCalendarEvents(events) {
     // Try to match an existing Tactiq/gist meeting by title + date
     const startDt = event.start?.dateTime || event.start?.date;
     const eventDateStr = (startDt || '').substring(0, 10);
-    const eventTitleNorm = (event.summary || '').trim().toLowerCase();
+    const stripEmoji = t => (t || '').replace(/[\u{1F000}-\u{1FFFF}]/gu, '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const eventTitleNorm = stripEmoji(event.summary);
     if (eventDateStr && eventTitleNorm) {
       const tactiqMatch = state.meetings.find(m =>
         !m.calendarEventId &&
         (m.date || '').substring(0, 10) === eventDateStr &&
-        (m.title || '').trim().toLowerCase() === eventTitleNorm
+        stripEmoji(m.title) === eventTitleNorm
       );
       if (tactiqMatch) {
         // Enrich the existing Tactiq entry with calendar metadata
