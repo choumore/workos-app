@@ -6532,8 +6532,8 @@ function isNonMeetingEvent(event) {
   return false;
 }
 
-function isFutureCalendarStub(m) {
-  if (m.source !== 'calendar' || meetingDateStr(m) <= todayStr()) return false;
+function isCalendarOnlyEntry(m) {
+  if (m.source !== 'calendar') return false;
   return !m.transcript && !m.summary && !(m.insights && Object.keys(m.insights).length);
 }
 
@@ -15073,7 +15073,7 @@ function getPreviousPeriodRange(period) {
 }
 
 function filterMeetingsByRange(range) {
-  if (!range) return state.meetings.filter(m => !isFutureCalendarStub(m));
+  if (!range) return state.meetings.filter(m => !isCalendarOnlyEntry(m));
   return state.meetings.filter(m => {
     if (!m.date) return false;
     const d = new Date(m.date);
@@ -15614,7 +15614,7 @@ function meetingsEntriesHtml() {
   const daySummaryHtml = daySummary ? `<div style="padding:var(--space-sm) var(--space-md);background:var(--bg-card);border-radius:var(--radius-sm);margin-bottom:var(--space-lg);font-size:13px;color:var(--text-secondary)">${escapeHtml(daySummary)}</div>` : '';
 
   // Count types present for chips (exclude future stubs)
-  const visibleMeetings = state.meetings.filter(m => !isFutureCalendarStub(m));
+  const visibleMeetings = state.meetings.filter(m => !isCalendarOnlyEntry(m));
   const typeCounts = {};
   visibleMeetings.forEach(m => {
     const t = m.type || 'other';
@@ -15637,7 +15637,7 @@ function meetingsEntriesHtml() {
 
   // Apply filters
   let filtered = [...state.meetings];
-  filtered = filtered.filter(m => !isFutureCalendarStub(m));
+  filtered = filtered.filter(m => !isCalendarOnlyEntry(m));
   if (meetingsTypeFilter) filtered = filtered.filter(m => (m.type || 'other') === meetingsTypeFilter);
   if (meetingsSearchQuery) filtered = filtered.filter(m => meetingMatchesSearch(m, meetingsSearchQuery));
 
