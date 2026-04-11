@@ -5734,23 +5734,27 @@ function runMigrations() {
     changed = true;
   }
 
-  if (state.dataVersion < 13) {
-    // Re-run block pattern cleanup (v11 ran before pickup/dropoff/decompress were added)
+  if (state.dataVersion < 14) {
+    // Remove non-meeting calendar blocks (re-run with expanded patterns)
     const beforeBlocks = state.meetings.length;
     state.meetings = state.meetings.filter(m => {
-      if (m.source !== 'calendar' || m.transcript) return true;
+      if (m.source !== 'calendar') return true;
+      if (m.transcript || m.summary || (m.insights && Object.keys(m.insights).length)) return true;
       const title = (m.title || '').toLowerCase();
       return !CALENDAR_BLOCK_PATTERNS.some(p => title.includes(p));
     });
-    // Re-run duplicate merge with fuzzy title matching (strip emojis + normalize whitespace)
+    // Merge calendar stubs into Tactiq entries by title+date
+    // A calendar stub: source==='calendar', no summary/insights
+    // A Tactiq entry: has summary, insights, transcript, or non-'other' type (transcripts stripped from localStorage after analysis)
     const normTitle = t => (t || '').replace(/[\u{1F000}-\u{1FFFF}]/gu, '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const isAnalyzed = m => m.transcript || m.summary || (m.insights && Object.keys(m.insights).length) || (m.type && m.type !== 'other');
     const toRemove = new Set();
-    for (const calM of state.meetings.filter(m => m.source === 'calendar' && !m.transcript)) {
+    for (const calM of state.meetings.filter(m => m.source === 'calendar' && !isAnalyzed(m))) {
       const dateStr = (calM.date || '').substring(0, 10);
       const calTitle = normTitle(calM.title);
       if (!dateStr || !calTitle) continue;
       const match = state.meetings.find(m =>
-        m !== calM && m.transcript &&
+        m !== calM && m.source !== 'calendar' &&
         (m.date || '').substring(0, 10) === dateStr &&
         normTitle(m.title) === calTitle
       );
@@ -5766,8 +5770,8 @@ function runMigrations() {
       state.meetings = state.meetings.filter(m => !toRemove.has(m.id));
     }
     const removed = (beforeBlocks - state.meetings.length + toRemove.size);
-    if (removed > 0) console.log(`Migration v13: cleaned ${removed} calendar entries (blocks + duplicates)`);
-    state.dataVersion = 13;
+    if (removed > 0) console.log(`Migration v14: cleaned ${removed} calendar entries (blocks + duplicates)`);
+    state.dataVersion = 14;
     changed = true;
   }
 
@@ -6529,7 +6533,8 @@ function isNonMeetingEvent(event) {
 }
 
 function isFutureCalendarStub(m) {
-  return m.source === 'calendar' && !m.transcript && meetingDateStr(m) > todayStr();
+  if (m.source !== 'calendar' || meetingDateStr(m) <= todayStr()) return false;
+  return !m.transcript && !m.summary && !(m.insights && Object.keys(m.insights).length);
 }
 
 function parseMeetingJson(raw) {
@@ -16512,7 +16517,7 @@ function mergeCalendarEvents(events) {
     const eventTitleNorm = stripEmoji(event.summary);
     if (eventDateStr && eventTitleNorm) {
       const tactiqMatch = state.meetings.find(m =>
-        !m.calendarEventId &&
+        m.source !== 'calendar' &&
         (m.date || '').substring(0, 10) === eventDateStr &&
         stripEmoji(m.title) === eventTitleNorm
       );
