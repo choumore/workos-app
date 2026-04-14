@@ -11550,7 +11550,7 @@ function renderWeeklyTriage(panel) {
         <div class="dash-section-title">CLEAR YOUR INBOX <span style="text-transform:none;font-weight:400">${inboxItems.length} item${inboxItems.length !== 1 ? 's' : ''} to triage</span></div>
         <div class="triage-list">${itemsHtml}</div>
         ${inboxItems.length > 3 ? `<div class="triage-batch"><button class="btn-ghost" onclick="batchTriageAll('this-week')">All → This Week</button><button class="btn-ghost" onclick="batchTriageAll('backlog')">All → Backlog</button></div>` : ''}
-        <div style="text-align:right;margin-top:var(--space-lg)"><button class="btn-secondary btn-accent" onclick="weeklyTriageStep=2;renderDashboard()">Next: Review Week</button></div>
+        <div style="text-align:right;margin-top:var(--space-lg)"><button class="btn-secondary btn-accent" onclick="weeklyTriageStep=2;saveTriageProgress();renderDashboard()">Next: Review Week</button></div>
       </div>`;
     return true;
 
@@ -11579,7 +11579,7 @@ function renderWeeklyTriage(panel) {
             <div class="week-triage-summary-row"><span class="week-triage-summary-count">${weekTriageCounts.deferred}</span> deferred to backlog</div>
             ${weekTriageCounts.skipped > 0 ? `<div class="week-triage-summary-row"><span class="week-triage-summary-count">${weekTriageCounts.skipped}</span> skipped (still in this week)</div>` : ''}
           </div>
-          <div style="text-align:right;margin-top:var(--space-lg)"><button class="btn-secondary btn-accent" onclick="weekTriageQueue=[];weeklyTriageStep=3;renderDashboard()">Next: Share Weekly Plan</button></div>
+          <div style="text-align:right;margin-top:var(--space-lg)"><button class="btn-secondary btn-accent" onclick="weekTriageQueue=[];weeklyTriageStep=3;saveTriageProgress();renderDashboard()">Next: Share Weekly Plan</button></div>
         </div>`;
       return true;
     }
@@ -11623,7 +11623,7 @@ function renderWeeklyTriage(panel) {
         </div>
         <div style="display:flex;justify-content:space-between;margin-top:var(--space-md)">
           <button class="btn-ghost" style="font-size:12px" onclick="weekTriageUndo()">← Undo</button>
-          <button class="btn-ghost" style="font-size:12px" onclick="weekTriageQueue=[];weeklyTriageStep=3;renderDashboard()">Skip remaining →</button>
+          <button class="btn-ghost" style="font-size:12px" onclick="weekTriageQueue=[];weeklyTriageStep=3;saveTriageProgress();renderDashboard()">Skip remaining →</button>
         </div>
       </div>`;
     // Dynamically shrink title font if it exceeds 33vh
