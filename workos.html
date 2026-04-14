@@ -11704,10 +11704,7 @@ async function generateWeeklyPlanDraft() {
 
   const todayItems = (state.todos || []).filter(t => t.status === 'open' && t.priority === 'today');
   const weekItems = (state.todos || []).filter(t => t.status === 'open' && t.priority === 'this-week');
-  const rolledOver = (state.todos || []).filter(t => t.status === 'open' && t.triagedAt && t.createdAt && t.createdAt.substring(0, 10) < getWeekMonday(todayStr()));
-
   const itemsList = [...todayItems, ...weekItems].map(t => '- ' + t.text).join('\n');
-  const rolledList = rolledOver.map(t => '- ' + t.text).join('\n');
 
   if (!state.settings.baseUrl) {
     setWeeklyPlanContent('This week I\'m focused on:\n' + itemsList);
@@ -11716,25 +11713,9 @@ async function generateWeeklyPlanDraft() {
 
   display.innerHTML = '<span style="color:var(--text-muted)">Generating...</span>';
   try {
-    const prompt = `Write a concise Slack post (~150 words) sharing my weekly plan with my design team. Task-focused, no promotion/vector language.
-
-My priorities this week:
-${itemsList || '(none set)'}
-
-${rolledList ? 'Carrying forward from last week:\n' + rolledList : ''}
-
-Format:
-This week I'm focused on:
-• [3-4 top priorities framed as outcomes]
-
-Key milestones:
-• [any deadlines or meetings]
-
-${rolledList ? 'Carrying forward:\n• [rolled items]' : ''}
-
-Keep it casual, specific, and useful for teammates. Output ONLY the post itself — no preamble, no "Here's a draft:", no commentary before or after.`;
-
-    const text = await callClaude(getSystemPrompt(), prompt, 500, 'Weekly Plan');
+    // Reuse the same prompt as the Weekly Top 3 rhythm draft
+    const { systemPrompt, userPrompt } = buildTop3Prompt();
+    const text = await callClaude(systemPrompt, userPrompt, 500, 'Weekly Plan');
     setWeeklyPlanContent(text);
   } catch (e) {
     setWeeklyPlanContent('This week I\'m focused on:\n' + itemsList);
