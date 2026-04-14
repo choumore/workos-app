@@ -4630,7 +4630,7 @@ body {
    State
    ======================================== */
 let state = {
-  settings: { name: '', role: '', baseUrl: '', projectId: '', apiKey: '', model: 'sonnet', slackWebhook: '', slackToken: '', promotionNotes: '', insightsProfile: '', insightsProfileRaw: '', ghToken: '', ghGistId: '', meetingsGistId: '', gcalAutoSync: false, mempalaceServerUrl: 'http://localhost:8091', obsidianVaultPath: '', obsidianExportEnabled: false, features: { contributions: true, visibility: true, meetings: true, todos: true } },
+  settings: { name: '', role: '', baseUrl: '', projectId: '', apiKey: '', model: 'sonnet', slackWebhook: '', slackToken: '', promotionNotes: '', insightsProfile: '', insightsProfileRaw: '', ghToken: '', ghGistId: '', meetingsGistId: '', gcalAutoSync: false, mempalaceServerUrl: 'http://localhost:8091', obsidianVaultPath: '', obsidianExportEnabled: false, strideAutoSync: false, features: { contributions: true, visibility: true, meetings: true, todos: true } },
   entries: [],
   wins: [],
   weeklyBriefs: [],
@@ -5855,10 +5855,170 @@ async function exportMeetingsWithTranscripts() {
   }
 }
 
+let workosStateExportTimer = null;
+
 function debouncedObsidianExport() {
   if (!state.settings.obsidianExportEnabled || !state.settings.obsidianVaultPath) return;
   if (obsidianExportTimer) clearTimeout(obsidianExportTimer);
   obsidianExportTimer = setTimeout(() => obsidianExport(), 5000);
+  debouncedWorkosStateExport();
+}
+
+function debouncedWorkosStateExport() {
+  if (!state.settings.obsidianExportEnabled || !state.settings.obsidianVaultPath) return;
+  if (workosStateExportTimer) clearTimeout(workosStateExportTimer);
+  workosStateExportTimer = setTimeout(() => exportWorkosState(), 30000);
+}
+
+async function exportWorkosState() {
+  if (!state.settings.obsidianExportEnabled || !state.settings.obsidianVaultPath) return;
+  try {
+    const candidates = [
+      { path: 'workos-state/vectors.md', content: vectorsToMarkdown() },
+      { path: 'workos-state/priorities.md', content: prioritiesToMarkdown() },
+      { path: 'workos-state/wins.md', content: winsToMarkdown() },
+      { path: 'workos-state/coaching.md', content: coachingToMarkdown() },
+      { path: 'workos-state/weekly-plan.md', content: weeklyPlanToMarkdown() },
+    ];
+    const files = candidates.filter(f => {
+      const hash = f.path + ':' + f.content.length + ':' + f.content.substring(0, 100);
+      if (obsidianExportedHashes[f.path] === hash) return false;
+      return true;
+    });
+    if (files.length === 0) return;
+    const url = (state.settings.mempalaceServerUrl || 'http://localhost:8091').replace(/\/$/, '');
+    const resp = await fetch(url + '/export', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vault_path: state.settings.obsidianVaultPath, files }),
+      signal: AbortSignal.timeout(10000)
+    });
+    if (!resp.ok) throw new Error('Export server returned ' + resp.status);
+    for (const f of files) {
+      obsidianExportedHashes[f.path] = f.path + ':' + f.content.length + ':' + f.content.substring(0, 100);
+    }
+    console.log('[stride] Exported', files.length, 'workos-state files');
+  } catch (e) {
+    console.warn('[stride] WorkOS state export failed:', e.message);
+  }
+}
+
+// ---- Stride Feed Import Pipeline ----
+
+function parseStrideFeed(markdown) {
+  const result = { workSummary: [], decisions: [], followUps: [], slackHighlights: [], emailHighlights: [] };
+  if (!markdown) return result;
+  // Strip frontmatter
+  const body = markdown.replace(/^---[\s\S]*?---\s*/, '');
+  const sections = body.split(/^## /m).filter(s => s.trim());
+  for (const section of sections) {
+    const lines = section.split('\n');
+    const header = lines[0].trim().toLowerCase();
+    const bullets = lines.slice(1).map(l => l.trim()).filter(l => l.startsWith('- ') || l.startsWith('* '));
+    const items = bullets.map(b => b.replace(/^[-*]\s*/, '').replace(/^\[[ x]\]\s*/, ''));
+    const checkItems = bullets.filter(b => /^\- \[ \]/.test(b) || /^\* \[ \]/.test(b))
+      .map(b => b.replace(/^[-*]\s*\[ \]\s*/, ''));
+    if (header.includes('work summary')) result.workSummary = items;
+    else if (header.includes('decisions')) result.decisions = items;
+    else if (header.includes('follow')) result.followUps = checkItems.length > 0 ? checkItems : items;
+    else if (header.includes('slack')) result.slackHighlights = items;
+    else if (header.includes('email')) result.emailHighlights = items;
+  }
+  return result;
+}
+
+async function strideSync(silent) {
+  if (!state.settings.obsidianExportEnabled || !state.settings.obsidianVaultPath) {
+    if (!silent) showToast('Enable Obsidian export in Settings first');
+    return;
+  }
+  const url = (state.settings.mempalaceServerUrl || 'http://localhost:8091').replace(/\/$/, '');
+  try {
+    // List stride-feed files
+    const listResp = await fetch(url + '/list', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vault_path: state.settings.obsidianVaultPath, directory: 'stride-feed' }),
+      signal: AbortSignal.timeout(5000)
+    });
+    if (!listResp.ok) throw new Error('List failed: ' + listResp.status);
+    const listData = await listResp.json();
+    const feedFiles = (listData.files || []).sort((a, b) => b.path.localeCompare(a.path));
+    if (feedFiles.length === 0) {
+      if (!silent) showToast('No Stride feed files found');
+      return;
+    }
+    // Read today's or yesterday's feed
+    const today = todayStr();
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    const target = feedFiles.find(f => f.path.includes(today)) || feedFiles.find(f => f.path.includes(yesterday));
+    if (!target) {
+      if (!silent) showToast('No recent Stride feed (today/yesterday)');
+      return;
+    }
+    const readResp = await fetch(url + '/read', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vault_path: state.settings.obsidianVaultPath, paths: [target.path] }),
+      signal: AbortSignal.timeout(5000)
+    });
+    if (!readResp.ok) throw new Error('Read failed: ' + readResp.status);
+    const readData = await readResp.json();
+    const file = (readData.files || [])[0];
+    if (!file || !file.content) {
+      if (!silent) showToast('Stride feed file is empty');
+      return;
+    }
+    const feed = parseStrideFeed(file.content);
+    let importCount = 0;
+    // Convert follow-ups to todos
+    const existingNorms = new Set((state.todos || []).map(t => normTodoText(t.text)));
+    for (const item of feed.followUps) {
+      if (!item.trim()) continue;
+      const norm = normTodoText(item);
+      if (existingNorms.has(norm)) continue;
+      existingNorms.add(norm);
+      state.todos.push({
+        id: 'todo_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        text: item,
+        status: 'open',
+        priority: 'inbox',
+        source: 'stride',
+        sourceTitle: 'Daily debrief',
+        createdAt: new Date().toISOString(),
+        completedAt: null,
+        scheduledFor: null,
+        parentId: null,
+        triagedAt: null,
+        deferCount: 0
+      });
+      importCount++;
+    }
+    // Return feed data for optional Work Done pre-fill
+    saveState();
+    const msg = importCount > 0 ? `Imported ${importCount} follow-up${importCount > 1 ? 's' : ''} from Stride` : 'Stride feed synced (no new follow-ups)';
+    if (!silent || importCount > 0) showToast(msg);
+    console.log('[stride] Synced:', importCount, 'new todos from', target.path);
+    return feed;
+  } catch (e) {
+    console.warn('[stride] Sync failed:', e.message);
+    if (!silent) showToast('Stride sync failed: ' + e.message);
+    return null;
+  }
+}
+
+async function pullFromStride() {
+  const feed = await strideSync(false);
+  if (!feed) return;
+  // Pre-fill Work Done if the textarea is empty and we have a work summary
+  if (feed.workSummary.length > 0) {
+    const workDoneEl = document.getElementById('workDone');
+    if (workDoneEl && !workDoneEl.value.trim()) {
+      workDoneEl.value = feed.workSummary.map(s => '- ' + s).join('\n');
+      showToast('Pre-filled Work Done from Stride');
+    }
+  }
+  renderDashboard();
 }
 
 async function obsidianExport() {
@@ -5972,6 +6132,154 @@ function briefToMarkdown(brief) {
   if (brief.oneOnOnePrep) md += `## 1:1 Prep\n${brief.humanizedSections?.oneOnOnePrep || brief.oneOnOnePrep}\n\n`;
   if (brief.vectorProgress) md += `## Vector Progress\n${brief.humanizedSections?.vectorProgress || brief.vectorProgress}\n\n`;
   if (brief.openLoopsSummary) md += `## Open Loops\n${brief.humanizedSections?.openLoopsSummary || brief.openLoopsSummary}\n\n`;
+  return md;
+}
+
+// ---- WorkOS State Markdown Exports (for Stride integration) ----
+
+function vectorsToMarkdown() {
+  const vectors = state.vectors || [];
+  const cache = state.vectorScoreCache || {};
+  const today = todayStr();
+  let md = '---\n';
+  md += `date: ${today}\n`;
+  md += `type: workos-state\n`;
+  md += `category: vectors\n`;
+  md += '---\n\n';
+  md += `# Career Vectors\n\n`;
+  for (const vec of vectors) {
+    const sc = cache[vec.id] || {};
+    md += `## ${vec.name}\n`;
+    if (vec.description) md += `${vec.description}\n\n`;
+    md += `- **Tier:** ${sc.tier || 'Unknown'}\n`;
+    md += `- **Score:** ${sc.total ?? '–'} (self: ${sc.selfScore ?? '–'}, external: ${sc.externalScore ?? '–'})\n`;
+    md += `- **Days since last evidence:** ${sc.daysSinceLast >= 0 ? sc.daysSinceLast : 'never'}\n`;
+    md += `- **Evidence counts:** wins=${sc.winCount || 0}, meetings=${sc.meetingSignalCount || 0}, visibility=${sc.visibilityCount || 0}, journal=${sc.journalCount || 0}\n`;
+    if (sc.topItems && sc.topItems.length > 0) {
+      md += `- **Recent evidence:**\n`;
+      for (const item of sc.topItems.slice(0, 5)) {
+        md += `  - [${item.type}] ${(item.text || '').substring(0, 120)}${item.date ? ' (' + item.date + ')' : ''}\n`;
+      }
+    }
+    md += '\n';
+  }
+  return md;
+}
+
+function prioritiesToMarkdown() {
+  const todos = (state.todos || []).filter(t => t.status === 'open');
+  const today = todayStr();
+  let md = '---\n';
+  md += `date: ${today}\n`;
+  md += `type: workos-state\n`;
+  md += `category: priorities\n`;
+  md += '---\n\n';
+  md += `# Current Priorities\n\n`;
+  const buckets = ['today', 'tomorrow', 'this-week', 'next-week', 'backlog', 'inbox'];
+  for (const bucket of buckets) {
+    const items = todos.filter(t => t.priority === bucket);
+    if (items.length === 0) continue;
+    md += `## ${bucket.charAt(0).toUpperCase() + bucket.slice(1).replace(/-/g, ' ')}\n`;
+    for (const t of items) {
+      const starred = t.starred ? ' ★' : '';
+      const source = t.source && t.source !== 'manual' ? ` [${t.source}]` : '';
+      md += `- ${t.text}${starred}${source}\n`;
+    }
+    md += '\n';
+  }
+  return md;
+}
+
+function winsToMarkdown() {
+  const now = Date.now();
+  const ninetyDaysAgo = now - 90 * 86400000;
+  const wins = (state.wins || []).filter(w => w.status === 'confirmed' && new Date(w.date).getTime() >= ninetyDaysAgo)
+    .sort((a, b) => b.date.localeCompare(a.date));
+  const today = todayStr();
+  let md = '---\n';
+  md += `date: ${today}\n`;
+  md += `type: workos-state\n`;
+  md += `category: wins\n`;
+  md += `count: ${wins.length}\n`;
+  md += '---\n\n';
+  md += `# Recent Wins (last 90 days)\n\n`;
+  for (const w of wins) {
+    md += `### ${w.date}\n`;
+    md += `${w.description}\n`;
+    if (w.impact) md += `**Impact:** ${w.impact}\n`;
+    if (w.vectors && w.vectors.length > 0) {
+      const names = w.vectors.map(vid => {
+        const v = (state.vectors || []).find(vec => vec.id === vid);
+        return v ? v.name : vid;
+      });
+      md += `**Vectors:** ${names.join(', ')}\n`;
+    }
+    md += '\n';
+  }
+  return md;
+}
+
+function coachingToMarkdown() {
+  const cs = state.coachingState || {};
+  const active = cs.activeObservations || [];
+  const resolved = (cs.resolvedObservations || []).slice(-10);
+  const today = todayStr();
+  let md = '---\n';
+  md += `date: ${today}\n`;
+  md += `type: workos-state\n`;
+  md += `category: coaching\n`;
+  md += '---\n\n';
+  md += `# Coaching Observations\n\n`;
+  md += `## Active\n`;
+  if (active.length === 0) {
+    md += `No active observations.\n\n`;
+  } else {
+    for (const o of active) {
+      const level = getObservationEscalationLevel(o);
+      md += `### ${o.topic}\n`;
+      md += `- **Escalation level:** ${level}/7\n`;
+      md += `- **Times surfaced:** ${o.timesShown}\n`;
+      md += `- **First seen:** ${o.firstSurfaced || '–'}\n`;
+      md += `- **Last seen:** ${o.lastSurfaced || '–'}\n`;
+      if (o.linkedTodoId) md += `- **Linked todo:** ${o.linkedTodoId}\n`;
+      md += '\n';
+    }
+  }
+  if (resolved.length > 0) {
+    md += `## Recently Resolved\n`;
+    for (const o of resolved) {
+      md += `- ${o.topic} (${o.status})\n`;
+    }
+    md += '\n';
+  }
+  return md;
+}
+
+function weeklyPlanToMarkdown() {
+  const currentWeekMonday = getWeekMonday(todayStr());
+  const plan = (state.weeklyPlanHistory || []).find(p => p.week === currentWeekMonday);
+  const today = todayStr();
+  let md = '---\n';
+  md += `date: ${today}\n`;
+  md += `type: workos-state\n`;
+  md += `category: weekly-plan\n`;
+  md += `week_of: ${currentWeekMonday}\n`;
+  md += '---\n\n';
+  md += `# Weekly Plan — Week of ${currentWeekMonday}\n\n`;
+  if (plan && plan.text) {
+    md += plan.text + '\n\n';
+  } else {
+    md += `No weekly plan set for this week.\n\n`;
+  }
+  // Include top-3 starred todos as "Top 3"
+  const starred = (state.todos || []).filter(t => t.starred && t.status === 'open');
+  if (starred.length > 0) {
+    md += `## Top 3\n`;
+    for (const t of starred.slice(0, 3)) {
+      md += `- ${t.text}\n`;
+    }
+    md += '\n';
+  }
   return md;
 }
 
@@ -6200,6 +6508,7 @@ async function syncPull() {
       mempalaceServerUrl: state.settings.mempalaceServerUrl,
       obsidianVaultPath: state.settings.obsidianVaultPath,
       obsidianExportEnabled: state.settings.obsidianExportEnabled,
+      strideAutoSync: state.settings.strideAutoSync,
     };
     const localFeatures = { ...state.settings.features };
     state.settings = { ...state.settings, ...remote.settings };
@@ -8132,6 +8441,10 @@ function renderTodoItem(todo) {
     sourceLabel = todo.slackPermalink
       ? `<a href="${escapeHtml(todo.slackPermalink)}" target="_blank" style="color:inherit;text-decoration:underline">Slack ${escapeHtml(todo.sourceTitle || '')}</a>`
       : 'Slack' + (todo.sourceTitle ? ' ' + escapeHtml(todo.sourceTitle) : '');
+    sourceClick = '';
+    sourceClass = 'todo-source';
+  } else if (todo.source === 'stride') {
+    sourceLabel = 'Stride' + (todo.sourceTitle ? ' ' + escapeHtml(todo.sourceTitle) : '');
     sourceClick = '';
     sourceClass = 'todo-source';
   } else if (isManual) {
@@ -11526,7 +11839,7 @@ function renderWeeklyTriage(panel) {
     weeklyTriageStep = 1;
     const itemsHtml = inboxItems.map(t => {
       const age = Math.floor((Date.now() - new Date(t.createdAt || 0).getTime()) / 86400000);
-      const sourceLabel = t.source === 'slack' ? ('Slack ' + (t.sourceTitle || '')) : t.sourceTitle || (t.source === 'recurring' ? 'Recurring' : t.source || '');
+      const sourceLabel = t.source === 'slack' ? ('Slack ' + (t.sourceTitle || '')) : t.source === 'stride' ? ('Stride ' + (t.sourceTitle || '')) : t.sourceTitle || (t.source === 'recurring' ? 'Recurring' : t.source || '');
       const recBadge = t.recurrence
         ? `<button class="btn-secondary" style="font-size:11px;padding:var(--space-xs) var(--space-md);color:var(--accent-interactive)" onclick="event.stopPropagation();toggleTodoRecurrenceMenu('${t.id}', this)">🔄 ${recurrenceLabel(t.recurrence)}</button>`
         : `<button class="btn-secondary" style="font-size:11px;padding:var(--space-xs) var(--space-md);color:var(--text-primary)" onclick="event.stopPropagation();toggleTodoRecurrenceMenu('${t.id}', this)">🔄 Set Recurring</button>`;
@@ -11591,7 +11904,7 @@ function renderWeeklyTriage(panel) {
     const current = state.todos.find(t => t.id === currentId);
     if (!current) { weekTriageIdx++; renderDashboard(); return true; }
 
-    const sourceLabel = current.meetingId ? '' : current.source === 'slack' ? ('Slack ' + (current.sourceTitle || '')) : current.sourceTitle || (current.source === 'recurring' ? 'Recurring' : current.source === 'follow-up' ? 'Follow-up' : current.source === 'subtask' ? 'Subtask' : current.source === 'coaching' ? 'Coaching' : current.source === 'visibility' ? 'Visibility' : current.source === 'manual' ? 'Manually added' : current.source || '');
+    const sourceLabel = current.meetingId ? '' : current.source === 'slack' ? ('Slack ' + (current.sourceTitle || '')) : current.source === 'stride' ? ('Stride ' + (current.sourceTitle || '')) : current.sourceTitle || (current.source === 'recurring' ? 'Recurring' : current.source === 'follow-up' ? 'Follow-up' : current.source === 'subtask' ? 'Subtask' : current.source === 'coaching' ? 'Coaching' : current.source === 'visibility' ? 'Visibility' : current.source === 'manual' ? 'Manually added' : current.source || '');
     const meetingObj = current.meetingId ? state.meetings.find(m => m.id === current.meetingId) : null;
     const meetingTitle = current.meetingTitle || (meetingObj ? meetingObj.title : '') || '';
     const meetingDateRaw = current.meetingDate || (meetingObj ? meetingObj.date : '') || '';
@@ -12000,7 +12313,7 @@ function renderTriageCard() {
   const meetingTitle = item.meetingTitle || (meeting ? meeting.title : '') || '';
   const meetingDateRaw = item.meetingDate || (meeting ? meeting.date : '') || '';
   const meetingDateFmt = meetingDateRaw ? (() => { const d = new Date(meetingDateRaw.length <= 10 ? meetingDateRaw + 'T00:00:00' : meetingDateRaw); return isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); })() : '';
-  const sourceLabel = item.meetingId ? '' : item.source === 'slack' ? ('Slack ' + (item.sourceTitle || '')) : item.sourceTitle || (item.source === 'recurring' ? 'Recurring' : item.source === 'follow-up' ? 'Follow-up' : item.source === 'subtask' ? 'Subtask' : item.source === 'coaching' ? 'Coaching' : item.source === 'visibility' ? 'Visibility' : 'Manually added');
+  const sourceLabel = item.meetingId ? '' : item.source === 'slack' ? ('Slack ' + (item.sourceTitle || '')) : item.source === 'stride' ? ('Stride ' + (item.sourceTitle || '')) : item.sourceTitle || (item.source === 'recurring' ? 'Recurring' : item.source === 'follow-up' ? 'Follow-up' : item.source === 'subtask' ? 'Subtask' : item.source === 'coaching' ? 'Coaching' : item.source === 'visibility' ? 'Visibility' : 'Manually added');
   const recurrenceBtnHtml = item.recurrence
     ? `<button class="btn-secondary" style="color:var(--accent-interactive)" onclick="toggleTriageRecurrenceMenu('${item.id}', this)">🔄 ${recurrenceLabel(item.recurrence)}</button>`
     : `<button class="btn-secondary" style="color:var(--text-primary)" onclick="toggleTriageRecurrenceMenu('${item.id}', this)">🔄 Set Recurring</button>`;
@@ -13036,7 +13349,10 @@ function renderLogTab() {
       </div>
 
       <div class="form-group">
-        <label class="form-label">What did you work on today?</label>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <label class="form-label" style="margin:0">What did you work on today?</label>
+          ${state.settings.obsidianExportEnabled && state.settings.obsidianVaultPath ? `<button type="button" class="btn-secondary" style="font-size:11px;padding:var(--space-xs) var(--space-md)" onclick="pullFromStride()">Pull from Stride</button>` : ''}
+        </div>
         <textarea class="form-textarea lg" id="workDone" placeholder="What filled your day...">${existingEntry ? existingEntry.workDone : (draft?.workDone || (() => { const done = (state.todos || []).filter(t => t.status === 'done' && t.completedAt && t.completedAt.substring(0, 10) === todayStr()); return done.length > 0 ? done.map(t => '✓ ' + t.text).join('\n') : ''; })())}</textarea>
         <div class="form-error" id="workDoneError">Write at least a few words about what you worked on.</div>
       </div>
@@ -16224,6 +16540,13 @@ function settingsIntegrationsHtml() {
         </label>
         <div class="form-hint">Automatically export new entries and meetings to Obsidian when you save.</div>
       </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:var(--space-sm);cursor:pointer">
+          <input type="checkbox" id="settingStrideAutoSync" ${state.settings.strideAutoSync ? 'checked' : ''}>
+          <span class="form-label" style="margin:0">Auto-import Stride daily feed</span>
+        </label>
+        <div class="form-hint">Pull follow-ups from Stride's daily debrief on page load.</div>
+      </div>
       <div class="form-group" style="display:flex;gap:var(--space-sm);align-items:center;flex-wrap:wrap">
         <button class="btn-secondary" onclick="testMempalaceConnection()">Test Connection</button>
         <button class="btn-secondary" onclick="triggerMempalaceMine()">Mine Vault</button>
@@ -16643,6 +16966,8 @@ function attachSettingsListeners() {
     saveField('settingObsidianVault', 'obsidianVaultPath');
     const autoExportEl = document.getElementById('settingObsidianAutoExport');
     if (autoExportEl) autoExportEl.addEventListener('change', (e) => { state.settings.obsidianExportEnabled = e.target.checked; saveState(); });
+    const strideSyncEl = document.getElementById('settingStrideAutoSync');
+    if (strideSyncEl) strideSyncEl.addEventListener('change', (e) => { state.settings.strideAutoSync = e.target.checked; saveState(); });
   }
 
   if (settingsSubTab === 'meetings') {
@@ -19283,6 +19608,11 @@ async function init() {
 
   // Auto-sync Google Calendar events on load
   fetchCalendarEvents();
+
+  // Auto-import Stride daily feed
+  if (state.settings.strideAutoSync && state.settings.obsidianExportEnabled && state.settings.obsidianVaultPath) {
+    strideSync(true).then(() => { renderDashboard(); });
+  }
 }
 
 init();

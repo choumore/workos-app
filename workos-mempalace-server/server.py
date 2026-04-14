@@ -39,6 +39,14 @@ class MineRequest(BaseModel):
     vault_path: str
     mode: str = "full"
 
+class ReadRequest(BaseModel):
+    vault_path: str
+    paths: list[str]
+
+class ListRequest(BaseModel):
+    vault_path: str
+    directory: str
+
 # ---------- Path safety ----------
 
 def validate_vault_path(vault_path: str) -> Path:
@@ -153,10 +161,48 @@ def mine(req: MineRequest):
     except Exception as e:
         raise HTTPException(500, f"Failed to start mining: {e}")
 
+@app.post("/read")
+def read_files(req: ReadRequest):
+    vault_root = validate_vault_path(req.vault_path)
+    results = []
+    for rel_path in req.paths:
+        full_path = validate_file_path(vault_root, rel_path)
+        if not full_path.is_file():
+            results.append({"path": rel_path, "content": None, "modified": None, "error": "not found"})
+            continue
+        results.append({
+            "path": rel_path,
+            "content": full_path.read_text(encoding="utf-8"),
+            "modified": full_path.stat().st_mtime,
+        })
+    return {"files": results}
+
+@app.post("/list")
+def list_files(req: ListRequest):
+    vault_root = validate_vault_path(req.vault_path)
+    # Validate directory name (simple subdirectory, no traversal)
+    if ".." in req.directory.split("/") or not re.match(r'^[a-zA-Z0-9_-]+(/[a-zA-Z0-9_-]+)*$', req.directory):
+        raise HTTPException(400, f"Invalid directory: {req.directory}")
+    dir_path = (vault_root / req.directory).resolve()
+    vault_prefix = str(vault_root) + os.sep
+    if not (str(dir_path) + os.sep).startswith(vault_prefix):
+        raise HTTPException(400, f"Path traversal rejected: {req.directory}")
+    if not dir_path.is_dir():
+        return {"files": []}
+    results = []
+    for f in sorted(dir_path.glob("*.md")):
+        stat = f.stat()
+        results.append({
+            "path": req.directory + "/" + f.name,
+            "modified": stat.st_mtime,
+            "size": stat.st_size,
+        })
+    return {"files": results}
+
 # ---------- Main ----------
 
 if __name__ == "__main__":
     import uvicorn
     print("MemPalace server running on http://localhost:8091")
-    print("Endpoints: /status, /search, /wings, /export, /mine")
+    print("Endpoints: /status, /search, /wings, /export, /mine, /read, /list")
     uvicorn.run(app, host="0.0.0.0", port=8091)
