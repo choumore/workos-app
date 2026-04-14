@@ -1904,6 +1904,7 @@ body {
 .week-triage-action.promote:hover { background: #c3e6cb; }
 .week-triage-action.defer { color: var(--text-muted); }
 .week-triage-action.skip { color: var(--text-muted); border-style: dashed; }
+.week-triage-action.done { border-color: #155724; color: #155724; }
 .week-triage-card-star { margin-top: var(--space-xs); }
 .week-triage-progress {
   height: 3px;
@@ -11515,6 +11516,8 @@ function isWeeklyTriageNeeded() {
 }
 
 function renderWeeklyTriage(panel) {
+  document.removeEventListener('keydown', handleWeeklyTriageKeydown);
+  document.addEventListener('keydown', handleWeeklyTriageKeydown);
   const inboxItems = (state.todos || []).filter(t => t.status === 'open' && t.priority === 'inbox');
   const weekItems = (state.todos || []).filter(t => t.status === 'open' && t.priority === 'this-week');
 
@@ -11609,10 +11612,11 @@ function renderWeeklyTriage(panel) {
             ${todoDueTag(current.priority)}
           </div>
           <div class="week-triage-card-actions">
-            <button class="week-triage-action keep" onclick="weekTriageAction('keep')">Keep this week</button>
-            <button class="week-triage-action promote" onclick="weekTriageAction('today')">→ Today</button>
-            <button class="week-triage-action defer" onclick="weekTriageAction('backlog')">Defer</button>
-            <button class="week-triage-action skip" onclick="weekTriageAction('skip')">Skip</button>
+            <button class="week-triage-action keep" onclick="weekTriageAction('keep')"><span class="triage-key">1</span> Keep this week</button>
+            <button class="week-triage-action promote" onclick="weekTriageAction('today')"><span class="triage-key">2</span> Today</button>
+            <button class="week-triage-action defer" onclick="weekTriageAction('backlog')"><span class="triage-key">3</span> Defer</button>
+            <button class="week-triage-action skip" onclick="weekTriageAction('skip')"><span class="triage-key">4</span> Skip</button>
+            <button class="week-triage-action done" onclick="weekTriageAction('complete')"><span class="triage-key">5</span> Complete</button>
           </div>
           <div class="week-triage-card-star">
             <button class="btn-ghost" style="font-size:13px" onclick="toggleTodoStar('${current.id}');renderDashboard()">${current.starred ? '★ Unstar' : '☆ Star as high-impact'}</button>
@@ -11743,6 +11747,9 @@ function weekTriageAction(action) {
     todo.priority = 'backlog';
     todo.triagedAt = new Date().toISOString();
     todo.deferCount = (todo.deferCount || 0) + 1;
+  } else if (action === 'complete') {
+    todo.status = 'done';
+    todo.completedAt = new Date().toISOString();
   } else if (action === 'skip') {
     weekTriageCounts.skipped++;
     // No change — stays in this-week, untouched
@@ -11760,6 +11767,7 @@ function weekTriageUndo() {
   if (todo) {
     todo.priority = previousPriority;
     if (action === 'backlog') todo.deferCount = Math.max(0, (todo.deferCount || 0) - 1);
+    if (action === 'complete') { todo.status = 'open'; todo.completedAt = null; }
   }
   if (action === 'keep') weekTriageCounts.kept--;
   else if (action === 'today') weekTriageCounts.promoted--;
@@ -11772,7 +11780,23 @@ function weekTriageUndo() {
   renderDashboard();
 }
 
+function handleWeeklyTriageKeydown(e) {
+  if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+  if (weeklyTriageStep !== 2) return;
+  switch (e.key) {
+    case '1': weekTriageAction('keep'); break;
+    case '2': weekTriageAction('today'); break;
+    case '3': weekTriageAction('backlog'); break;
+    case '4': weekTriageAction('skip'); break;
+    case '5': weekTriageAction('complete'); break;
+    case 'z': if (e.metaKey || e.ctrlKey) { weekTriageUndo(); e.preventDefault(); } break;
+    default: return;
+  }
+  e.preventDefault();
+}
+
 function completeWeeklyTriage() {
+  document.removeEventListener('keydown', handleWeeklyTriageKeydown);
   state.weeklyTriageCompletedAt = new Date().toISOString();
   // Save weekly plan text for later reference
   const rawEl = document.getElementById('weeklyPlanRaw');
