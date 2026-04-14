@@ -5950,7 +5950,8 @@ async function strideSync(silent) {
     }
     // Read today's or yesterday's feed
     const today = todayStr();
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    const yd = new Date(); yd.setDate(yd.getDate() - 1);
+    const yesterday = yd.getFullYear() + '-' + String(yd.getMonth() + 1).padStart(2, '0') + '-' + String(yd.getDate()).padStart(2, '0');
     const target = feedFiles.find(f => f.path.includes(today)) || feedFiles.find(f => f.path.includes(yesterday));
     if (!target) {
       if (!silent) showToast('No recent Stride feed (today/yesterday)');
@@ -6018,7 +6019,7 @@ async function pullFromStride() {
       showToast('Pre-filled Work Done from Stride');
     }
   }
-  renderDashboard();
+  // Don't call renderDashboard() here — it would recreate the Log form and wipe the textarea we just filled
 }
 
 async function obsidianExport() {
