@@ -4630,7 +4630,7 @@ body {
    State
    ======================================== */
 let state = {
-  settings: { name: '', role: '', baseUrl: '', projectId: '', apiKey: '', model: 'sonnet', slackWebhook: '', slackToken: '', promotionNotes: '', insightsProfile: '', insightsProfileRaw: '', ghToken: '', ghGistId: '', meetingsGistId: '', gcalAutoSync: false, mempalaceServerUrl: 'http://localhost:8091', obsidianVaultPath: '', obsidianExportEnabled: false, strideAutoSync: false, features: { contributions: true, visibility: true, meetings: true, todos: true } },
+  settings: { name: '', role: '', baseUrl: '', projectId: '', apiKey: '', model: 'sonnet', provider: 'netflix', modelId: '', slackWebhook: '', slackToken: '', promotionNotes: '', insightsProfile: '', insightsProfileRaw: '', ghToken: '', ghGistId: '', meetingsGistId: '', gcalAutoSync: false, mempalaceServerUrl: 'http://localhost:8091', obsidianVaultPath: '', obsidianExportEnabled: false, strideAutoSync: false, features: { contributions: true, visibility: true, meetings: true, todos: true } },
   entries: [],
   wins: [],
   weeklyBriefs: [],
@@ -4703,6 +4703,10 @@ function loadState() {
       const saved = JSON.parse(raw);
       state.settings = { ...state.settings, ...saved.settings };
       state.settings.features = { contributions: true, visibility: true, meetings: true, todos: true, ...saved.settings?.features };
+      if (!state.settings.provider) {
+        state.settings.provider = 'netflix';
+        state.settings.modelId = state.settings.model === 'opus' ? 'claude-opus-4-6' : 'claude-sonnet-4-6';
+      }
       state.entries = saved.entries || [];
       state.wins = saved.wins || [];
       state.weeklyBriefs = saved.weeklyBriefs || [];
@@ -5329,7 +5333,7 @@ function computeVectorScores() {
 
 async function mapEvidenceToVectors() {
   if (!state.vectors || state.vectors.length === 0) { showToast('Set up vectors first'); return; }
-  if (!state.settings.baseUrl) { showToast('Set up AI in Settings first'); return; }
+  if (!isAiConfigured()) { showToast('Set up AI in Settings first'); return; }
 
   const vectorNames = state.vectors.map(v => v.name);
 
@@ -6390,6 +6394,8 @@ async function syncPush() {
         baseUrl: state.settings.baseUrl || '',
         projectId: state.settings.projectId || '',
         model: state.settings.model || 'sonnet',
+        provider: state.settings.provider || 'netflix',
+        modelId: state.settings.modelId || '',
         slackWebhook: state.settings.slackWebhook || '',
         promotionNotes: state.settings.promotionNotes || '',
         meetingSystemPrompt: state.settings.meetingSystemPrompt || '',
@@ -6516,6 +6522,10 @@ async function syncPull() {
     Object.assign(state.settings, localOnly);
     // Restore features with defaults (remote may have subset without newer feature flags)
     state.settings.features = { contributions: true, visibility: true, meetings: true, todos: true, ...localFeatures, ...(remote.settings?.features || {}) };
+    if (!state.settings.provider) {
+      state.settings.provider = 'netflix';
+      state.settings.modelId = state.settings.model === 'opus' ? 'claude-opus-4-6' : 'claude-sonnet-4-6';
+    }
     // Merge entries by date (latest-modified wins, keep local-only)
     const premergeEntryCount = (state.entries || []).length;
     const premergeEntryDates = new Set((state.entries || []).map(e => e.date));
@@ -7090,7 +7100,7 @@ async function fetchMeetings() {
     });
     // Meeting Intelligence: classify + extract career-relevant data
     const toAnalyze = newMeetings.filter(m => m.transcript && !m.type);
-    if (toAnalyze.length > 0 && state.settings.baseUrl) {
+    if (toAnalyze.length > 0 && isAiConfigured()) {
       if (statusEl) { statusEl.className = 'api-status checking'; statusEl.textContent = `Analyzing ${toAnalyze.length} meeting${toAnalyze.length === 1 ? '' : 's'}...`; }
       for (let i = 0; i < toAnalyze.length; i++) {
         const meeting = toAnalyze[i];
@@ -7140,7 +7150,7 @@ async function fetchMeetings() {
       renderSettings();
     }
     // Extract insights for pre-typed recurring meetings (type remembered, but need extraction)
-    if (preTyped.length > 0 && state.settings.baseUrl) {
+    if (preTyped.length > 0 && isAiConfigured()) {
       if (statusEl) { statusEl.className = 'api-status checking'; statusEl.textContent = `Extracting ${preTyped.length} recurring meeting${preTyped.length === 1 ? '' : 's'}...`; }
       for (const meeting of preTyped) {
         try {
@@ -7185,7 +7195,7 @@ async function reprocessMeeting(meetingId, overrideType) {
   saveState();
   renderSettings();
 
-  if (!state.settings.baseUrl) return;
+  if (!isAiConfigured()) return;
 
   const statusEl = document.getElementById('meetingSyncStatus');
   if (statusEl) { statusEl.className = 'api-status checking'; statusEl.textContent = 'Re-analyzing meeting...'; }
@@ -7271,7 +7281,7 @@ function editMeetingDate(meetingId, el) {
 async function reanalyzeMeeting(meetingId, btn) {
   const meeting = state.meetings.find(m => m.id === meetingId);
   if (!meeting || !meeting.transcript) { showToast('No transcript to analyze'); return; }
-  if (!state.settings.baseUrl) { showToast('Set up AI in Settings first'); return; }
+  if (!isAiConfigured()) { showToast('Set up AI in Settings first'); return; }
   const origText = btn.textContent;
   btn.disabled = true;
   btn.textContent = 'Analyzing...';
@@ -9520,15 +9530,89 @@ function getSystemPrompt() {
 
 const SYSTEM_PROMPT = BASE_SYSTEM_PROMPT; // legacy reference
 
-const API_COST_PER_M = {
-  'claude-sonnet-4-6': { input: 3, output: 15 },
-  'claude-opus-4-6': { input: 15, output: 75 }
+const AI_PROVIDERS = {
+  netflix: {
+    label: 'Netflix Gateway',
+    endpointSuffix: '/v1/chat/completions',
+    requestFormat: 'openai',
+    authStyle: 'bearer-optional',
+    extraHeaders: (s) => s.projectId ? { 'x-netflix-copilot-project-id': s.projectId } : {},
+    needsProxy: true,
+    fields: ['baseUrl', 'projectId', 'apiKey'],
+    models: [
+      { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6 — fast, recommended' },
+      { id: 'claude-opus-4-6', label: 'Claude Opus 4.6 — slower, deeper analysis' }
+    ],
+    defaultModel: 'claude-sonnet-4-6',
+    pricing: { 'claude-sonnet-4-6': { input: 3, output: 15 }, 'claude-opus-4-6': { input: 15, output: 75 } },
+    hint: 'Requires proxy.py running locally.'
+  },
+  anthropic: {
+    label: 'Anthropic API',
+    endpointSuffix: '/v1/messages',
+    requestFormat: 'anthropic',
+    authStyle: 'x-api-key',
+    extraHeaders: () => ({ 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }),
+    needsProxy: false,
+    fields: ['apiKey'],
+    defaultBaseUrl: 'https://api.anthropic.com',
+    models: [
+      { id: 'claude-sonnet-4-6-20250514', label: 'Claude Sonnet 4.6 — fast' },
+      { id: 'claude-opus-4-6-20250514', label: 'Claude Opus 4.6 — deep analysis' },
+      { id: 'claude-haiku-3-5-20241022', label: 'Claude Haiku 3.5 — cheapest' }
+    ],
+    defaultModel: 'claude-sonnet-4-6-20250514',
+    pricing: { 'claude-sonnet-4-6-20250514': { input: 3, output: 15 }, 'claude-opus-4-6-20250514': { input: 15, output: 75 }, 'claude-haiku-3-5-20241022': { input: 0.8, output: 4 } },
+    hint: 'Direct API — no proxy needed. Requests go to api.anthropic.com.'
+  },
+  openai: {
+    label: 'OpenAI API',
+    endpointSuffix: '/v1/chat/completions',
+    requestFormat: 'openai',
+    authStyle: 'bearer',
+    extraHeaders: () => ({}),
+    needsProxy: true,
+    fields: ['baseUrl', 'apiKey'],
+    defaultBaseUrl: 'https://api.openai.com',
+    models: [
+      { id: 'gpt-4o', label: 'GPT-4o — fast, recommended' },
+      { id: 'gpt-4o-mini', label: 'GPT-4o Mini — cheapest' },
+      { id: 'o3', label: 'o3 — reasoning' }
+    ],
+    defaultModel: 'gpt-4o',
+    pricing: { 'gpt-4o': { input: 2.5, output: 10 }, 'gpt-4o-mini': { input: 0.15, output: 0.6 }, 'o3': { input: 10, output: 40 } },
+    hint: 'Requires proxy.py for CORS (OpenAI blocks direct browser requests).'
+  },
+  custom: {
+    label: 'Custom Gateway',
+    endpointSuffix: '/v1/chat/completions',
+    requestFormat: 'openai',
+    authStyle: 'bearer-optional',
+    extraHeaders: () => ({}),
+    needsProxy: false,
+    fields: ['baseUrl', 'apiKey', 'customModel'],
+    models: [],
+    defaultModel: '',
+    pricing: {},
+    hint: 'Enter any OpenAI-compatible gateway URL.'
+  }
 };
+
+function isAiConfigured() {
+  const p = state.settings.provider || 'netflix';
+  const prov = AI_PROVIDERS[p];
+  if (!prov) return false;
+  if (p === 'netflix' || p === 'custom') return !!state.settings.baseUrl;
+  if (prov.authStyle === 'x-api-key' || prov.authStyle === 'bearer') return !!state.settings.apiKey;
+  return !!prov.defaultBaseUrl;
+}
 
 function logApiUsage(featureLabel, model, usage) {
   if (!featureLabel || !usage) return;
   try {
-    const pricing = API_COST_PER_M[model] || API_COST_PER_M['claude-sonnet-4-6'];
+    const providerId = state.settings.provider || 'netflix';
+    const provider = AI_PROVIDERS[providerId];
+    const pricing = (provider?.pricing?.[model]) || { input: 0, output: 0 };
     const inputTokens = usage.prompt_tokens || 0;
     const outputTokens = usage.completion_tokens || 0;
     const cost = (inputTokens * pricing.input + outputTokens * pricing.output) / 1_000_000;
@@ -9536,6 +9620,7 @@ function logApiUsage(featureLabel, model, usage) {
       ts: Date.now(),
       feature: featureLabel,
       model: model || 'unknown',
+      provider: providerId,
       prompt_tokens: inputTokens,
       completion_tokens: outputTokens,
       total_tokens: inputTokens + outputTokens,
@@ -9555,6 +9640,7 @@ function logApiError(featureLabel, model, errorType) {
       ts: Date.now(),
       feature: featureLabel,
       model: model || 'unknown',
+      provider: state.settings.provider || 'netflix',
       error: true,
       errorType: errorType || 'unknown',
       prompt_tokens: 0,
@@ -9569,36 +9655,84 @@ function logApiError(featureLabel, model, errorType) {
   } catch (_) {}
 }
 
-async function callClaude(systemPrompt, userPrompt, maxTokens, featureLabel) {
-  if (!state.settings.baseUrl) throw new Error('no_key');
+function resolveProviderConfig() {
+  const providerId = state.settings.provider || 'netflix';
+  const provider = AI_PROVIDERS[providerId];
+  if (!provider) throw new Error('no_key');
 
-  const model = state.settings.model === 'opus' ? 'claude-opus-4-6' : 'claude-sonnet-4-6';
-  const baseUrl = state.settings.baseUrl.replace(/\/+$/, '');
+  const modelId = state.settings.modelId || provider.defaultModel;
+  const baseUrl = (providerId === 'netflix' || providerId === 'custom' || providerId === 'openai'
+    ? state.settings.baseUrl
+    : provider.defaultBaseUrl || ''
+  ).replace(/\/+$/, '');
+
+  if (!baseUrl && !provider.defaultBaseUrl) throw new Error('no_key');
+  const resolvedUrl = baseUrl || (provider.defaultBaseUrl || '').replace(/\/+$/, '');
 
   const headers = { 'Content-Type': 'application/json' };
-  if (state.settings.projectId) {
-    headers['x-netflix-copilot-project-id'] = state.settings.projectId;
-  }
+  const extra = provider.extraHeaders(state.settings);
+  Object.assign(headers, extra);
+
   if (state.settings.apiKey) {
-    headers['Authorization'] = 'Bearer ' + state.settings.apiKey;
+    if (provider.authStyle === 'x-api-key') {
+      headers['x-api-key'] = state.settings.apiKey;
+    } else if (provider.authStyle === 'bearer' || provider.authStyle === 'bearer-optional') {
+      headers['Authorization'] = 'Bearer ' + state.settings.apiKey;
+    }
+  } else if (provider.authStyle === 'bearer' || provider.authStyle === 'x-api-key') {
+    throw new Error('no_key');
   }
 
-  const res = await fetch(baseUrl + '/v1/chat/completions', {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      model,
+  const endpoint = resolvedUrl + provider.endpointSuffix;
+  return { provider, providerId, modelId, endpoint, headers };
+}
+
+function formatApiRequest(provider, modelId, systemPrompt, messages, maxTokens) {
+  if (provider.requestFormat === 'anthropic') {
+    return {
+      model: modelId,
       max_tokens: maxTokens,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ]
-    })
+      system: systemPrompt,
+      messages
+    };
+  }
+  return {
+    model: modelId,
+    max_tokens: maxTokens,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      ...messages
+    ]
+  };
+}
+
+function parseApiResponse(provider, data) {
+  if (provider.requestFormat === 'anthropic') {
+    const text = data.content?.[0]?.text || '';
+    const usage = data.usage ? {
+      prompt_tokens: data.usage.input_tokens || 0,
+      completion_tokens: data.usage.output_tokens || 0
+    } : null;
+    return { text, usage };
+  }
+  const text = data.choices?.[0]?.message?.content || '';
+  const usage = data.usage || null;
+  return { text, usage };
+}
+
+async function callClaude(systemPrompt, userPrompt, maxTokens, featureLabel) {
+  const { provider, modelId, endpoint, headers } = resolveProviderConfig();
+
+  const body = formatApiRequest(provider, modelId, systemPrompt,
+    [{ role: 'user', content: userPrompt }], maxTokens);
+
+  const res = await fetch(endpoint, {
+    method: 'POST', headers, body: JSON.stringify(body)
   });
 
   if (!res.ok) {
     const errType = (res.status === 401 || res.status === 403) ? 'invalid_key' : res.status === 429 ? 'rate_limited' : 'api_error';
-    logApiError(featureLabel, model, errType);
+    logApiError(featureLabel, modelId, errType);
     if (errType === 'invalid_key') throw new Error('invalid_key');
     if (errType === 'rate_limited') throw new Error('rate_limited');
     let detail = '';
@@ -9608,40 +9742,23 @@ async function callClaude(systemPrompt, userPrompt, maxTokens, featureLabel) {
   }
 
   const data = await res.json();
-  logApiUsage(featureLabel, model, data.usage);
-  return data.choices[0].message.content;
+  const { text, usage } = parseApiResponse(provider, data);
+  logApiUsage(featureLabel, modelId, usage);
+  return text;
 }
 
 async function callClaudeChat(systemPrompt, messages, maxTokens, featureLabel) {
-  if (!state.settings.baseUrl) throw new Error('no_key');
+  const { provider, modelId, endpoint, headers } = resolveProviderConfig();
 
-  const model = state.settings.model === 'opus' ? 'claude-opus-4-6' : 'claude-sonnet-4-6';
-  const baseUrl = state.settings.baseUrl.replace(/\/+$/, '');
+  const body = formatApiRequest(provider, modelId, systemPrompt, messages, maxTokens);
 
-  const headers = { 'Content-Type': 'application/json' };
-  if (state.settings.projectId) {
-    headers['x-netflix-copilot-project-id'] = state.settings.projectId;
-  }
-  if (state.settings.apiKey) {
-    headers['Authorization'] = 'Bearer ' + state.settings.apiKey;
-  }
-
-  const res = await fetch(baseUrl + '/v1/chat/completions', {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      model,
-      max_tokens: maxTokens,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...messages
-      ]
-    })
+  const res = await fetch(endpoint, {
+    method: 'POST', headers, body: JSON.stringify(body)
   });
 
   if (!res.ok) {
     const errType = (res.status === 401 || res.status === 403) ? 'invalid_key' : res.status === 429 ? 'rate_limited' : 'api_error';
-    logApiError(featureLabel, model, errType);
+    logApiError(featureLabel, modelId, errType);
     if (errType === 'invalid_key') throw new Error('invalid_key');
     if (errType === 'rate_limited') throw new Error('rate_limited');
     let detail = '';
@@ -9651,8 +9768,9 @@ async function callClaudeChat(systemPrompt, messages, maxTokens, featureLabel) {
   }
 
   const data = await res.json();
-  logApiUsage(featureLabel, model, data.usage);
-  return data.choices[0].message.content;
+  const { text, usage } = parseApiResponse(provider, data);
+  logApiUsage(featureLabel, modelId, usage);
+  return text;
 }
 
 /* ========================================
@@ -10226,7 +10344,7 @@ function parseMeetingPrep(text) {
 async function startGenerateMeetingPrep(prepId) {
   const record = state.meetingPreps.find(p => p.id === prepId);
   if (!record) { showToast('Prep record not found'); return; }
-  if (!state.settings.baseUrl) { showToast('Set up AI in Settings first'); return; }
+  if (!isAiConfigured()) { showToast('Set up AI in Settings first'); return; }
 
   currentMeetingPrepId = prepId;
   meetingPrepView = 'loading';
@@ -10419,7 +10537,7 @@ function submitReflection(prepId) {
 async function startGenerateSynthesis(prepId, reflection) {
   const record = state.meetingPreps.find(p => p.id === prepId);
   if (!record) { showToast('Prep record not found'); return; }
-  if (!state.settings.baseUrl) { showToast('Set up AI in Settings first'); return; }
+  if (!isAiConfigured()) { showToast('Set up AI in Settings first'); return; }
 
   const meeting = state.meetings.find(m => m.id === selectedSynthesisMeetingId);
   if (!meeting) { showToast('Selected meeting not found'); return; }
@@ -10571,7 +10689,7 @@ async function retrySynthesis(prepId, synthIndex) {
   const record = state.meetingPreps.find(p => p.id === prepId);
   if (!record || !record.syntheses[synthIndex]) return;
   const failedSynth = record.syntheses[synthIndex];
-  if (!state.settings.baseUrl) { showToast('Set up AI in Settings first'); return; }
+  if (!isAiConfigured()) { showToast('Set up AI in Settings first'); return; }
 
   const meeting = state.meetings.find(m => m.id === failedSynth.meetingId);
   if (!meeting) { showToast('Original meeting not found'); return; }
@@ -10704,7 +10822,7 @@ async function submitIntention() {
   logMode = 'form';
   renderLogTab();
 
-  if (state.settings.baseUrl) {
+  if (isAiConfigured()) {
     try {
       const refined = await callClaude(
         'You sharpen a rambling weekly intention into a tight checklist. Ruthlessly compress — each item should be a punchy verb phrase (3-8 words). Merge overlapping ideas. Drop filler. Rewrite freely; do not preserve the original wording. Output each item on its own line prefixed with "- [ ] ". Nothing else.',
@@ -11229,7 +11347,7 @@ async function saveIntentionEdit() {
   showToast('Intention updated');
   renderLogTab();
 
-  if (state.settings.baseUrl) {
+  if (isAiConfigured()) {
     try {
       const refined = await callClaude(
         'You sharpen a rambling weekly intention into a tight checklist. Ruthlessly compress — each item should be a punchy verb phrase (3-8 words). Merge overlapping ideas. Drop filler. Rewrite freely; do not preserve the original wording. Output each item on its own line prefixed with "- [ ] ". Nothing else.',
@@ -11694,7 +11812,7 @@ function submitReflectionResponses() {
 }
 
 async function generateReflectionSynthesis(periodKey, type, responses, data) {
-  if (!state.settings.baseUrl) {
+  if (!isAiConfigured()) {
     const store = type === 'quarterly' ? state.quarterlyReflections : state.monthlyReflections;
     store[periodKey].synthesis = 'AI not configured — your reflection has been saved.';
     saveState();
@@ -12024,7 +12142,7 @@ async function generateWeeklyPlanDraft() {
   const weekItems = (state.todos || []).filter(t => t.status === 'open' && t.priority === 'this-week');
   const itemsList = [...todayItems, ...weekItems].map(t => '- ' + t.text).join('\n');
 
-  if (!state.settings.baseUrl) {
+  if (!isAiConfigured()) {
     setWeeklyPlanContent('This week I\'m focused on:\n' + itemsList);
     return;
   }
@@ -13161,7 +13279,7 @@ function saveBenchmarks(vecId) {
 }
 
 async function startVectorSetup() {
-  if (!state.settings.baseUrl) { showToast('Set up AI in Settings first'); return; }
+  if (!isAiConfigured()) { showToast('Set up AI in Settings first'); return; }
   const promoNotes = state.settings.promotionNotes || '';
   if (!promoNotes.trim()) { showToast('Add promotion notes in Settings first'); return; }
 
@@ -13178,7 +13296,7 @@ Return ONLY a JSON array, no markdown fences, no extra text. Example format:
 [{"name":"Craft","description":"Design quality and rigor"},{"name":"Strategy","description":"Big-picture thinking and roadmap alignment"}]
 
 JSON array:`;
-    console.log('Vector setup — calling API. baseUrl:', state.settings.baseUrl, 'model:', state.settings.model, 'prompt length:', prompt.length, 'system prompt length:', getSystemPrompt().length);
+    console.log('Vector setup — calling API. provider:', state.settings.provider, 'modelId:', state.settings.modelId, 'prompt length:', prompt.length, 'system prompt length:', getSystemPrompt().length);
     const text = await callClaude(getSystemPrompt(), prompt, 800, 'Vector Setup');
     console.log('Vector setup — API response:', text.substring(0, 300));
 
@@ -13480,7 +13598,7 @@ async function handleSubmit(e) {
   saveState();
 
   // Refine planTomorrow into a clean checklist
-  if (entry.planTomorrow && state.settings.baseUrl) {
+  if (entry.planTomorrow && isAiConfigured()) {
     try {
       const refined = await callClaude(
         'You distill a rough "plan for tomorrow" into a crisp checklist. Each item: a punchy verb phrase (3-8 words). Merge overlapping ideas. Drop filler. Rewrite freely. IMPORTANT: if a line starts with "@someone", preserve that prefix exactly (e.g. "- @jane Review PR"). Output each item on its own line prefixed with "- ". Nothing else — no preamble, no numbering.',
@@ -13503,7 +13621,7 @@ async function handleSubmit(e) {
   renderPostSubmit(panel, entry);
 
   // Fetch AI reflection
-  if (state.settings.baseUrl) {
+  if (isAiConfigured()) {
     try {
       const reflection = await callClaude(getSystemPrompt(), buildDailyPrompt(entry), 600, 'Daily Coaching');
       entry.aiReflection = reflection;
@@ -13531,7 +13649,7 @@ async function handleSubmit(e) {
 }
 
 async function generateTldr(entry) {
-  if (!state.settings.baseUrl) return;
+  if (!isAiConfigured()) return;
   const sections = [];
   if (entry.workDone) sections.push(`Work done:\n"${entry.workDone}"`);
   if (entry.reflection) sections.push(`Reflection:\n"${entry.reflection}"`);
@@ -13588,7 +13706,7 @@ function renderPostSubmit(panel, entry) {
   const weekEntryCount = getCurrentWeekEntries().length;
   const dayOfWeek = new Date().getDay();
   const showNudge = dayOfWeek >= 3 && dayOfWeek <= 5 && weekEntryCount >= 3;
-  const hasKey = !!state.settings.baseUrl;
+  const hasKey = isAiConfigured();
   const weekIntention = getWeekIntention(entry.date);
 
   panel.innerHTML = `
@@ -13645,7 +13763,7 @@ function renderPostSubmit(panel, entry) {
 async function reanalyzeCoaching(entryId, btn) {
   const entry = state.entries.find(e => e.id === entryId);
   if (!entry) { showToast('Entry not found'); return; }
-  if (!state.settings.baseUrl) { showToast('Set up AI in Settings first'); return; }
+  if (!isAiConfigured()) { showToast('Set up AI in Settings first'); return; }
   const origText = btn.textContent;
   btn.disabled = true;
   btn.textContent = 'Analyzing...';
@@ -13876,7 +13994,7 @@ async function handleEditSubmit(entryId) {
 
   // Refine planTomorrow into a clean checklist
   const updated = state.entries[entryIdx];
-  if (updated.planTomorrow && state.settings.baseUrl) {
+  if (updated.planTomorrow && isAiConfigured()) {
     try {
       const refined = await callClaude(
         'You distill a rough "plan for tomorrow" into a crisp checklist. Each item: a punchy verb phrase (3-8 words). Merge overlapping ideas. Drop filler. Rewrite freely. IMPORTANT: if a line starts with "@someone", preserve that prefix exactly (e.g. "- @jane Review PR"). Output each item on its own line prefixed with "- ". Nothing else — no preamble, no numbering.',
@@ -13894,7 +14012,7 @@ async function handleEditSubmit(entryId) {
   }
 
   // Regenerate coaching note
-  if (state.settings.baseUrl) {
+  if (isAiConfigured()) {
     try {
       const reflection = await callClaude(getSystemPrompt(), buildDailyPrompt(updated), 600, 'Daily Coaching');
       updated.aiReflection = reflection;
@@ -14766,7 +14884,7 @@ async function generatePromoBrief() {
   const briefContainer = document.getElementById('promoBriefContainer');
   if (!briefContainer) return;
 
-  if (!state.settings.baseUrl) {
+  if (!isAiConfigured()) {
     showToast('Set up your AI gateway in Settings first.');
     return;
   }
@@ -16419,37 +16537,42 @@ function settingsIntegrationsHtml() {
       </div>
       <div class="settings-card-body">
       <div class="form-group">
+        <label class="form-label">AI Provider</label>
+        <select class="form-input" id="settingProvider">
+          ${Object.entries(AI_PROVIDERS).map(([key, p]) =>
+            '<option value="' + key + '"' + (state.settings.provider === key ? ' selected' : '') + '>' + escapeHtml(p.label) + '</option>'
+          ).join('')}
+        </select>
+      </div>
+      <div class="form-group" data-provider-field="baseUrl">
         <label class="form-label">Gateway Base URL</label>
         <input class="form-input" id="settingBaseUrl" value="${escapeHtml(state.settings.baseUrl)}" placeholder="e.g., http://localhost:8090/mtlsproxy:mgp/proxy/workos">
         <div class="form-hint">OpenAI-compatible endpoint. The app calls <code>{base_url}/v1/chat/completions</code></div>
       </div>
-      <div class="form-group">
+      <div class="form-group" data-provider-field="projectId">
         <label class="form-label">Project ID <span style="color:var(--text-muted)">(optional)</span></label>
         <input class="form-input" id="settingProjectId" value="${escapeHtml(state.settings.projectId)}" placeholder="e.g., your-project-id">
         <div class="form-hint">Sent as <code>x-netflix-copilot-project-id</code> header if set.</div>
       </div>
-      <div class="form-group">
-        <label class="form-label">API Key / Bearer Token <span style="color:var(--text-muted)">(optional)</span></label>
+      <div class="form-group" data-provider-field="apiKey">
+        <label class="form-label">API Key / Bearer Token</label>
         <input class="form-input" id="settingApiKey" type="password" value="${state.settings.apiKey}" placeholder="sk-...">
-        <div class="form-hint">Sent as <code>Authorization: Bearer</code> header if set. Not needed for mesh-proxied gateways.</div>
+        <div class="form-hint" id="apiKeyHint"></div>
       </div>
       <div class="form-group" style="display:flex;gap:var(--space-sm);align-items:center">
         <button class="btn-secondary" id="testConnectionBtn" onclick="testConnection()">Test Connection</button>
         <button class="btn-secondary" onclick="showApiUsageModal()">API Usage</button>
         <div class="api-status" id="apiStatus"></div>
       </div>
+      <div class="form-hint" id="providerHint" style="margin-bottom:var(--space-md)"></div>
       <div class="form-group">
         <label class="form-label">Model</label>
-        <div class="model-selector">
-          <label class="model-option">
-            <input type="radio" name="model" value="sonnet" ${state.settings.model !== 'opus' ? 'checked' : ''}>
-            Claude Sonnet 4.6 — fast, recommended
-          </label>
-          <label class="model-option">
-            <input type="radio" name="model" value="opus" ${state.settings.model === 'opus' ? 'checked' : ''}>
-            Claude Opus 4.6 — slower, deeper analysis
-          </label>
-        </div>
+        <div id="modelSelectorContainer" class="model-selector"></div>
+      </div>
+      <div class="form-group" data-provider-field="customModel">
+        <label class="form-label">Custom Model ID</label>
+        <input class="form-input" id="settingCustomModel" value="${escapeHtml(state.settings.modelId)}" placeholder="e.g., gpt-4o, claude-sonnet-4-6">
+        <div class="form-hint">Enter the exact model ID your gateway expects.</div>
       </div>
       </div>
     </div>
@@ -16924,6 +17047,50 @@ function calendarDaySummary() {
   return parts.join(', ');
 }
 
+function updateProviderFields() {
+  const providerId = state.settings.provider || 'netflix';
+  const provider = AI_PROVIDERS[providerId];
+  if (!provider) return;
+
+  document.querySelectorAll('[data-provider-field]').forEach(el => {
+    el.style.display = provider.fields.includes(el.dataset.providerField) ? '' : 'none';
+  });
+
+  const hintEl = document.getElementById('providerHint');
+  if (hintEl) hintEl.textContent = provider.hint || '';
+
+  const apiKeyHint = document.getElementById('apiKeyHint');
+  if (apiKeyHint) {
+    const hints = {
+      netflix: 'Sent as Authorization: Bearer header. Not needed for mesh-proxied gateways.',
+      anthropic: 'Your Anthropic API key (sk-ant-...).',
+      openai: 'Your OpenAI API key (sk-...).',
+      custom: 'Sent as Authorization: Bearer header if set.'
+    };
+    apiKeyHint.textContent = hints[providerId] || '';
+  }
+
+  const container = document.getElementById('modelSelectorContainer');
+  if (!container) return;
+
+  if (provider.models.length === 0) {
+    container.innerHTML = '';
+    container.parentElement.style.display = 'none';
+  } else {
+    container.parentElement.style.display = '';
+    container.innerHTML = provider.models.map(m =>
+      '<label class="model-option">' +
+        '<input type="radio" name="model" value="' + m.id + '"' +
+        (state.settings.modelId === m.id ? ' checked' : '') + '> ' +
+        escapeHtml(m.label) +
+      '</label>'
+    ).join('');
+    document.querySelectorAll('input[name="model"]').forEach(radio => {
+      radio.addEventListener('change', (e) => { state.settings.modelId = e.target.value; saveState(); });
+    });
+  }
+}
+
 function attachSettingsListeners() {
   const saveField = (id, key) => {
     const el = document.getElementById(id);
@@ -16946,9 +17113,19 @@ function attachSettingsListeners() {
     const apiKeyEl = document.getElementById('settingApiKey');
     if (apiKeyEl) apiKeyEl.addEventListener('blur', (e) => { state.settings.apiKey = e.target.value.trim(); saveState(); });
 
-    document.querySelectorAll('input[name="model"]').forEach(radio => {
-      radio.addEventListener('change', (e) => { state.settings.model = e.target.value; saveState(); });
+    const providerEl = document.getElementById('settingProvider');
+    if (providerEl) providerEl.addEventListener('change', (e) => {
+      state.settings.provider = e.target.value;
+      const prov = AI_PROVIDERS[e.target.value];
+      state.settings.modelId = prov ? prov.defaultModel : '';
+      updateProviderFields();
+      saveState();
     });
+
+    const customModelEl = document.getElementById('settingCustomModel');
+    if (customModelEl) customModelEl.addEventListener('blur', (e) => { state.settings.modelId = e.target.value.trim(); saveState(); });
+
+    updateProviderFields();
 
     const slackTokenEl = document.getElementById('settingSlackToken');
     if (slackTokenEl) slackTokenEl.addEventListener('blur', (e) => { state.settings.slackToken = e.target.value.trim(); saveState(); });
@@ -17091,7 +17268,7 @@ async function compactInsightsProfile() {
   // Always store the raw input
   state.settings.insightsProfileRaw = raw;
 
-  if (!state.settings.baseUrl) {
+  if (!isAiConfigured()) {
     showToast('Set up AI integration first to compact profile');
     state.settings.insightsProfile = raw;
     saveState();
@@ -17190,24 +17367,27 @@ function exportData() {
 
 async function testConnection() {
   const status = document.getElementById('apiStatus');
-  if (!state.settings.baseUrl) {
+  const providerId = state.settings.provider || 'netflix';
+  const provider = AI_PROVIDERS[providerId];
+  if (!isAiConfigured()) {
     status.className = 'api-status invalid';
-    status.textContent = 'Set a Gateway Base URL first.';
+    const msg = (providerId === 'netflix' || providerId === 'custom') ? 'Set a Gateway Base URL first.' : 'Set an API key first.';
+    status.textContent = msg;
     return;
   }
   status.className = 'api-status checking';
-  status.textContent = 'Checking...';
+  status.textContent = 'Checking ' + (provider?.label || providerId) + '...';
   try {
     await callClaude('You are helpful.', 'Say hi.', 5, 'Test Connection');
     status.className = 'api-status valid';
-    status.textContent = '✓ Connected';
+    status.textContent = '✓ Connected to ' + (provider?.label || providerId);
   } catch (err) {
     if (err.message === 'invalid_key') {
       status.className = 'api-status invalid';
       status.textContent = '✕ Auth failed — check credentials';
     } else {
       status.className = 'api-status invalid';
-      status.textContent = '✕ Connection failed — check URL and try again';
+      status.textContent = '✕ Connection failed — check settings and try again';
     }
   }
 }
@@ -17823,7 +18003,7 @@ async function processContribImport() {
     return;
   }
 
-  if (!state.settings.baseUrl) {
+  if (!isAiConfigured()) {
     showToast('Set up your AI gateway in Settings first.');
     return;
   }
@@ -19091,7 +19271,7 @@ function saveVisibActivity() {
 async function getVisibSuggestions() {
   const btn = document.getElementById('visibSuggestBtn');
   const container = document.getElementById('visibSuggestionsContainer');
-  if (!state.settings.baseUrl) {
+  if (!isAiConfigured()) {
     showToast('Set up API in Settings first');
     return;
   }
@@ -19173,7 +19353,7 @@ async function startVisibDraft(draftType) {
   }
 
   if (!config) return;
-  if (!state.settings.baseUrl) {
+  if (!isAiConfigured()) {
     showToast('Set up API in Settings first');
     return;
   }
@@ -19493,7 +19673,7 @@ function deleteVisibActivity() {
    Init
    ======================================== */
 async function backfillTldrs() {
-  if (!state.settings.baseUrl) return;
+  if (!isAiConfigured()) return;
 
   // One-time migration: regenerate all TLDRs in bullet format
   const migrationKey = 'workos_tldr_bullet_v1';
@@ -19590,7 +19770,7 @@ async function init() {
   backfillTldrs();
 
   // Auto-generate weekly brief on Friday mornings
-  if (isFriday(todayStr()) && state.settings.baseUrl) {
+  if (isFriday(todayStr()) && isAiConfigured()) {
     const monday = getWeekMonday(todayStr());
     const existingBrief = state.weeklyBriefs.find(b => b.weekOf === monday);
     const weekEntries = getCurrentWeekEntries();
