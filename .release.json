@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "product": "WorkOS",
+  "github_repository": "choumore/workos-app",
+  "release_branch": "main",
+  "version": {
+    "strategy": "semver",
+    "tag_prefix": "v",
+    "sites": [
+      {
+        "path": "workos-v2.html",
+        "pattern": ">v(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)</span>"
+      }
+    ]
+  },
+  "changelog": null,
+  "artifact": {
+    "path": "workos-v2.html",
+    "kind": "html",
+    "generated": false,
+    "github_asset": true
+  },
+  "checks": [],
+  "deployment": null,
+  "production_verification": {
+    "required": true,
+    "instructions": "Open workos-v2.html in a real browser, confirm the changed flows, and report console errors. No automated release test exists yet."
+  },
+  "rollback": "Published tags are immutable. Fix forward with a follow-up release and retain the prior HTML release asset."
+}
